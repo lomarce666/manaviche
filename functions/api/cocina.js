@@ -89,14 +89,14 @@ export async function onRequestGet({ request, env }) {
 
   const j = await jornadaAbierta(DB, false);
   const [pend, hechos] = await DB.batch([
-    DB.prepare("SELECT id, numero, tipo, mesa, items, notas, total, estado, creado, actualizado, por, cuenta, " +
+    DB.prepare("SELECT id, numero, tipo, mesa, items, notas, total, estado, creado, actualizado, por, cuenta, servidos, " +
       "(SELECT MIN(q.id) FROM pedidos q WHERE q.cuenta = pedidos.cuenta AND q.tipo = 'pedido') AS primero, " +
       "(SELECT c.total FROM cuentas c WHERE c.id = pedidos.cuenta) AS cuenta_total " +
       "FROM pedidos WHERE estado != 'listo' ORDER BY id LIMIT 200"),
     DB.prepare("SELECT id, numero, mesa, items, notas, total, creado, actualizado FROM pedidos " +
       "WHERE jornada = ?1 AND tipo = 'pedido' AND estado = 'listo' ORDER BY actualizado DESC LIMIT 400").bind(j ? j.id : -1),
   ]);
-  const conItems = (p) => ({ ...p, items: p.items ? JSON.parse(p.items) : [], adicional: p.tipo === "pedido" && p.primero != null && p.primero !== p.id });
+  const conItems = (p) => ({ ...p, items: p.items ? JSON.parse(p.items) : [], servidos: p.servidos ? JSON.parse(p.servidos) : [], adicional: p.tipo === "pedido" && p.primero != null && p.primero !== p.id });
   // Cuentas de mesa abiertas (sin cobrar)
   const ahora = Date.now();
   const abiertas = (await DB.prepare("SELECT * FROM cuentas WHERE cerrada IS NULL AND pedidos > 0 ORDER BY mesa").all()).results
@@ -183,6 +183,21 @@ export async function onRequestPost({ request, env }) {
     return responder(200, { ok: true });
   }
 
+  // ---- Visto de cada plato servido: {accion:"servir", id, i, n} = del plato i ya se sirvieron n ----
+  if (d.accion === "servir") {
+    const id = Number(d.id), i = Math.floor(Number(d.i));
+    const p = await DB.prepare("SELECT items, servidos FROM pedidos WHERE id = ?1 AND tipo = 'pedido'").bind(id).first();
+    if (!p) return responder(404, { ok: false, error: "Ese pedido no existe" });
+    const items = JSON.parse(p.items || "[]"), serv = p.servidos ? JSON.parse(p.servidos) : [];
+    if (!(i >= 0 && i < items.length)) return responder(400, { ok: false, error: "Datos inválidos" });
+    for (let k = 0; k < items.length; k++) serv[k] = Number(serv[k]) || 0;
+    serv[i] = Math.min(Math.max(Math.floor(Number(d.n)) || 0, 0), items[i].cantidad);
+    // Al marcar el primer plato, el pedido pasa a "en preparación" si seguía como nuevo
+    await DB.prepare("UPDATE pedidos SET servidos = ?2, actualizado = ?3, estado = CASE WHEN estado = 'nuevo' THEN 'preparando' ELSE estado END WHERE id = ?1")
+      .bind(id, JSON.stringify(serv), Date.now()).run();
+    return responder(200, { ok: true, servidos: serv });
+  }
+
   // ---- Borrar días guardados ----
   if (d.accion === "borrar") {
     let ids = [];
@@ -206,6 +221,12 @@ export async function onRequestPost({ request, env }) {
   // ---- Cambiar estado de un pedido ----
   const id = Number(d.id), estado = String(d.estado);
   if (!Number.isInteger(id) || !ESTADOS.includes(estado)) return responder(400, { ok: false, error: "Datos inválidos" });
-  await DB.prepare("UPDATE pedidos SET estado = ?2, actualizado = ?3 WHERE id = ?1").bind(id, estado, Date.now()).run();
+  if (estado === "listo") {
+    const p = await DB.prepare("SELECT items FROM pedidos WHERE id = ?1").bind(id).first();
+    const todo = p && p.items ? JSON.parse(p.items).map((it) => it.cantidad) : [];
+    await DB.prepare("UPDATE pedidos SET estado = ?2, actualizado = ?3, servidos = ?4 WHERE id = ?1").bind(id, estado, Date.now(), JSON.stringify(todo)).run();
+  } else {
+    await DB.prepare("UPDATE pedidos SET estado = ?2, actualizado = ?3 WHERE id = ?1").bind(id, estado, Date.now()).run();
+  }
   return responder(200, { ok: true });
 }

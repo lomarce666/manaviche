@@ -232,6 +232,13 @@ body.conCarta #cartaBtn,body.conCarta #promo,body.conCarta #ayudaBtn{visibility:
 .estados{margin-top:8px;display:grid;gap:5px}
 .estados div{display:flex;justify-content:space-between;font-size:13px;background:#f6f0e4;border-radius:10px;padding:6px 10px}
 .estados .e-nuevo{color:#7a5b00}.estados .e-prep{color:#b5540b}.estados .e-listo{color:#179c4a}
+.ped{margin-top:10px;background:#f6f0e4;border-radius:12px;padding:8px 10px}
+.ped.completo{background:#e7f6ec}
+.ped .pcab{display:flex;justify-content:space-between;font-size:13px;gap:6px}
+.ped ul{margin-top:4px}
+.ped li.ok span:first-child{color:#179c4a}
+.ped .chk{letter-spacing:1px;font-size:13px;white-space:nowrap}
+.ped .fin{margin-top:6px;font-weight:900;color:#179c4a;font-size:14px}
 .reparto{margin-top:10px;border-top:1px dashed #e2d8c6;padding-top:8px}
 .reparto summary{font-weight:900;font-size:14px;color:#0d3b4f;cursor:pointer}
 .reparto li{font-size:14px}
@@ -606,18 +613,21 @@ $("#miNombre").addEventListener("change", e=>{ miNombre = e.target.value.replace
 let estadosVistos = null, cuentaVista = null;
 function seguirCuenta(c){
   const nuevos = {};
-  (c && c.pedidos || []).forEach(p => nuevos[p.numero] = p.estado);
-  if (estadosVistos) for (const [num, est] of Object.entries(nuevos)){
-    if (est !== estadosVistos[num] && estadosVistos[num]){
-      if (est === "listo") avisar(`✅ Pedido #${num} entregado. ¡Buen provecho!`);
-      else if (est === "recibido" || est === "preparando") avisar(`👨‍🍳 La cocina ya está preparando tu pedido #${num}`);
+  (c && c.pedidos || []).forEach(p => nuevos[p.numero] = { est: p.estado, serv: p.items.map((_, i) => Number((p.servidos || [])[i]) || 0), items: p.items });
+  if (estadosVistos) for (const [num, x] of Object.entries(nuevos)){
+    const antes = estadosVistos[num]; if (!antes) continue;
+    if (x.est === "listo" && antes.est !== "listo") avisar(`🎉 Tu pedido #${num} está completo. ¡Buen provecho!`);
+    else {
+      const recien = x.items.filter((it, i) => x.serv[i] > (antes.serv[i] || 0)).map(it => it.nombre);
+      if (recien.length) avisar(`✅ Te sirvieron: ${recien.join(", ")}`);
+      else if (antes.est === "nuevo" && x.est !== "nuevo") avisar(`👨‍🍳 La cocina ya está preparando tu pedido #${num}`);
     }
   }
   estadosVistos = nuevos;
   if (cuentaVista && !c) pedirResena(cuentaVista);
   cuentaVista = c && c.pedidos && c.pedidos.length ? c : null;
 }
-const ESTADO_TXT = { nuevo: ["📨 Enviado", "e-nuevo"], recibido: ["👨‍🍳 En preparación", "e-prep"], preparando: ["👨‍🍳 En preparación", "e-prep"], listo: ["✅ Entregado", "e-listo"] };
+const ESTADO_TXT = { nuevo: ["📨 Enviado", "e-nuevo"], recibido: ["👨‍🍳 En preparación", "e-prep"], preparando: ["👨‍🍳 En preparación", "e-prep"], listo: ["✅ Completo", "e-listo"] };
 function pedirResena(c){
   const link = NEGOCIO.resena_google || NEGOCIO.mapa || "";
   const box = resultado.querySelector(".caja");
@@ -664,10 +674,13 @@ function refrescar(){
   ya.classList.toggle("ver", hayCuenta);
   if (hayCuenta){
     ya.innerHTML = `<h5>🧾 Ya pidió la mesa ${MESA_QR} <span>$${cuentaMesa.total.toFixed(2)}</span></h5>
-      <ul>${cuentaMesa.platos.map(x => `<li><span><b>${x.cantidad} x</b> ${x.nombre}</span><span>$${x.total.toFixed(2)}</span></li>`).join("")}</ul>
-      <div class="estados">${cuentaMesa.pedidos.map(p => { const e = ESTADO_TXT[p.estado] || ESTADO_TXT.nuevo; return `<div><span>Pedido #${p.numero} · $${p.total.toFixed(2)}</span><b class="${e[1]}">${e[0]}</b></div>`; }).join("")}</div>
+      ${cuentaMesa.pedidos.map(p => { const e = ESTADO_TXT[p.estado] || ESTADO_TXT.nuevo;
+        return `<div class="ped ${p.estado === "listo" ? "completo" : ""}"><div class="pcab"><span>Pedido #${p.numero} · $${p.total.toFixed(2)}</span><b class="${e[1]}">${e[0]}</b></div>
+          <ul>${p.items.map((it, i) => { const n = p.estado === "listo" ? it.cantidad : Math.min(Number((p.servidos || [])[i]) || 0, it.cantidad);
+            return `<li class="${n >= it.cantidad ? "ok" : ""}"><span><b>${it.cantidad} x</b> ${it.nombre}</span><span class="chk">${Array.from({ length: Math.min(it.cantidad, 12) }, (_, k) => k < n ? "✅" : "⬜").join("")}</span></li>`; }).join("")}</ul>
+          ${p.estado === "listo" ? `<div class="fin">🎉 ¡Tu pedido está completo! Buen provecho.</div>` : ""}</div>`; }).join("")}
       ${(cuentaMesa.personas || []).length > 1 ? `<details class="reparto"><summary>👥 ¿Cuánto le toca a cada uno?</summary><ul>${cuentaMesa.personas.map(x => `<li><span>${x.nombre}</span><span>$${x.total.toFixed(2)}</span></li>`).join("")}</ul><div class="nota2">Según quién agregó cada plato al carrito.</div></details>` : ""}
-      <div class="nota2">✅ Ya está en la cocina (${cuentaMesa.pedidos.length} pedido${cuentaMesa.pedidos.length === 1 ? "" : "s"}). Si quieren algo más, agréguenlo abajo y se suma a esta cuenta.</div>`;
+      <div class="nota2">Cada ✅ es un plato que ya te sirvieron. ¿Quieren algo más? Agréguenlo abajo y se suma a esta cuenta.</div>`;
   }
   $("#agregarMas").textContent = hayCuenta ? (n > 0 ? "➕ Para agregar a la cuenta" : "➕ ¿Algo más? Toca \"Agregar +\" en el menú") : "";
   enviar.innerHTML = hayCuenta ? "Agregar a la cuenta 👨‍🍳" : "Enviar a la cocina 👨‍🍳";

@@ -56,7 +56,16 @@ main{padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280
 .acciones{display:flex;gap:10px;margin-top:14px}
 .acciones button{flex:1;padding:16px;border-radius:14px;font-size:18px;font-weight:900}
 .b-recibido{background:#e63946;color:#fff}
-.b-listo{background:#2ecc71;color:#08210f}
+.b-listo{background:#2a313b;color:#9aa3ad}
+.b-listo.completo{background:#2ecc71;color:#08210f;animation:latir 1.2s infinite}
+.items li{display:flex;align-items:center;gap:10px;padding:5px 0;border-bottom:1px solid #2a313b}
+.items li:last-child{border:none}
+.items li .nmI{flex:1}
+.items li.hecho .nmI{opacity:.45;text-decoration:line-through}
+.vistos{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.visto{width:42px;height:42px;border-radius:10px;border:3px solid #4a5563;background:#111418;color:transparent;font-size:24px;font-weight:900;display:grid;place-items:center}
+.visto.si{background:#2ecc71;border-color:#2ecc71;color:#08210f}
+.faltan{font-size:14px;opacity:.75;margin-top:8px;text-align:center}
 .b-ok{background:#4ea1ff;color:#06203d}
 .titulo-aviso{font-size:24px;font-weight:900;margin-top:6px}
 /* Pestañas */
@@ -479,23 +488,40 @@ function pintar(){
         ${p.tipo === "cuenta" && p.cuenta_total != null ? `<div class="ctaMesa" style="font-size:18px">Total: $${Number(p.cuenta_total).toFixed(2)}</div>` : ""}
         <div class="acciones"><button class="b-ok" data-id="${p.id}" data-estado="listo">OK, voy</button></div></div>`;
     }
+    const serv = p.items.map((it, i) => Math.min(Number((p.servidos || [])[i]) || 0, it.cantidad));
+    const faltan = p.items.reduce((t, it, i) => t + it.cantidad - serv[i], 0);
     const boton = p.estado === "nuevo"
       ? `<button class="b-recibido" data-id="${p.id}" data-estado="preparando">✅ Recibido</button>`
-      : `<button class="b-listo" data-id="${p.id}" data-estado="listo">🛎️ Pedido entregado a la mesa</button>`;
+      : `<button class="b-listo${faltan === 0 ? " completo" : ""}" data-id="${p.id}" data-estado="listo" data-faltan="${faltan}">🍽️ Pedido servido</button>`;
     return `<div class="tarjeta ${p.estado}${tarde ? " tarde" : ""}">
       <div class="cab"><span class="num">#${p.numero ?? "—"}${p.adicional ? `<span class="adic">➕ ADICIONAL</span>` : ""}</span><span class="mesa">MESA ${p.mesa}</span></div>
       <div class="meta">${hora(p.creado)} · ${hace(p.creado)}${p.estado === "preparando" ? " · preparando" : ""}${tarde ? " · ⏰ demorado" : ""}</div>
-      <ul class="items">${p.items.map(it => `<li><b>${it.cantidad} x</b> ${esc(it.nombre)}</li>`).join("")}</ul>
+      <ul class="items">${p.items.map((it, i) => `<li class="${serv[i] >= it.cantidad ? "hecho" : ""}"><span class="nmI"><b>${it.cantidad} x</b> ${esc(it.nombre)}</span>
+        <span class="vistos">${Array.from({ length: Math.min(it.cantidad, 12) }, (_, k) => `<button class="visto${k < serv[i] ? " si" : ""}" data-servir="${p.id}" data-i="${i}" data-k="${k}" aria-label="Servido">✓</button>`).join("")}</span></li>`).join("")}</ul>
       ${p.notas ? `<div class="nota">📝 ${esc(p.notas)}</div>` : ""}
       <div class="total">Total: $${Number(p.total).toFixed(2)}${p.por ? ` · 👤 ${esc(p.por)}` : ""}</div>
       ${p.adicional && p.cuenta_total != null ? `<div class="ctaMesa">🧾 Cuenta de la mesa: $${Number(p.cuenta_total).toFixed(2)}</div>` : ""}
+      ${p.estado !== "nuevo" ? `<div class="faltan">${faltan ? `Marca ✓ cada plato al servirlo · faltan ${faltan}` : "✅ Todo servido · toca Pedido servido"}</div>` : ""}
       <div class="acciones">${boton}</div></div>`;
   }).join("");
 }
 
-/* ---------- Botones Recibido / Listo ---------- */
+/* ---------- Botones Recibido / vistos / Pedido servido ---------- */
 async function alTocar(e){
+  // Visto de un plato servido
+  const v = e.target.closest("[data-servir]");
+  if (v){
+    const p = datos.pedidos.find(x => x.id === Number(v.dataset.servir)); if (!p) return;
+    const i = Number(v.dataset.i), k = Number(v.dataset.k);
+    p.servidos = p.items.map((_, j) => Number((p.servidos || [])[j]) || 0);
+    p.servidos[i] = k < p.servidos[i] ? k : k + 1;              // tocar uno marcado lo desmarca
+    if (p.estado === "nuevo") p.estado = "preparando";
+    pintar();
+    try { await fetch("/api/cocina", { method: "POST", headers: { "Content-Type": "application/json", "x-clave": CLAVE }, body: JSON.stringify({ accion: "servir", id: p.id, i, n: p.servidos[i] }) }); } catch(e){}
+    return;
+  }
   const b = e.target.closest("[data-id]"); if (!b) return;
+  if (b.dataset.faltan > 0 && !confirm(`Faltan ${b.dataset.faltan} plato(s) por marcar. ¿Marcar todo el pedido como servido?`)) return;
   const id = Number(b.dataset.id), estado = b.dataset.estado;
   // Cambia en pantalla al instante, y se guarda por detrás
   const p = datos.pedidos.find(x => x.id === id);

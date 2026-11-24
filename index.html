@@ -14,14 +14,14 @@
   --piel-sombra:#a96f45;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-html{scroll-snap-type:y mandatory;background:#0d3b4f}
+html{scroll-snap-type:y proximity;background:#0d3b4f}
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--crema);overflow-x:hidden;-webkit-tap-highlight-color:transparent}
 
 /* Pista invisible que da el largo al scroll (una pantalla por paso) */
 .paso{height:100vh;height:100svh;scroll-snap-align:start}
 
 /* Escenario fijo donde pasa toda la animación */
-#escena{position:fixed;inset:0;overflow:hidden;background:#0d3b4f;transition:background-color .5s ease;pointer-events:none}
+#escena{position:fixed;inset:0;overflow:hidden;background:#0d3b4f;pointer-events:none}
 #escena *{pointer-events:none}
 #escena .clic{pointer-events:auto}
 
@@ -597,24 +597,35 @@ for (let i = 0; i < PLATOS.length + 2; i++){ const d = document.createElement("d
 
 /* ---------- Animación con el scroll ---------- */
 const clamp = (v,a=0,b=1) => Math.min(b, Math.max(a, v));
+const suave = e => 1 - Math.pow(1 - e, 3);               // frena al final (se siente más natural)
 const marca = $("#marca"), desliza = $("#desliza"), escena = $("#escena"), final = $("#final");
-let colorActual = "";
+const sub = marca.querySelector(".sub"), ola = marca.querySelector(".ola"), waFinal = $("#waFinal");
+const pts = [...puntos.children];
+
+// Medidas: se leen solo al cargar o al girar el celular (leerlas en cada cuadro hace lento al iPhone)
+let alto = innerHeight, vw = innerWidth, vh = innerHeight, marcaAlto = 0;
+function medir(){ alto = pista.firstElementChild.offsetHeight || innerHeight; vw = innerWidth; vh = innerHeight; marcaAlto = marca.offsetHeight; }
+
+// Colores: el fondo cambia poco a poco siguiendo el dedo
+const hex = c => { const n = parseInt(c.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255]; };
+const COLORES_PASO = [FONDO_INICIO, ...PLATOS.map(p => p.fondo), FONDO_INICIO].map(hex);
+let colorActual = "", activoActual = -2, marcaK = -1;
 
 function pintar(){
-  const alto = pista.firstElementChild.offsetHeight || innerHeight;
   const p = scrollY / alto;                         // 0 = inicio, 1 = plato 1, ...
-  const vw = innerWidth, vh = innerHeight;
 
   // Nombre: del centro sube y se achica hasta quedar arriba
-  const k = clamp(p);
-  const yIni = -marca.offsetHeight / 2;
-  const yFin = -vh / 2 + 22;
-  marca.style.transform = `translateY(${yIni + (yFin - yIni) * k}px) scale(${1 - 0.55 * k})`;
-  marca.querySelector(".sub").style.opacity = String(1 - k * 1.4);
-  marca.querySelector(".ola").style.opacity = String(1 - k * 1.4);
-  desliza.style.visibility = k > 0.3 ? "hidden" : "visible";
+  const k = suave(clamp(p / 0.6));                 // el nombre sube rápido para dejar espacio al primer plato
+  if (k !== marcaK){
+    marcaK = k;
+    const yIni = -marcaAlto / 2, yFin = -vh / 2 + 22;
+    marca.style.transform = `translate3d(0, ${(yIni + (yFin - yIni) * k).toFixed(1)}px, 0) scale(${(1 - 0.55 * k).toFixed(3)})`;
+    sub.style.opacity = ola.style.opacity = String(clamp(1 - k * 1.4));
+    desliza.style.visibility = k > 0.3 ? "hidden" : "visible";
+  }
 
-  // Cada plato: entra desde abajo y un costado, se queda, y sale encogiéndose
+  // Cada plato: entra desde abajo y un costado, se queda, y sale encogiéndose.
+  // Llega a su lugar un poco ANTES de terminar de deslizar, así se siente rápido.
   let activo = -1;
   nodos.forEach((n,i)=>{
     const t = p - (i + 1);                         // -1 entrando, 0 en el centro, 1 saliendo
@@ -625,13 +636,13 @@ function pintar(){
       return;
     }
     let x, y, r, s, o;
-    if (t < 0){ const e = -t; x = n.lado * e * vw * 0.75; y = e * vh * 0.55; r = n.lado * e * 38; s = 1; o = 1; }
-    else      { const e = t;  x = -n.lado * e * vw * 0.35; y = -e * vh * 0.12; r = -n.lado * e * 18; s = 1 - e * 0.35; o = 1 - e * 1.5; }
+    if (t < 0){ const e = 1 - suave(clamp((t + 1) / 0.7)); x = n.lado * e * vw * 0.75; y = e * vh * 0.55; r = n.lado * e * 38; s = 1; o = 1; }
+    else      { const e = clamp(t / 0.85);  x = -n.lado * e * vw * 0.35; y = -e * vh * 0.12; r = -n.lado * e * 18; s = 1 - e * 0.35; o = 1 - e * 1.5; }
     n.mano.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0) rotate(${r.toFixed(2)}deg) scale(${s.toFixed(3)})`;
-    n.mano.style.opacity = clamp(o);
-    const to = clamp(1 - Math.abs(t) * 2.2);
-    n.texto.style.opacity = to;
-    n.texto.style.transform = `translate3d(0, ${(t * -50).toFixed(1)}px, 0)`;
+    n.mano.style.opacity = clamp(o).toFixed(3);
+    const to = clamp(1 - Math.max(0, Math.abs(t) - 0.12) * 2.6);
+    n.texto.style.opacity = to.toFixed(3);
+    n.texto.style.transform = `translate3d(0, ${(t * -40).toFixed(1)}px, 0)`;
     n.pedir.style.pointerEvents = to > 0.6 ? "auto" : "none";
     if (Math.abs(t) < 0.5) activo = i;
   });
@@ -639,20 +650,29 @@ function pintar(){
   // Pantalla final
   const tf = p - (PLATOS.length + 1);
   const of = clamp(1 + tf * 2.2);
-  final.style.opacity = of;
-  final.style.transform = `translateY(${Math.max(0, -tf) * 60}px)`;
-  $("#waFinal").style.pointerEvents = of > 0.6 ? "auto" : "none";
+  final.style.opacity = of.toFixed(3);
+  final.style.transform = `translate3d(0, ${(Math.max(0, -tf) * 60).toFixed(1)}px, 0)`;
+  waFinal.style.pointerEvents = of > 0.6 ? "auto" : "none";
 
-  // Color de fondo y puntitos
-  const color = activo >= 0 ? PLATOS[activo].fondo : FONDO_INICIO;
-  if (color !== colorActual){ escena.style.backgroundColor = color; document.documentElement.style.background = color; colorActual = color; }
-  puntos.style.opacity = p > 0.6 && p < PLATOS.length + 0.5 ? 1 : 0;
-  [...puntos.children].forEach((d,i)=>d.classList.toggle("on", i === activo));
+  // Color de fondo: mezcla entre el plato que sale y el que entra
+  const i0 = clamp(Math.floor(p), 0, COLORES_PASO.length - 1), i1 = clamp(i0 + 1, 0, COLORES_PASO.length - 1);
+  const f = clamp(p - i0), c0 = COLORES_PASO[i0], c1 = COLORES_PASO[i1];
+  const color = `rgb(${Math.round(c0[0] + (c1[0] - c0[0]) * f)},${Math.round(c0[1] + (c1[1] - c0[1]) * f)},${Math.round(c0[2] + (c1[2] - c0[2]) * f)})`;
+  if (color !== colorActual){ escena.style.backgroundColor = color; colorActual = color; }
+
+  // Puntitos: solo cuando cambia el plato
+  if (activo !== activoActual){
+    activoActual = activo;
+    document.documentElement.style.background = activo >= 0 ? PLATOS[activo].fondo : FONDO_INICIO;
+    puntos.style.opacity = activo >= 0 ? 1 : 0;
+    pts.forEach((d,i)=>d.classList.toggle("on", i === activo));
+  }
 }
 
 let pendiente = false;
 addEventListener("scroll", ()=>{ if(!pendiente){ pendiente = true; requestAnimationFrame(()=>{ pintar(); pendiente = false; }); } }, { passive:true });
-addEventListener("resize", pintar);
+addEventListener("resize", ()=>{ medir(); marcaK = -1; pintar(); });
+medir();
 pintar();
 })();
 </script>

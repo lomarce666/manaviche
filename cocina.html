@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#111418">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Cocina</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:#111418;color:#f4f1ea;min-height:100vh;-webkit-tap-highlight-color:transparent}
+button{font:inherit;cursor:pointer;border:none}
+
+/* Entrada */
+#entrar{min-height:100vh;display:grid;place-items:center;padding:24px}
+#entrar .caja{width:100%;max-width:360px;text-align:center}
+#entrar h1{font-size:30px;font-weight:900;text-transform:uppercase;letter-spacing:.5px}
+#entrar p{opacity:.7;margin:8px 0 22px}
+#clave{width:100%;font-size:22px;text-align:center;padding:14px;border-radius:14px;border:2px solid #333a44;background:#1b2027;color:#fff;outline:none}
+#clave:focus{border-color:#ffd166}
+#btnEntrar{width:100%;margin-top:14px;padding:16px;border-radius:14px;background:#ffd166;color:#111;font-size:18px;font-weight:900}
+#errEntrar{color:#ff6b6b;margin-top:12px;min-height:20px;font-weight:700}
+
+/* Panel */
+#panel{display:none}
+header{position:sticky;top:0;z-index:5;background:#111418;border-bottom:1px solid #232a33;padding:calc(10px + env(safe-area-inset-top)) 16px 10px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+header h1{font-size:20px;font-weight:900;text-transform:uppercase;flex:1;min-width:140px}
+.dato{background:#1b2027;border-radius:12px;padding:6px 12px;font-size:14px;opacity:.95}
+.dato b{font-size:18px;color:#ffd166}
+#estado{font-size:13px;font-weight:700;padding:6px 10px;border-radius:99px;background:#16351f;color:#6ee7a0}
+#estado.mal{background:#4a1515;color:#ff8a8a}
+#avisoSonido{display:none;margin:12px 16px 0;padding:14px;border-radius:14px;background:#e63946;color:#fff;font-weight:900;text-align:center;font-size:17px}
+#avisoSonido.ver{display:block;animation:latir 1s infinite}
+@keyframes latir{50%{opacity:.6}}
+
+main{padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;align-items:start}
+.vacio{grid-column:1/-1;text-align:center;opacity:.55;padding:60px 0;font-size:18px}
+.vacio b{display:block;font-size:46px;margin-bottom:8px}
+
+.tarjeta{background:#1b2027;border-radius:18px;padding:16px;border:3px solid transparent}
+.tarjeta.nuevo{border-color:#e63946;background:#2a1517;animation:brillo 1.2s infinite}
+@keyframes brillo{50%{border-color:#ff9aa2}}
+.tarjeta.preparando{border-color:#f2b84b}
+.tarjeta.tarde{border-color:#ff6b6b}
+.tarjeta.aviso{background:#16263a;border-color:#4ea1ff}
+.tarjeta.aviso.nuevo{background:#132a45}
+.cab{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.num{font-size:28px;font-weight:900}
+.mesa{font-size:22px;font-weight:900;background:#ffd166;color:#111;padding:2px 10px;border-radius:10px}
+.meta{font-size:14px;opacity:.75;margin-top:4px}
+.items{list-style:none;margin:12px 0 0;font-size:18px;line-height:1.5}
+.items b{color:#ffd166}
+.nota{margin-top:10px;background:#3a2f12;color:#ffe29a;border-radius:10px;padding:8px 10px;font-size:16px;font-weight:700}
+.total{margin-top:10px;font-size:15px;opacity:.8}
+.acciones{display:flex;gap:10px;margin-top:14px}
+.acciones button{flex:1;padding:16px;border-radius:14px;font-size:18px;font-weight:900}
+.b-recibido{background:#e63946;color:#fff}
+.b-listo{background:#2ecc71;color:#08210f}
+.b-ok{background:#4ea1ff;color:#06203d}
+.titulo-aviso{font-size:24px;font-weight:900;margin-top:6px}
+</style>
+</head>
+<body>
+
+<section id="entrar">
+  <div class="caja">
+    <div style="font-size:54px">👨‍🍳</div>
+    <h1 id="nombreEntrar">Cocina</h1>
+    <p>Escribe la clave de la cocina</p>
+    <input id="clave" type="password" autocomplete="current-password" placeholder="Clave">
+    <button id="btnEntrar">Entrar y activar sonido 🔔</button>
+    <div id="errEntrar"></div>
+  </div>
+</section>
+
+<section id="panel">
+  <header>
+    <h1 id="nombre">Cocina</h1>
+    <span class="dato">Hoy: <b id="hoyN">0</b> pedidos</span>
+    <span class="dato">Vendido: <b id="hoyT">$0</b></span>
+    <span id="estado">● En línea</span>
+  </header>
+  <div id="avisoSonido">🔇 Toca aquí para activar el sonido</div>
+  <main id="lista"><div class="vacio"><b>✅</b>Sin pedidos pendientes</div></main>
+</section>
+
+<script>
+(function(){
+const $ = s => document.querySelector(s);
+const guardar = (k,v) => { try { localStorage.setItem(k,v); } catch(e){} };
+const leer = k => { try { return localStorage.getItem(k); } catch(e){ return null; } };
+let CLAVE = leer("cocina_clave") || "";
+let datos = { pedidos: [] }, vistos = new Set(), primeraCarga = true;
+
+fetch("/restaurante.json").then(r=>r.json()).then(R=>{
+  document.title = "Cocina · " + R.nombre;
+  $("#nombre").textContent = "Cocina " + R.nombre;
+  $("#nombreEntrar").textContent = "Cocina " + R.nombre;
+}).catch(()=>{});
+
+/* ---------- Sonido (el iPhone exige un toque para activarlo) ---------- */
+let audio = null;
+function activarSonido(){
+  try {
+    audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+    if (audio.state === "suspended") audio.resume();
+    pitido(0.01);   // sonido mudo para desbloquear
+  } catch(e){}
+  revisarSonido();
+}
+function pitido(vol = 0.9){
+  if (!audio) return;
+  const t = audio.currentTime;
+  [0, 0.22, 0.44].forEach((d, i) => {
+    const o = audio.createOscillator(), g = audio.createGain();
+    o.type = "square"; o.frequency.value = i === 2 ? 1320 : 990;
+    g.gain.setValueAtTime(0.0001, t + d);
+    g.gain.exponentialRampToValueAtTime(vol, t + d + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + d + 0.18);
+    o.connect(g); g.connect(audio.destination); o.start(t + d); o.stop(t + d + 0.2);
+  });
+}
+function revisarSonido(){
+  const mudo = !audio || audio.state !== "running";
+  $("#avisoSonido").classList.toggle("ver", mudo && $("#panel").style.display === "block");
+}
+$("#avisoSonido").onclick = activarSonido;
+document.addEventListener("visibilitychange", ()=>{ if (!document.hidden){ cargar(); pedirPantallaEncendida(); } });
+
+// La alarma suena cada 2.5 s mientras haya algo sin recibir
+setInterval(()=>{
+  const pendientes = datos.pedidos.filter(p => p.estado === "nuevo").length;
+  if (pendientes){
+    pitido();
+    if (navigator.vibrate) navigator.vibrate([200,100,200]);
+    document.title = (document.title.startsWith("🔴") ? "" : "🔴 ") + document.title.replace(/^🔴 /,"");
+  } else document.title = document.title.replace(/^🔴 /,"");
+  revisarSonido();
+}, 2500);
+
+/* ---------- Mantener la pantalla encendida ---------- */
+let bloqueo = null;
+async function pedirPantallaEncendida(){
+  try { if ("wakeLock" in navigator && !bloqueo) { bloqueo = await navigator.wakeLock.request("screen"); bloqueo.addEventListener("release", ()=>{ bloqueo = null; }); } } catch(e){}
+}
+
+/* ---------- Entrar ---------- */
+async function entrar(){
+  activarSonido();
+  CLAVE = $("#clave").value.trim() || CLAVE;
+  $("#errEntrar").textContent = "Entrando…";
+  const ok = await cargar();
+  if (ok === "clave"){ $("#errEntrar").textContent = "Clave incorrecta"; return; }
+  if (ok === false){ $("#errEntrar").textContent = "No hay conexión. Intenta de nuevo."; return; }
+  guardar("cocina_clave", CLAVE);
+  $("#entrar").style.display = "none"; $("#panel").style.display = "block";
+  pedirPantallaEncendida(); revisarSonido();
+}
+$("#btnEntrar").onclick = entrar;
+$("#clave").addEventListener("keydown", e=>{ if (e.key === "Enter") entrar(); });
+if (CLAVE) $("#clave").value = CLAVE;
+
+/* ---------- Leer pedidos ---------- */
+async function cargar(){
+  try {
+    const r = await fetch("/api/cocina", { headers: { "x-clave": CLAVE }, cache: "no-store" });
+    if (r.status === 401) return "clave";
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error);
+    datos = j;
+    $("#estado").textContent = "● En línea"; $("#estado").classList.remove("mal");
+    pintar(); primeraCarga = false;
+    return true;
+  } catch(e){
+    $("#estado").textContent = "● Sin conexión"; $("#estado").classList.add("mal");
+    return false;
+  }
+}
+setInterval(()=>{ if ($("#panel").style.display === "block") cargar(); }, 3000);
+
+/* ---------- Dibujar tarjetas ---------- */
+const esc = t => String(t ?? "").replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
+const hace = ms => { const m = Math.floor((datos.ahora - ms) / 60000); return m < 1 ? "recién" : `hace ${m} min`; };
+const hora = ms => new Date(ms).toLocaleTimeString("es-EC", { hour: "2-digit", minute: "2-digit" });
+
+function pintar(){
+  $("#hoyN").textContent = datos.hoy?.pedidos ?? 0;
+  $("#hoyT").textContent = "$" + Number(datos.hoy?.total ?? 0).toFixed(2);
+  const lista = datos.pedidos;
+  if (!lista.length){ $("#lista").innerHTML = `<div class="vacio"><b>✅</b>Sin pedidos pendientes</div>`; return; }
+  $("#lista").innerHTML = lista.map(p => {
+    const espera = (datos.ahora - p.creado) / 60000;
+    const tarde = p.estado !== "nuevo" && espera > 20;
+    if (p.tipo !== "pedido"){
+      return `<div class="tarjeta aviso ${p.estado === "nuevo" ? "nuevo" : ""}">
+        <div class="cab"><span class="mesa">MESA ${p.mesa}</span><span class="meta">${hora(p.creado)} · ${hace(p.creado)}</span></div>
+        <div class="titulo-aviso">${p.tipo === "cuenta" ? "🧾 Piden la cuenta" : "🙋 Llaman al mesero"}</div>
+        <div class="acciones"><button class="b-ok" data-id="${p.id}" data-estado="listo">OK, voy</button></div></div>`;
+    }
+    const boton = p.estado === "nuevo"
+      ? `<button class="b-recibido" data-id="${p.id}" data-estado="preparando">✅ Recibido</button>`
+      : `<button class="b-listo" data-id="${p.id}" data-estado="listo">🍽️ Listo</button>`;
+    return `<div class="tarjeta ${p.estado}${tarde ? " tarde" : ""}">
+      <div class="cab"><span class="num">#${p.numero ?? "—"}</span><span class="mesa">MESA ${p.mesa}</span></div>
+      <div class="meta">${hora(p.creado)} · ${hace(p.creado)}${p.estado === "preparando" ? " · preparando" : ""}${tarde ? " · ⏰ demorado" : ""}</div>
+      <ul class="items">${p.items.map(it => `<li><b>${it.cantidad} x</b> ${esc(it.nombre)}</li>`).join("")}</ul>
+      ${p.notas ? `<div class="nota">📝 ${esc(p.notas)}</div>` : ""}
+      <div class="total">Total: $${Number(p.total).toFixed(2)}</div>
+      <div class="acciones">${boton}</div></div>`;
+  }).join("");
+}
+
+/* ---------- Botones Recibido / Listo ---------- */
+$("#lista").addEventListener("click", async e=>{
+  const b = e.target.closest("[data-id]"); if (!b) return;
+  activarSonido();
+  const id = Number(b.dataset.id), estado = b.dataset.estado;
+  // Cambia en pantalla al instante, y se guarda por detrás
+  const p = datos.pedidos.find(x => x.id === id);
+  if (p){ if (estado === "listo") datos.pedidos = datos.pedidos.filter(x => x.id !== id); else p.estado = estado; pintar(); }
+  try {
+    await fetch("/api/cocina", { method: "POST", headers: { "Content-Type": "application/json", "x-clave": CLAVE }, body: JSON.stringify({ id, estado }) });
+  } catch(e){}
+  cargar();
+});
+
+// Si ya había clave guardada, intenta entrar solo (el sonido se activa con el primer toque)
+if (CLAVE) cargar().then(ok => { if (ok === true){ $("#entrar").style.display = "none"; $("#panel").style.display = "block"; revisarSonido(); pedirPantallaEncendida(); } });
+document.addEventListener("click", ()=>{ if (!audio || audio.state !== "running") activarSonido(); }, { capture: true });
+})();
+</script>
+</body>
+</html>

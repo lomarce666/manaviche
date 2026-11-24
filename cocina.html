@@ -76,6 +76,21 @@ main{padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280
 .fila .det{flex:1;font-size:15px;line-height:1.45}
 .fila .det small{display:block;opacity:.65;font-size:13px}
 .fila .monto{font-weight:900;font-size:18px;color:#ffd166;text-align:right}
+.fila{cursor:pointer}
+.fila .ver{display:inline-block;margin-top:6px;color:#4ea1ff;font-weight:800;font-size:14px}
+#detalle{position:fixed;inset:0;z-index:20;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;padding:18px}
+#detalle.ver{display:flex}
+.ticket{background:#fffaf0;color:#1d1d1f;width:100%;max-width:380px;border-radius:18px;padding:20px;max-height:90vh;overflow:auto;font-size:16px}
+.ticket h3{font-size:26px;font-weight:900;display:flex;justify-content:space-between;align-items:center}
+.ticket .m{background:#0d3b4f;color:#fff;font-size:16px;padding:4px 10px;border-radius:10px}
+.ticket .hrs{color:#6b6458;font-size:14px;margin-top:6px;line-height:1.5}
+.ticket table{width:100%;border-collapse:collapse;margin-top:14px}
+.ticket th{text-align:left;font-size:12px;text-transform:uppercase;color:#7a7266;border-bottom:2px solid #e2d8c6;padding:6px 4px}
+.ticket td{padding:8px 4px;border-bottom:1px dashed #e2d8c6;vertical-align:top}
+.ticket .d{text-align:right;white-space:nowrap}
+.ticket .tot td{border:none;font-size:20px;font-weight:900;padding-top:12px}
+.ticket .nt{margin-top:12px;background:#fff3cd;border-radius:10px;padding:8px 10px;font-weight:700}
+.ticket .cerrar{width:100%;margin-top:16px;padding:14px;border-radius:12px;background:#0d3b4f;color:#fff;font-weight:900;font-size:17px}
 .fila .volver{display:block;margin-top:6px;background:none;color:#9aa4b1;font-size:12px;text-decoration:underline;padding:0}
 </style>
 </head>
@@ -99,13 +114,14 @@ main{padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280
     <span class="dato">Vendido: <b id="hoyT">$0</b></span>
     <span id="estado">● En línea</span>
   </header>
-  <div id="avisoSonido">🔇 Toca aquí para activar el sonido (sonará una prueba)</div>
+  <div id="avisoSonido">🔇 Toca cualquier parte de la pantalla para activar el sonido</div>
   <nav class="pestanas">
     <button id="tabPend" class="on">🔥 Pendientes<span class="cuenta" id="cPend">0</span></button>
     <button id="tabPrep">✅ Pedidos preparados<span class="cuenta" id="cPrep">0</span></button>
   </nav>
   <main id="lista"><div class="vacio"><b>✅</b>Sin pedidos pendientes</div></main>
   <section id="preparados"></section>
+  <div id="detalle" role="dialog"><div class="ticket" id="ticket"></div></div>
 </section>
 
 <script>
@@ -145,27 +161,33 @@ const alarma = new Audio(crearAlarma());
 alarma.preload = "auto";
 let sonidoListo = false;
 
-function activarSonido(probar){
+// Desbloquea el sonido SIN hacer ruido (el iPhone lo exige con un toque)
+function activarSonido(){
+  if (sonidoListo) return;
   try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch(e){}
   try {
-    alarma.currentTime = 0;
-    alarma.volume = 1;
+    alarma.muted = true;
     const r = alarma.play();
-    const bien = ()=>{ sonidoListo = true; revisarSonido(); if (!probar){ /* desbloqueo silencioso */ } };
-    if (r && r.then) r.then(bien).catch(()=>{ sonidoListo = false; revisarSonido(); });
+    const bien = ()=>{ alarma.pause(); alarma.currentTime = 0; alarma.muted = false; sonidoListo = true; revisarSonido(); };
+    if (r && r.then) r.then(bien).catch(err=>{ alarma.muted = false; if (err && err.name === "NotAllowedError") sonidoListo = false; revisarSonido(); });
     else bien();
-  } catch(e){ sonidoListo = false; }
-  revisarSonido();
+  } catch(e){}
 }
+// Suena SOLO cuando hay un pedido nuevo
 function pitido(){
   if (!sonidoListo) return;
-  try { alarma.currentTime = 0; const r = alarma.play(); if (r && r.catch) r.catch(()=>{ sonidoListo = false; revisarSonido(); }); } catch(e){}
+  try {
+    alarma.muted = false; alarma.currentTime = 0;
+    const r = alarma.play();
+    // Solo si el iPhone de verdad bloqueó el sonido volvemos a pedir el toque
+    if (r && r.catch) r.catch(err=>{ if (err && err.name === "NotAllowedError"){ sonidoListo = false; revisarSonido(); } });
+  } catch(e){}
 }
 function revisarSonido(){
   $("#avisoSonido").classList.toggle("ver", !sonidoListo && $("#panel").style.display === "block");
 }
-$("#avisoSonido").onclick = ()=>activarSonido(true);
-document.addEventListener("visibilitychange", ()=>{ if (!document.hidden){ cargar(); pedirPantallaEncendida(); } else { sonidoListo = false; } });
+$("#avisoSonido").onclick = ()=>activarSonido();
+document.addEventListener("visibilitychange", ()=>{ if (!document.hidden){ cargar(); pedirPantallaEncendida(); } });
 
 // La alarma suena cada 2.5 s mientras haya algo sin recibir
 setInterval(()=>{
@@ -248,8 +270,9 @@ function pintarPreparados(){
     ${top ? `<p style="opacity:.75;margin:0 2px 14px;font-size:14px">Más pedidos: ${top}</p>` : ""}
     ${L.length ? L.map(p => `<div class="fila">
         <div class="n">#${p.numero ?? "—"}</div>
-        <div class="det"><b>Mesa ${p.mesa}</b> · ${p.items.map(it => `${it.cantidad} x ${esc(it.nombre)}`).join(", ")}
-          <small>Pedido ${hora(p.creado)} · listo ${hora(p.actualizado)}</small></div>
+        <div class="det" data-detalle="${p.id}"><b>Mesa ${p.mesa}</b> · ${p.items.map(it => `${it.cantidad} x ${esc(it.nombre)}`).join(", ")}
+          <small>Pedido ${hora(p.creado)} · listo ${hora(p.actualizado)}</small>
+          <span class="ver">🧾 Ver detalle</span></div>
         <div class="monto">$${Number(p.total).toFixed(2)}<button class="volver" data-id="${p.id}" data-estado="preparando">↩ Volver a pendientes</button></div>
       </div>`).join("") : `<div class="vacio"><b>🍽️</b>Todavía no hay pedidos preparados hoy</div>`}`;
 }
@@ -288,7 +311,6 @@ function pintar(){
 /* ---------- Botones Recibido / Listo ---------- */
 async function alTocar(e){
   const b = e.target.closest("[data-id]"); if (!b) return;
-  activarSonido();
   const id = Number(b.dataset.id), estado = b.dataset.estado;
   // Cambia en pantalla al instante, y se guarda por detrás
   const p = datos.pedidos.find(x => x.id === id);
@@ -300,11 +322,32 @@ async function alTocar(e){
   cargar();
 }
 $("#lista").addEventListener("click", alTocar);
-$("#preparados").addEventListener("click", e=>{ if (e.target.closest(".volver") && confirm("¿Volver este pedido a pendientes?")) alTocar(e); });
+$("#preparados").addEventListener("click", e=>{
+  if (e.target.closest(".volver")){ if (confirm("¿Volver este pedido a pendientes?")) alTocar(e); return; }
+  const f = e.target.closest(".fila"); if (!f) return;
+  const id = Number(f.querySelector("[data-detalle]").dataset.detalle);
+  const p = (datos.listos || []).find(x => x.id === id); if (p) verDetalle(p);
+});
+function verDetalle(p){
+  const min = Math.max(0, Math.round((p.actualizado - p.creado) / 60000));
+  $("#ticket").innerHTML = `
+    <h3>Pedido #${p.numero ?? "—"} <span class="m">MESA ${p.mesa}</span></h3>
+    <div class="hrs">🕐 Pedido: ${hora(p.creado)}<br>✅ Listo: ${hora(p.actualizado)} (${min} min)</div>
+    <table>
+      <tr><th>Cant.</th><th>Plato</th><th class="d">P. unit.</th><th class="d">Subtotal</th></tr>
+      ${p.items.map(it => `<tr><td>${it.cantidad}</td><td>${esc(it.nombre)}</td><td class="d">$${Number(it.precio).toFixed(2)}</td><td class="d">$${(it.cantidad * it.precio).toFixed(2)}</td></tr>`).join("")}
+      <tr class="tot"><td colspan="3">Total</td><td class="d">$${Number(p.total).toFixed(2)}</td></tr>
+    </table>
+    ${p.notas ? `<div class="nt">📝 ${esc(p.notas)}</div>` : ""}
+    <button class="cerrar">Cerrar</button>`;
+  $("#detalle").classList.add("ver");
+}
+$("#detalle").addEventListener("click", e=>{ if (e.target.id === "detalle" || e.target.closest(".cerrar")) $("#detalle").classList.remove("ver"); });
 
 // Si ya había clave guardada, intenta entrar solo (el sonido se activa con el primer toque)
 if (CLAVE) cargar().then(ok => { if (ok === true){ $("#entrar").style.display = "none"; $("#panel").style.display = "block"; revisarSonido(); pedirPantallaEncendida(); } });
-document.addEventListener("click", ()=>{ if (!sonidoListo) activarSonido(); }, { capture: true });
+document.addEventListener("click", activarSonido, { capture: true });
+document.addEventListener("touchend", activarSonido, { capture: true });
 })();
 </script>
 </body>

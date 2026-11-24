@@ -99,7 +99,7 @@ main{padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280
     <span class="dato">Vendido: <b id="hoyT">$0</b></span>
     <span id="estado">● En línea</span>
   </header>
-  <div id="avisoSonido">🔇 Toca aquí para activar el sonido</div>
+  <div id="avisoSonido">🔇 Toca aquí para activar el sonido (sonará una prueba)</div>
   <nav class="pestanas">
     <button id="tabPend" class="on">🔥 Pendientes<span class="cuenta" id="cPend">0</span></button>
     <button id="tabPrep">✅ Pedidos preparados<span class="cuenta" id="cPrep">0</span></button>
@@ -123,33 +123,49 @@ fetch("/restaurante.json").then(r=>r.json()).then(R=>{
 }).catch(()=>{});
 
 /* ---------- Sonido (el iPhone exige un toque para activarlo) ---------- */
-let audio = null;
-function activarSonido(){
+// La alarma es un archivo de sonido creado aquí mismo (3 pitidos). En iPhone un
+// <audio> suena aunque el celular esté en silencio; el "Web Audio" no.
+function crearAlarma(){
+  const hz = 22050, dur = 0.75, n = Math.floor(hz * dur), datos = new Int16Array(n);
+  [[0,0.17,990],[0.25,0.42,990],[0.5,0.7,1320]].forEach(([a,b,f])=>{
+    for (let i = Math.floor(a*hz); i < Math.floor(b*hz); i++){
+      const t = i / hz, env = Math.min(1, (t - a) * 60, (b - t) * 60);
+      datos[i] = Math.round(Math.sign(Math.sin(2*Math.PI*f*t)) * 0.55 * env * 32767);
+    }
+  });
+  const buf = new ArrayBuffer(44 + n*2), v = new DataView(buf);
+  const txt = (o,s)=>{ for (let i=0;i<s.length;i++) v.setUint8(o+i, s.charCodeAt(i)); };
+  txt(0,"RIFF"); v.setUint32(4,36+n*2,true); txt(8,"WAVE"); txt(12,"fmt "); v.setUint32(16,16,true);
+  v.setUint16(20,1,true); v.setUint16(22,1,true); v.setUint32(24,hz,true); v.setUint32(28,hz*2,true);
+  v.setUint16(32,2,true); v.setUint16(34,16,true); txt(36,"data"); v.setUint32(40,n*2,true);
+  new Int16Array(buf, 44).set(datos);
+  return URL.createObjectURL(new Blob([buf], { type: "audio/wav" }));
+}
+const alarma = new Audio(crearAlarma());
+alarma.preload = "auto";
+let sonidoListo = false;
+
+function activarSonido(probar){
+  try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch(e){}
   try {
-    audio = audio || new (window.AudioContext || window.webkitAudioContext)();
-    if (audio.state === "suspended") audio.resume();
-    pitido(0.01);   // sonido mudo para desbloquear
-  } catch(e){}
+    alarma.currentTime = 0;
+    alarma.volume = 1;
+    const r = alarma.play();
+    const bien = ()=>{ sonidoListo = true; revisarSonido(); if (!probar){ /* desbloqueo silencioso */ } };
+    if (r && r.then) r.then(bien).catch(()=>{ sonidoListo = false; revisarSonido(); });
+    else bien();
+  } catch(e){ sonidoListo = false; }
   revisarSonido();
 }
-function pitido(vol = 0.9){
-  if (!audio) return;
-  const t = audio.currentTime;
-  [0, 0.22, 0.44].forEach((d, i) => {
-    const o = audio.createOscillator(), g = audio.createGain();
-    o.type = "square"; o.frequency.value = i === 2 ? 1320 : 990;
-    g.gain.setValueAtTime(0.0001, t + d);
-    g.gain.exponentialRampToValueAtTime(vol, t + d + 0.02);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + d + 0.18);
-    o.connect(g); g.connect(audio.destination); o.start(t + d); o.stop(t + d + 0.2);
-  });
+function pitido(){
+  if (!sonidoListo) return;
+  try { alarma.currentTime = 0; const r = alarma.play(); if (r && r.catch) r.catch(()=>{ sonidoListo = false; revisarSonido(); }); } catch(e){}
 }
 function revisarSonido(){
-  const mudo = !audio || audio.state !== "running";
-  $("#avisoSonido").classList.toggle("ver", mudo && $("#panel").style.display === "block");
+  $("#avisoSonido").classList.toggle("ver", !sonidoListo && $("#panel").style.display === "block");
 }
-$("#avisoSonido").onclick = activarSonido;
-document.addEventListener("visibilitychange", ()=>{ if (!document.hidden){ cargar(); pedirPantallaEncendida(); } });
+$("#avisoSonido").onclick = ()=>activarSonido(true);
+document.addEventListener("visibilitychange", ()=>{ if (!document.hidden){ cargar(); pedirPantallaEncendida(); } else { sonidoListo = false; } });
 
 // La alarma suena cada 2.5 s mientras haya algo sin recibir
 setInterval(()=>{
@@ -288,7 +304,7 @@ $("#preparados").addEventListener("click", e=>{ if (e.target.closest(".volver") 
 
 // Si ya había clave guardada, intenta entrar solo (el sonido se activa con el primer toque)
 if (CLAVE) cargar().then(ok => { if (ok === true){ $("#entrar").style.display = "none"; $("#panel").style.display = "block"; revisarSonido(); pedirPantallaEncendida(); } });
-document.addEventListener("click", ()=>{ if (!audio || audio.state !== "running") activarSonido(); }, { capture: true });
+document.addEventListener("click", ()=>{ if (!sonidoListo) activarSonido(); }, { capture: true });
 })();
 </script>
 </body>

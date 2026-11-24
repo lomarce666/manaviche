@@ -63,7 +63,7 @@ export async function onRequestGet({ request, env }) {
   if (url.searchParams.get("stats")) {
     const dias = Math.min(Math.max(Number(url.searchParams.get("stats")) || 7, 1), 90);
     const desde = Date.now() - dias * 86400000;
-    const { results } = await DB.prepare("SELECT items, total, creado FROM pedidos WHERE tipo = 'pedido' AND creado >= ?1 LIMIT 20000").bind(desde).all();
+    const { results } = await DB.prepare("SELECT items, total, creado FROM pedidos WHERE tipo = 'pedido' AND creado >= ?1 AND jornada IN (SELECT id FROM jornadas) LIMIT 20000").bind(desde).all();
     const platos = {}, porDia = {}, porHora = Array(24).fill(0);
     let total = 0;
     const NOMBRES = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
@@ -219,7 +219,15 @@ export async function onRequestPost({ request, env }) {
       const marcas = ids.map((_, i) => "?" + (i + 1)).join(",");
       await DB.batch([
         DB.prepare(`DELETE FROM pedidos WHERE jornada IN (${marcas})`).bind(...ids),
+        DB.prepare(`DELETE FROM cuentas WHERE jornada IN (${marcas}) AND cerrada IS NOT NULL`).bind(...ids),
         DB.prepare(`DELETE FROM jornadas WHERE id IN (${marcas}) AND cerrada IS NOT NULL`).bind(...ids),
+      ]);
+    }
+    // Pedidos viejos que no pertenecen a ningún día (de antes de existir "Día laboral")
+    if (d.alcance === "todo") {
+      await DB.batch([
+        DB.prepare("DELETE FROM pedidos WHERE (jornada IS NULL OR jornada NOT IN (SELECT id FROM jornadas)) AND estado = 'listo'"),
+        DB.prepare("DELETE FROM cuentas WHERE cerrada IS NOT NULL AND (jornada IS NULL OR jornada NOT IN (SELECT id FROM jornadas))"),
       ]);
     }
     return responder(200, { ok: true, borrados: ids.length });

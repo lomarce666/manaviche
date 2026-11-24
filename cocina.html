@@ -65,6 +65,17 @@ main{padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280
 .pestanas button.on{background:#ffd166;color:#111}
 .pestanas .cuenta{display:inline-block;min-width:24px;padding:0 6px;margin-left:6px;border-radius:99px;background:rgba(0,0,0,.25);font-size:14px}
 .pestanas button.alerta:not(.on){background:#e63946;color:#fff;animation:latir 1s infinite}
+/* Aviso flotante de mesero / cuenta */
+#avisos{position:fixed;left:0;right:0;top:calc(10px + env(safe-area-inset-top));z-index:40;display:flex;flex-direction:column;align-items:center;gap:10px;pointer-events:none;padding:0 12px}
+.toast{pointer-events:auto;width:100%;max-width:460px;border-radius:18px;padding:16px 18px;display:flex;align-items:center;gap:14px;box-shadow:0 14px 34px rgba(0,0,0,.45);animation:entraToast .35s cubic-bezier(.2,1.4,.4,1);cursor:pointer}
+.toast.mesero{background:#4ea1ff;color:#06203d}
+.toast.cuenta{background:#ffd166;color:#2b1d00}
+.toast .ic{font-size:40px;line-height:1}
+.toast b{display:block;font-size:24px;font-weight:900}
+.toast span{font-size:16px;font-weight:700}
+.toast.sale{animation:saleToast .4s ease forwards}
+@keyframes entraToast{from{transform:translateY(-120%);opacity:0}}
+@keyframes saleToast{to{transform:translateY(-120%);opacity:0}}
 /* Día de trabajo */
 #dia{display:none;padding:16px;max-width:760px;margin:0 auto}
 .hoja{background:#1b2027;border-radius:18px;padding:18px;margin-bottom:14px}
@@ -166,6 +177,7 @@ main{padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280
   <section id="preparados"></section>
   <section id="dia"></section>
   <div id="reporte" role="dialog"><div class="caja" id="caja"></div></div>
+  <div id="avisos" aria-live="assertive"></div>
   <div id="detalle" role="dialog"><div class="ticket" id="ticket"></div></div>
 </section>
 
@@ -186,12 +198,14 @@ fetch("/restaurante.json").then(r=>r.json()).then(R=>{
 /* ---------- Sonido (el iPhone exige un toque para activarlo) ---------- */
 // La alarma es un archivo de sonido creado aquí mismo (3 pitidos). En iPhone un
 // <audio> suena aunque el celular esté en silencio; el "Web Audio" no.
-function crearAlarma(){
-  const hz = 22050, dur = 0.75, n = Math.floor(hz * dur), datos = new Int16Array(n);
-  [[0,0.17,990],[0.25,0.42,990],[0.5,0.7,1320]].forEach(([a,b,f])=>{
-    for (let i = Math.floor(a*hz); i < Math.floor(b*hz); i++){
-      const t = i / hz, env = Math.min(1, (t - a) * 60, (b - t) * 60);
-      datos[i] = Math.round(Math.sign(Math.sin(2*Math.PI*f*t)) * 0.55 * env * 32767);
+function crearSonido(dur, notas, cuadrada){
+  const hz = 22050, n = Math.floor(hz * dur), datos = new Int16Array(n);
+  notas.forEach(([a,b,f])=>{
+    for (let i = Math.floor(a*hz); i < Math.min(n, Math.floor(b*hz)); i++){
+      const t = i / hz;
+      const env = cuadrada ? Math.min(1, (t - a) * 60, (b - t) * 60) : Math.min(1, (t - a) * 40) * Math.exp(-(t - a) * 3.2);
+      const onda = cuadrada ? Math.sign(Math.sin(2*Math.PI*f*t)) : Math.sin(2*Math.PI*f*t);
+      datos[i] = Math.max(-32767, Math.min(32767, datos[i] + Math.round(onda * (cuadrada ? 0.55 : 0.7) * env * 32767)));
     }
   });
   const buf = new ArrayBuffer(44 + n*2), v = new DataView(buf);
@@ -202,8 +216,11 @@ function crearAlarma(){
   new Int16Array(buf, 44).set(datos);
   return URL.createObjectURL(new Blob([buf], { type: "audio/wav" }));
 }
-const alarma = new Audio(crearAlarma());
-alarma.preload = "auto";
+// Pedido nuevo: 3 pitidos fuertes (se repite hasta tocar "Recibido")
+const alarma = new Audio(crearSonido(0.75, [[0,0.17,990],[0.25,0.42,990],[0.5,0.7,1320]], true));
+// Mesero / cuenta: "ding-dong" suave que dura 3 segundos y no se repite
+const timbre = new Audio(crearSonido(3, [[0,1,988],[0.5,1.5,784],[1,2,988],[1.5,2.5,784],[2,3,988]], false));
+alarma.preload = timbre.preload = "auto";
 let sonidoListo = false;
 
 // Desbloquea el sonido SIN hacer ruido (el iPhone lo exige con un toque)
@@ -211,12 +228,15 @@ function activarSonido(){
   if (sonidoListo) return;
   try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch(e){}
   try {
-    alarma.muted = true;
-    const r = alarma.play();
-    const bien = ()=>{ alarma.pause(); alarma.currentTime = 0; alarma.muted = false; sonidoListo = true; revisarSonido(); };
-    if (r && r.then) r.then(bien).catch(err=>{ alarma.muted = false; if (err && err.name === "NotAllowedError") sonidoListo = false; revisarSonido(); });
-    else bien();
+    [alarma, timbre].forEach(a => { a.muted = true; });
+    const r = Promise.all([alarma.play(), timbre.play()]);
+    const bien = ()=>{ [alarma, timbre].forEach(a => { a.pause(); a.currentTime = 0; a.muted = false; }); sonidoListo = true; revisarSonido(); };
+    r.then(bien).catch(err=>{ [alarma, timbre].forEach(a => { a.muted = false; }); if (err && err.name === "NotAllowedError") sonidoListo = false; revisarSonido(); });
   } catch(e){}
+}
+function sonarTimbre(){
+  if (!sonidoListo) return;
+  try { timbre.muted = false; timbre.currentTime = 0; const r = timbre.play(); if (r && r.catch) r.catch(()=>{}); } catch(e){}
 }
 // Suena SOLO cuando hay un pedido nuevo
 function pitido(){
@@ -236,7 +256,7 @@ document.addEventListener("visibilitychange", ()=>{ if (!document.hidden){ carga
 
 // La alarma suena cada 2.5 s mientras haya algo sin recibir
 setInterval(()=>{
-  const pendientes = datos.pedidos.filter(p => p.estado === "nuevo").length;
+  const pendientes = datos.pedidos.filter(p => p.estado === "nuevo" && p.tipo === "pedido").length;
   if (pendientes){
     pitido();
     if (navigator.vibrate) navigator.vibrate([200,100,200]);
@@ -267,6 +287,20 @@ $("#btnEntrar").onclick = entrar;
 $("#clave").addEventListener("keydown", e=>{ if (e.key === "Enter") entrar(); });
 if (CLAVE) $("#clave").value = CLAVE;
 
+/* ---------- Notificación de mesero / cuenta ---------- */
+function mostrarAviso(p){
+  const t = document.createElement("div");
+  const cuenta = p.tipo === "cuenta";
+  t.className = "toast " + (cuenta ? "cuenta" : "mesero");
+  t.innerHTML = `<div class="ic">${cuenta ? "🧾" : "🙋"}</div><div><b>MESA ${p.mesa}</b><span>${cuenta ? "Está pidiendo la cuenta" : "Está llamando al mesero"}</span></div>`;
+  $("#avisos").appendChild(t);
+  sonarTimbre();
+  if (navigator.vibrate) navigator.vibrate([300,150,300]);
+  const quitar = ()=>{ if (!t.parentNode) return; t.classList.add("sale"); setTimeout(()=>t.remove(), 400); };
+  t.onclick = quitar;
+  setTimeout(quitar, 10000);
+}
+
 /* ---------- Leer pedidos ---------- */
 async function cargar(){
   try {
@@ -274,6 +308,10 @@ async function cargar(){
     if (r.status === 401) return "clave";
     const j = await r.json();
     if (!j.ok) throw new Error(j.error);
+    // Avisos nuevos de mesero / cuenta: notificación de 10 s con timbre de 3 s
+    const nuevosAvisos = j.pedidos.filter(p => p.tipo !== "pedido" && !vistos.has(p.id));
+    j.pedidos.forEach(p => vistos.add(p.id));
+    if (!primeraCarga) nuevosAvisos.forEach(mostrarAviso);
     datos = j;
     $("#estado").textContent = "● En línea"; $("#estado").classList.remove("mal");
     pintar(); primeraCarga = false;

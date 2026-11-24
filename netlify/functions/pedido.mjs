@@ -23,8 +23,9 @@ export default async (req) => {
   const limpia = (v) => String(v ?? "").trim().replace(/^["'\s]+|["'\s]+$/g, "");
   let TOKEN = limpia(process.env.TELEGRAM_TOKEN);
   if (TOKEN.toLowerCase().startsWith("bot")) TOKEN = TOKEN.slice(3);   // por si pegaron "bot123:ABC"
-  const CHAT = limpia(process.env.TELEGRAM_CHAT_ID).replace(/\s/g, "");
-  if (!TOKEN || !CHAT) return responder(500, { ok: false, error: "Falta configurar Telegram en Netlify" });
+  // Número del grupo "Cocina Manaviche" (no es secreto: sin el token no sirve)
+  const CHAT = "-5274191814";
+  if (!TOKEN) return responder(500, { ok: false, error: "Falta configurar Telegram en Netlify" });
 
   let datos;
   try { datos = await req.json(); } catch { return responder(400, { ok: false, error: "Datos inválidos" }); }

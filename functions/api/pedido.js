@@ -127,12 +127,18 @@ export async function onRequestPost({ request, env }) {
   // ---- Guardar en la base de datos (número en orden + pantalla de cocina) ----
   let id = null, jornada = null, cuenta = null, cuentaAntes = null;
   // Cómo piensa pagar el cliente (lo elige en el celular; la cocina lo confirma al cobrar)
-  const pago = ["Efectivo", "Transferencia", "Tarjeta"].includes(datos.pago) ? datos.pago : "";
+  let pago = ["Efectivo", "Transferencia", "Tarjeta"].includes(datos.pago) ? datos.pago : "";
   const por = String(datos.nombre ?? "").replace(/[<>"'`]/g, "").trim().slice(0, 20);
   if (env.DB) {
     try {
       await prepararTablas(env.DB);
       jornada = (await jornadaAbierta(env.DB, true)).id;
+      // La forma de pago es obligatoria en el primer pedido de la mesa; después se usa la que ya eligieron
+      if (tipo === "pedido" && !pago) {
+        const c0 = await cuentaAbierta(env.DB, mesa, jornada, false);
+        if (c0 && c0.pago_pref) pago = c0.pago_pref;
+        else return responder(400, { ok: false, error: "Elige cómo vas a pagar", codigo: "sin_pago" });
+      }
       if (tipo === "pedido") ({ numero, totalDia } = await contar(env.DB, jornada, total));
       // Cuenta de la mesa: los pedidos de comida se suman; mesero/cuenta solo la consultan
       const c = await cuentaAbierta(env.DB, mesa, jornada, tipo === "pedido");

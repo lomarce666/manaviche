@@ -528,6 +528,7 @@ function pintar(){
         <span class="vistos">${Array.from({ length: Math.min(it.cantidad, 12) }, (_, k) => `<button class="visto${k < serv[i] ? " si" : ""}" data-servir="${p.id}" data-i="${i}" data-k="${k}" aria-label="Servido">✓</button>`).join("")}</span></li>`).join("")}</ul>
       ${p.notas ? `<div class="nota">📝 ${esc(p.notas)}</div>` : ""}
       <div class="total">Total: $${Number(p.total).toFixed(2)}${p.por ? ` · 👤 ${esc(p.por)}` : ""}</div>
+      ${p.pago ? `<div class="pagoC">💳 Pagará con: <b>${esc(p.pago)}</b></div>` : ""}
       ${p.adicional && p.cuenta_total != null ? `<div class="ctaMesa">🧾 Cuenta de la mesa: $${Number(p.cuenta_total).toFixed(2)}</div>` : ""}
       ${p.estado !== "nuevo" ? `<div class="faltan">${faltan ? `Marca ✓ cada plato al servirlo · faltan ${faltan}` : "✅ Todo servido · toca Pedido servido"}</div>` : ""}
       <div class="acciones">${boton}</div></div>`;

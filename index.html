@@ -145,6 +145,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 .chips{display:flex;gap:6px}
 .chips button{flex:1;padding:9px 4px;border:2px solid #e2d8c6;background:#fff;border-radius:12px;font:inherit;font-size:13px;font-weight:800;color:#4a443b;cursor:pointer}
 .chips button.on{background:#0d3b4f;border-color:#0d3b4f;color:#fff}
+.pagoEl p.falta{color:#c0262f}
+.pagoEl p small{font-weight:600;color:#7a7266}
+.chips.temblar{animation:temblar .4s}
+@keyframes temblar{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+#confSi.apagado{background:#c9c1b3;box-shadow:0 5px 0 #a39a8a}
 #confSi{width:100%;padding:15px;border:none;border-radius:14px;background:#e63946;color:#fff;font:inherit;font-size:17px;font-weight:800;cursor:pointer;box-shadow:0 5px 0 #a8242f}
 #confNo{width:100%;margin-top:10px;padding:12px;border:none;background:none;color:#0d3b4f;font:inherit;font-size:15px;font-weight:700;text-decoration:underline;cursor:pointer}
 
@@ -558,6 +563,7 @@ const YO = leerLS("mesa_yo") || (()=>{ const id = Math.random().toString(36).sli
 let miNombre = leerLS("mesa_nombre") || "";
 const idxDe = new Map(PLATOS.map((p,i)=>[p.id, i]));
 let cuentaMesa = null;
+let miPago = "", pagoServidor = "";        // forma de pago: obligatoria en el primer pedido; luego la ve toda la mesa
 let COMPARTIDO = false, versionMesa = -1, lineasMesa = [], personasMesa = [], ultimoVisto = 0, ultimoPing = 0, cargadoMesa = false, enVuelo = 0;
 
 function aplicarMesa(e, desdeServidor){
@@ -568,6 +574,9 @@ function aplicarMesa(e, desdeServidor){
   versionMesa = e.version; lineasMesa = e.lineas; personasMesa = e.personas;
   seguirCuenta(e.cuenta || null);
   cuentaMesa = e.cuenta || null;
+  // Si alguien de la mesa ya eligió cómo pagar, a todos les aparece marcado
+  const pc = cuentaMesa && cuentaMesa.pago || "";
+  if (pc !== pagoServidor){ pagoServidor = pc; if (pc) miPago = pc; pintarPago(); }
   // Avisar lo que agregó otra persona
   e.lineas.forEach(l => {
     if (l.por === YO) return;
@@ -651,7 +660,7 @@ function seguirCuenta(c){
     }
   }
   estadosVistos = nuevos;
-  if (cuentaVista && !c){ pedirResena(cuentaVista); miPago = ""; guardarLS("mesa_pago", ""); pintarPago(); }
+  if (cuentaVista && !c){ pedirResena(cuentaVista); miPago = ""; pagoServidor = ""; pintarPago(); }
   cuentaVista = c && c.pedidos && c.pedidos.length ? c : null;
 }
 const ESTADO_TXT = { nuevo: ["📨 Enviado", "e-nuevo"], recibido: ["👨‍🍳 En preparación", "e-prep"], preparando: ["👨‍🍳 En preparación", "e-prep"], listo: ["✅ Completo", "e-listo"] };
@@ -850,6 +859,11 @@ resultado.addEventListener("click", e=>{
 $("#confSi").onclick = async ()=>{
   const btn = $("#confSi");
   if (btn.disabled) return;
+  if (!miPago){                                             // la forma de pago es obligatoria
+    const t = $("#confirma .pagoEl p"); t.innerHTML = "⚠️ Elige cómo vas a pagar para enviar el pedido"; t.classList.add("falta");
+    const ch = $("#confirma .chips"); ch.classList.remove("temblar"); void ch.offsetWidth; ch.classList.add("temblar");
+    return;
+  }
   const mesa = Number(mesaIn.value), notas = $("#notas").value.trim();
   const linkWA = wa(mensajeWhatsApp(mesa, notas));
   const datos = {
@@ -865,7 +879,7 @@ $("#confSi").onclick = async ()=>{
   btn.disabled = false; btn.textContent = "✅ Sí, enviar a la cocina";
   confirma.classList.remove("ver");
   if (ok){ ultimoVisto = Date.now(); limpiarPedido(); mostrar("ok", mesa, null, j.numero); if (COMPARTIDO) consultarMesa().then(x => aplicarMesa(x, true)); }
-  else if (j.codigo === "cerrado" || j.codigo === "sin_qr"){ avisar(j.error); }
+  else if (j.codigo === "cerrado" || j.codigo === "sin_qr" || j.codigo === "sin_pago"){ avisar(j.error); }
   else   { mostrar("error", mesa, linkWA); }                  // plan B: WhatsApp o mesero
 };
 /* ---------- Llamar al mesero / pedir la cuenta ---------- */
@@ -891,10 +905,17 @@ ayudaPanel.addEventListener("click", async e=>{
 });
 
 /* ---------- Forma de pago que elige el cliente (opcional, se recuerda) ---------- */
-let miPago = leerLS("mesa_pago") || "";
-function pintarPago(){ document.querySelectorAll("[data-pago]").forEach(b => b.classList.toggle("on", b.dataset.pago === miPago)); }
+function pintarPago(){
+  document.querySelectorAll("[data-pago]").forEach(b => b.classList.toggle("on", b.dataset.pago === miPago));
+  const t = $("#confirma .pagoEl p");
+  if (t){
+    t.innerHTML = pagoServidor ? `💳 Tu mesa pagará con: <b>${pagoServidor}</b> <small>(puedes cambiarlo)</small>` : "💳 ¿Cómo vas a pagar? <b>(obligatorio)</b>";
+    t.classList.remove("falta");
+  }
+  $("#confSi").classList.toggle("apagado", !miPago);
+}
 document.addEventListener("click", e => { const b = e.target.closest("[data-pago]"); if (!b) return;
-  miPago = miPago === b.dataset.pago ? "" : b.dataset.pago; guardarLS("mesa_pago", miPago); pintarPago(); });
+  miPago = b.dataset.pago; pintarPago(); });
 pintarPago();
 
 /* ---------- Carta completa con categorías y buscador ---------- */

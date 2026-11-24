@@ -9,7 +9,7 @@
   "colores": { "inicio": "#0d3b4f", "acento": "#ffd166" },
 
   "platos": [
-    { "id": "ceviche-jipijapa", "nombre": "Ceviche Jipijapa", "precio": 7,
+    { "id": "ceviche-jipijapa", "nombre": "Ceviche Jipijapa", "precio": 8,
       "desc": "Camarón fresco al estilo manabita, con su toque de maní. Con chifles y limón.",
       "dibujo": "ceviche", "foto": "", "fondo": "#c8553d", "agotado": false },
 

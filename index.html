@@ -516,7 +516,7 @@ function limpiarPedido(){
 async function enviarACocina(datos){
   try {
     const ctrl = new AbortController();
-    const espera = setTimeout(()=>ctrl.abort(), 10000);       // máximo 10 segundos
+    const espera = setTimeout(()=>ctrl.abort(), 45000);       // hasta 45 s (en hora pico la cocina puede tardar en aceptar)
     const r = await fetch("/api/pedido", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify(datos), signal: ctrl.signal

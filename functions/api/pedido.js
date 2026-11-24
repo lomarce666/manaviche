@@ -87,13 +87,24 @@ export async function onRequestPost({ request, env }) {
   }
 
   // ---- Enviar a Telegram ----
+  // Telegram deja enviar unos 20 mensajes por minuto a un mismo grupo. Si en hora pico
+  // se pasa, responde "espera X segundos" (error 429): esperamos y reintentamos solos,
+  // así el pedido no se pierde aunque muchas mesas pidan al mismo tiempo.
+  const enviar = () => fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ chat_id: CHAT, text: texto, parse_mode: "HTML" }),
+  }).then((r) => r.json());
   try {
-    const r = await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: CHAT, text: texto, parse_mode: "HTML" }),
-    });
-    const j = await r.json();
+    let j = await enviar();
+    let espera = 0;
+    for (let intento = 0; !j.ok && j.error_code === 429 && intento < 3; intento++) {
+      const seg = Math.min(Number(j.parameters?.retry_after) || 3, 20);
+      if (espera + seg > 40) break;                 // no hacemos esperar al cliente más de ~40 s
+      espera += seg;
+      await new Promise((ok) => setTimeout(ok, seg * 1000));
+      j = await enviar();
+    }
     if (!j.ok) {
       console.log("Telegram rechazó:", j.error_code, j.description);
       return responder(502, {

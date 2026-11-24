@@ -171,6 +171,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 .compartida b{font-weight:900}
 .compartida input{width:100%;margin-top:8px;padding:9px 10px;border:2px solid #cfe3e3;border-radius:10px;font:inherit;font-size:15px;outline:none;background:#fff}
 .compartida input:focus{border-color:#0d3b4f}
+.yaPedido{display:none;background:#fff;border:2px solid #e2d8c6;border-radius:16px;padding:12px 14px;margin:4px 0 10px}
+.yaPedido.ver{display:block}
+.yaPedido h5{font-size:15px;font-weight:900;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center}
+.yaPedido h5 span{font-size:20px;color:#0d3b4f}
+.yaPedido ul{list-style:none;margin-top:8px;font-size:14px;line-height:1.55}
+.yaPedido li{display:flex;justify-content:space-between;gap:8px;color:#4a443b}
+.yaPedido .nota2{margin-top:8px;font-size:13px;color:#7a7266}
+.agregarMas{font-size:15px;font-weight:900;color:#0d3b4f;margin:4px 2px 6px;text-transform:uppercase}
 .item .de{display:block;font-size:12px;color:#0d6e6e;font-weight:700;margin-top:2px}
 #ayudaBtn{position:fixed;left:18px;bottom:calc(20px + env(safe-area-inset-bottom));width:56px;height:56px;border-radius:50%;border:none;background:rgba(255,255,255,.92);font-size:26px;box-shadow:0 8px 22px rgba(0,0,0,.3);z-index:60;cursor:pointer}
 #ayudaPanel{position:fixed;inset:0;z-index:97;background:rgba(0,0,0,.55);display:grid;place-items:center;padding:24px;opacity:0;pointer-events:none;transition:opacity .25s}
@@ -223,8 +231,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
     👥 <b id="compTitulo">Carrito de la mesa</b><br><span id="compTexto">Todos en la mesa ven este carrito y cualquiera puede enviarlo.</span>
     <input id="miNombre" maxlength="20" placeholder="Tu nombre (opcional)" autocomplete="given-name">
   </div>
+  <div class="yaPedido" id="yaPedido"></div>
+  <div class="agregarMas" id="agregarMas"></div>
   <div id="lista"></div>
-  <div class="total"><span>Total</span><b id="total">$0</b></div>
+  <div class="total"><span id="totalEtq">Total</span><b id="total">$0</b></div>
   <div class="mesa">
     <label for="mesa" id="mesaLabel">🍽️ Mesa (especifique el número de su mesa)</label>
     <input id="mesa" type="text" inputmode="numeric" maxlength="2" placeholder="#" autocomplete="off">
@@ -440,6 +450,7 @@ const guardarLS = (k,v) => { try { localStorage.setItem(k,v); } catch(e){} };
 const YO = leerLS("mesa_yo") || (()=>{ const id = Math.random().toString(36).slice(2) + Date.now().toString(36); guardarLS("mesa_yo", id); return id; })();
 let miNombre = leerLS("mesa_nombre") || "";
 const idxDe = new Map(PLATOS.map((p,i)=>[p.id, i]));
+let cuentaMesa = null;
 let COMPARTIDO = false, versionMesa = -1, lineasMesa = [], personasMesa = [], ultimoVisto = 0, ultimoPing = 0, cargadoMesa = false, enVuelo = 0;
 
 function aplicarMesa(e, desdeServidor){
@@ -447,7 +458,7 @@ function aplicarMesa(e, desdeServidor){
   if (e.version < versionMesa && desdeServidor) return;           // respuesta vieja
   if (enVuelo && desdeServidor === "consulta") return;            // esperando la respuesta de mi propio cambio
   const antes = new Map(lineasMesa.map(l => [l.p + "|" + l.por, l.q]));
-  versionMesa = e.version; lineasMesa = e.lineas; personasMesa = e.personas;
+  versionMesa = e.version; lineasMesa = e.lineas; personasMesa = e.personas; cuentaMesa = e.cuenta || null;
   // Avisar lo que agregó otra persona
   e.lineas.forEach(l => {
     if (l.por === YO) return;
@@ -540,7 +551,23 @@ function volar(desde){
 function refrescar(){
   const n = cuenta();
   $("#contador").textContent = n;
-  burbuja.classList.toggle("ver", n > 0);
+  const hayCuenta = !!(cuentaMesa && cuentaMesa.pedidos && cuentaMesa.pedidos.length);
+  burbuja.classList.toggle("ver", n > 0 || hayCuenta);
+  burbuja.querySelector(".etq").innerHTML = n > 0
+    ? "<b>Tu pedido</b>Toca aquí para verlo"
+    : `<b>Tu cuenta</b>$${hayCuenta ? cuentaMesa.total.toFixed(2) : "0.00"} · toca para ver o agregar`;
+  $("#contador").style.display = n > 0 ? "" : "none";
+  // Lo que la mesa ya pidió (no se puede borrar, solo agregar más)
+  const ya = $("#yaPedido");
+  ya.classList.toggle("ver", hayCuenta);
+  if (hayCuenta){
+    ya.innerHTML = `<h5>🧾 Ya pidió la mesa ${MESA_QR} <span>$${cuentaMesa.total.toFixed(2)}</span></h5>
+      <ul>${cuentaMesa.platos.map(x => `<li><span><b>${x.cantidad} x</b> ${x.nombre}</span><span>$${x.total.toFixed(2)}</span></li>`).join("")}</ul>
+      <div class="nota2">✅ Ya está en la cocina (${cuentaMesa.pedidos.length} pedido${cuentaMesa.pedidos.length === 1 ? "" : "s"}). Si quieren algo más, agréguenlo abajo y se suma a esta cuenta.</div>`;
+  }
+  $("#agregarMas").textContent = hayCuenta ? (n > 0 ? "➕ Para agregar a la cuenta" : "➕ ¿Algo más? Toca \"Agregar +\" en el menú") : "";
+  enviar.innerHTML = hayCuenta ? "Agregar a la cuenta 👨‍🍳" : "Enviar a la cocina 👨‍🍳";
+  $("#totalEtq").textContent = hayCuenta ? "Nuevo pedido" : "Total";
   $("#total").textContent = plata(suma());
   // botones de cada plato
   document.querySelectorAll(".pedir").forEach(b=>{
@@ -557,7 +584,7 @@ function refrescar(){
       <div class="cant"><button class="menos" data-menos="${i}" aria-label="Quitar uno">−</button><span>${q}</span><button class="mas" data-mas="${i}" aria-label="Agregar uno">+</button></div>
     </div>`;
   }).join("");
-  if (!n) cerrarVentana();
+  if (!n && !hayCuenta) cerrarVentana();
   validar();
   pintarCompartido();
 }
@@ -642,6 +669,7 @@ function mostrar(tipo, mesa, linkWA, numero, quien){
     c.innerHTML = `<div class="emoji grande-emoji">🔥</div><h4>¡Pedido enviado!</h4>
       ${numero ? `<div class="ticket">Pedido #${numero}</div>` : ""}
       <p>${quien ? `<b>${quien}</b> envió el pedido de la mesa.<br>` : ""}La cocina ya recibió el pedido de la <b>mesa ${mesa}</b>.<br>En un momento te lo llevamos 😋</p>
+      ${COMPARTIDO ? `<p style="font-size:14px">¿Se les antoja algo más? Agréguenlo cuando quieran: se suma a la cuenta de la mesa. Toca <b>"Tu cuenta"</b> para ver todo lo que llevan.</p>` : ""}
       <button class="btn-principal" data-cerrar>Listo</button>`;
   } else {
     c.innerHTML = `<div class="emoji grande-emoji">📶</div><h4>No pudimos enviarlo directo</h4>
@@ -672,7 +700,7 @@ $("#confSi").onclick = async ()=>{
   const ok = j.ok === true;
   btn.disabled = false; btn.textContent = "✅ Sí, enviar a la cocina";
   confirma.classList.remove("ver");
-  if (ok){ ultimoVisto = Date.now(); limpiarPedido(); mostrar("ok", mesa, null, j.numero); }
+  if (ok){ ultimoVisto = Date.now(); limpiarPedido(); mostrar("ok", mesa, null, j.numero); if (COMPARTIDO) consultarMesa().then(x => aplicarMesa(x, true)); }
   else   { mostrar("error", mesa, linkWA); }                  // plan B: WhatsApp o mesero
 };
 /* ---------- Llamar al mesero / pedir la cuenta ---------- */

@@ -12,7 +12,7 @@
 //  Un carrito sin movimiento por 3 horas se considera vacío (mesa nueva).
 // =============================================================
 
-import { prepararTablas, responder } from "../_db.js";
+import { prepararTablas, cuentaAbierta, detalleCuenta, responder } from "../_db.js";
 
 const VENCE = 3 * 3600 * 1000;     // carrito viejo = vacío
 const CONECTADO = 25 * 1000;       // visto en los últimos 25 s = está en la mesa
@@ -30,7 +30,11 @@ async function leerMesa(DB, mesa, yo) {
   ]);
   const fila = c.results[0];
   const viejo = !fila || ahora - fila.actualizado > VENCE;
+  // Lo que la mesa ya pidió (cuenta abierta)
+  const cta = await cuentaAbierta(DB, mesa, null, false);
+  const cuenta = cta && cta.pedidos > 0 ? await detalleCuenta(DB, cta) : null;
   return {
+    cuenta,
     ok: true,
     version: fila ? fila.version : 0,
     lineas: viejo ? [] : JSON.parse(fila.lineas || "[]"),

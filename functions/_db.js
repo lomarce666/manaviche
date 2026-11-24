@@ -30,10 +30,15 @@ export async function prepararTablas(DB) {
     // Carrito compartido de cada mesa y quién lo está usando
     DB.prepare("CREATE TABLE IF NOT EXISTS carritos (mesa INTEGER PRIMARY KEY, lineas TEXT NOT NULL DEFAULT '[]', version INTEGER NOT NULL DEFAULT 0, actualizado INTEGER NOT NULL DEFAULT 0, ultimo TEXT)"),
     DB.prepare("CREATE TABLE IF NOT EXISTS presencia (mesa INTEGER NOT NULL, yo TEXT NOT NULL, nombre TEXT, visto INTEGER NOT NULL, PRIMARY KEY (mesa, yo))"),
+    // Cuenta de cada mesa: suma todos los pedidos de la mesa hasta que se cobra
+    DB.prepare("CREATE TABLE IF NOT EXISTS cuentas (id INTEGER PRIMARY KEY AUTOINCREMENT, mesa INTEGER NOT NULL, jornada INTEGER, abierta INTEGER NOT NULL, actualizada INTEGER NOT NULL, cerrada INTEGER, total REAL NOT NULL DEFAULT 0, pedidos INTEGER NOT NULL DEFAULT 0)"),
+    DB.prepare("CREATE UNIQUE INDEX IF NOT EXISTS una_cuenta_por_mesa ON cuentas (mesa) WHERE cerrada IS NULL"),
   ]);
   // Columna nueva en bases creadas antes (si ya existe, no pasa nada)
   try { await DB.prepare("ALTER TABLE pedidos ADD COLUMN jornada INTEGER").run(); } catch {}
   try { await DB.prepare("CREATE INDEX IF NOT EXISTS pedidos_jornada ON pedidos (jornada, estado)").run(); } catch {}
+  try { await DB.prepare("ALTER TABLE pedidos ADD COLUMN cuenta INTEGER").run(); } catch {}
+  try { await DB.prepare("ALTER TABLE pedidos ADD COLUMN por TEXT").run(); } catch {}
   listo = true;
 }
 
@@ -45,6 +50,38 @@ export async function jornadaAbierta(DB, crear = false) {
     j = await DB.prepare("SELECT * FROM jornadas WHERE cerrada IS NULL").first();
   }
   return j || null;
+}
+
+// Una mesa sin pedidos nuevos en 3 horas: su cuenta se cierra sola
+export const CUENTA_VENCE = 3 * 3600 * 1000;
+
+// Cuenta abierta de una mesa (cierra la vieja si venció); si `crear`, abre una nueva
+export async function cuentaAbierta(DB, mesa, jornada, crear = false) {
+  const ahora = Date.now();
+  let c = await DB.prepare("SELECT * FROM cuentas WHERE mesa = ?1 AND cerrada IS NULL").bind(mesa).first();
+  if (c && ahora - c.actualizada > CUENTA_VENCE) {
+    await DB.prepare("UPDATE cuentas SET cerrada = ?2 WHERE id = ?1").bind(c.id, ahora).run();
+    c = null;
+  }
+  if (!c && crear) {
+    await DB.prepare("INSERT OR IGNORE INTO cuentas (mesa, jornada, abierta, actualizada) VALUES (?1, ?2, ?3, ?3)").bind(mesa, jornada, ahora).run();
+    c = await DB.prepare("SELECT * FROM cuentas WHERE mesa = ?1 AND cerrada IS NULL").bind(mesa).first();
+  }
+  return c || null;
+}
+
+// Detalle de una cuenta: cada pedido y los platos sumados
+export async function detalleCuenta(DB, c) {
+  const { results } = await DB.prepare(
+    "SELECT numero, items, total, creado, por FROM pedidos WHERE cuenta = ?1 AND tipo = 'pedido' ORDER BY id"
+  ).bind(c.id).all();
+  const pedidos = results.map((p) => ({ ...p, items: p.items ? JSON.parse(p.items) : [] }));
+  const platos = {};
+  for (const p of pedidos) for (const it of p.items) {
+    platos[it.nombre] = platos[it.nombre] || { nombre: it.nombre, cantidad: 0, precio: it.precio, total: 0 };
+    platos[it.nombre].cantidad += it.cantidad; platos[it.nombre].total += it.cantidad * it.precio;
+  }
+  return { id: c.id, mesa: c.mesa, abierta: c.abierta, total: Math.round(c.total * 100) / 100, pedidos, platos: Object.values(platos) };
 }
 
 // Resumen para hacer caja de un día de trabajo

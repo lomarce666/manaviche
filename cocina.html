@@ -119,6 +119,19 @@ main{padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280
 .caja .totF td{border:none;font-weight:900;font-size:18px;padding-top:10px}
 .caja .alerta{margin-top:12px;background:#fde8e8;color:#9b1c1c;border-radius:10px;padding:10px;font-weight:700;font-size:14px}
 .caja .botones{margin-top:18px;display:grid;gap:10px}
+/* Mesas (cuentas abiertas) */
+#mesas{display:none;padding:16px}
+#mesas .rejilla{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+.cuentaM{background:#1b2027;border-radius:18px;padding:16px;border:3px solid #2a313b}
+.cuentaM .cab2{display:flex;justify-content:space-between;align-items:center}
+.cuentaM .tot{font-size:28px;font-weight:900;color:#ffd166}
+.cuentaM ul{list-style:none;margin-top:10px;font-size:16px;line-height:1.6}
+.cuentaM li{display:flex;justify-content:space-between;gap:8px}
+.cuentaM li span:last-child{opacity:.8}
+.cuentaM .meta2{font-size:13px;opacity:.65;margin-top:6px}
+.b-cobrar{width:100%;margin-top:12px;padding:15px;border-radius:14px;background:#2ecc71;color:#08210f;font-size:17px;font-weight:900}
+.adic{display:inline-block;background:#4ea1ff;color:#06203d;font-size:12px;font-weight:900;padding:3px 8px;border-radius:8px;margin-left:6px;vertical-align:middle}
+.ctaMesa{margin-top:6px;font-size:14px;color:#9fd0ff;font-weight:700}
 /* Preparados */
 #preparados{display:none;padding:16px}
 .resumen{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
@@ -171,10 +184,12 @@ main{padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280
   <nav class="pestanas">
     <button id="tabDia">📅 Día</button>
     <button id="tabPend">🔥 Pendientes<span class="cuenta" id="cPend">0</span></button>
+    <button id="tabMesas">🧾 Mesas<span class="cuenta" id="cMesas">0</span></button>
     <button id="tabPrep">✅ Pedidos preparados<span class="cuenta" id="cPrep">0</span></button>
   </nav>
   <main id="lista"><div class="vacio"><b>✅</b>Sin pedidos pendientes</div></main>
   <section id="preparados"></section>
+  <section id="mesas"></section>
   <section id="dia"></section>
   <div id="reporte" role="dialog"><div class="caja" id="caja"></div></div>
   <div id="avisos" aria-live="assertive"></div>
@@ -292,7 +307,7 @@ function mostrarAviso(p){
   const t = document.createElement("div");
   const cuenta = p.tipo === "cuenta";
   t.className = "toast " + (cuenta ? "cuenta" : "mesero");
-  t.innerHTML = `<div class="ic">${cuenta ? "🧾" : "🙋"}</div><div><b>MESA ${p.mesa}</b><span>${cuenta ? "Está pidiendo la cuenta" : "Está llamando al mesero"}</span></div>`;
+  t.innerHTML = `<div class="ic">${cuenta ? "🧾" : "🙋"}</div><div><b>MESA ${p.mesa}</b><span>${cuenta ? `Está pidiendo la cuenta${p.cuenta_total != null ? " · $" + Number(p.cuenta_total).toFixed(2) : ""}` : "Está llamando al mesero"}</span></div>`;
   $("#avisos").appendChild(t);
   sonarTimbre();
   if (navigator.vibrate) navigator.vibrate([300,150,300]);
@@ -333,6 +348,8 @@ function verVista(v){
   vista = v;
   $("#tabDia").classList.toggle("on", v === "dia");
   $("#tabPend").classList.toggle("on", v === "pend"); $("#tabPrep").classList.toggle("on", v === "prep");
+  $("#tabMesas").classList.toggle("on", v === "mesas");
+  $("#mesas").style.display = v === "mesas" ? "block" : "none";
   $("#lista").style.display = v === "pend" ? "grid" : "none";
   $("#preparados").style.display = v === "prep" ? "block" : "none";
   $("#dia").style.display = v === "dia" ? "block" : "none";
@@ -342,6 +359,26 @@ function verVista(v){
 $("#tabDia").onclick = ()=>verVista("dia");
 $("#tabPend").onclick = ()=>verVista("pend");
 $("#tabPrep").onclick = ()=>verVista("prep");
+$("#tabMesas").onclick = ()=>verVista("mesas");
+
+function pintarMesas(){
+  const M = datos.mesas || [];
+  $("#mesas").innerHTML = M.length ? `<div class="rejilla">${M.map(c => `
+    <div class="cuentaM">
+      <div class="cab2"><span class="mesa">MESA ${c.mesa}</span><span class="tot">$${Number(c.total).toFixed(2)}</span></div>
+      <div class="meta2">${c.pedidos.length} pedido(s) · desde ${hora(c.abierta)}</div>
+      <ul>${c.platos.map(x => `<li><span><b>${x.cantidad} x</b> ${esc(x.nombre)}</span><span>$${Number(x.total).toFixed(2)}</span></li>`).join("")}</ul>
+      <button class="b-cobrar" data-cobrar="${c.id}" data-mesa="${c.mesa}" data-total="${Number(c.total).toFixed(2)}">💵 Cobrado · cerrar cuenta</button>
+    </div>`).join("")}</div>`
+    : `<div class="vacio"><b>🧾</b>No hay mesas con cuenta abierta</div>`;
+}
+$("#mesas").addEventListener("click", async e=>{
+  const b = e.target.closest("[data-cobrar]"); if (!b) return;
+  if (!confirm(`¿La mesa ${b.dataset.mesa} ya pagó $${b.dataset.total}? Se cerrará su cuenta.`)) return;
+  datos.mesas = (datos.mesas || []).filter(c => c.id !== Number(b.dataset.cobrar)); pintar();
+  try { await fetch("/api/cocina", { method: "POST", headers: { "Content-Type": "application/json", "x-clave": CLAVE }, body: JSON.stringify({ accion: "cobrar", id: Number(b.dataset.cobrar) }) }); } catch(e){}
+  cargar();
+});
 
 function pintarPreparados(){
   const L = datos.listos || [];
@@ -367,6 +404,8 @@ function pintarPreparados(){
 function pintar(){
   $("#cPend").textContent = datos.pedidos.length;
   $("#cPrep").textContent = (datos.listos || []).length;
+  $("#cMesas").textContent = (datos.mesas || []).length;
+  if (vista === "mesas") pintarMesas();
   $("#tabPend").classList.toggle("alerta", datos.pedidos.some(p => p.estado === "nuevo"));
   if (vista === "prep") pintarPreparados();
   if (vista === "dia") pintarDia();
@@ -380,17 +419,19 @@ function pintar(){
       return `<div class="tarjeta aviso ${p.estado === "nuevo" ? "nuevo" : ""}">
         <div class="cab"><span class="mesa">MESA ${p.mesa}</span><span class="meta">${hora(p.creado)} · ${hace(p.creado)}</span></div>
         <div class="titulo-aviso">${p.tipo === "cuenta" ? "🧾 Piden la cuenta" : "🙋 Llaman al mesero"}</div>
+        ${p.tipo === "cuenta" && p.cuenta_total != null ? `<div class="ctaMesa" style="font-size:18px">Total: $${Number(p.cuenta_total).toFixed(2)}</div>` : ""}
         <div class="acciones"><button class="b-ok" data-id="${p.id}" data-estado="listo">OK, voy</button></div></div>`;
     }
     const boton = p.estado === "nuevo"
       ? `<button class="b-recibido" data-id="${p.id}" data-estado="preparando">✅ Recibido</button>`
       : `<button class="b-listo" data-id="${p.id}" data-estado="listo">🍽️ Listo</button>`;
     return `<div class="tarjeta ${p.estado}${tarde ? " tarde" : ""}">
-      <div class="cab"><span class="num">#${p.numero ?? "—"}</span><span class="mesa">MESA ${p.mesa}</span></div>
+      <div class="cab"><span class="num">#${p.numero ?? "—"}${p.adicional ? `<span class="adic">➕ ADICIONAL</span>` : ""}</span><span class="mesa">MESA ${p.mesa}</span></div>
       <div class="meta">${hora(p.creado)} · ${hace(p.creado)}${p.estado === "preparando" ? " · preparando" : ""}${tarde ? " · ⏰ demorado" : ""}</div>
       <ul class="items">${p.items.map(it => `<li><b>${it.cantidad} x</b> ${esc(it.nombre)}</li>`).join("")}</ul>
       ${p.notas ? `<div class="nota">📝 ${esc(p.notas)}</div>` : ""}
-      <div class="total">Total: $${Number(p.total).toFixed(2)}</div>
+      <div class="total">Total: $${Number(p.total).toFixed(2)}${p.por ? ` · 👤 ${esc(p.por)}` : ""}</div>
+      ${p.adicional && p.cuenta_total != null ? `<div class="ctaMesa">🧾 Cuenta de la mesa: $${Number(p.cuenta_total).toFixed(2)}</div>` : ""}
       <div class="acciones">${boton}</div></div>`;
   }).join("");
 }

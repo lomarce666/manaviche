@@ -10,9 +10,10 @@
 //  POST {accion:"previa"}          → cierre de caja (sin guardar)
 //  POST {accion:"cerrar"}          → Culminar día de trabajo (guarda)
 //  POST {accion:"borrar", alcance:"dia"|"semana"|"todo", id?}
+//  POST {accion:"cobrar", id}      → cerrar la cuenta de una mesa (ya pagó)
 // =============================================================
 
-import { hoyEcuador, prepararTablas, jornadaAbierta, resumenJornada, responder } from "../_db.js";
+import { hoyEcuador, prepararTablas, jornadaAbierta, resumenJornada, detalleCuenta, CUENTA_VENCE, responder } from "../_db.js";
 
 const ESTADOS = ["nuevo", "recibido", "preparando", "listo"];
 const fechaValida = (f) => /^\d{4}-\d{2}-\d{2}$/.test(String(f || ""));
@@ -47,17 +48,26 @@ export async function onRequestGet({ request, env }) {
 
   const j = await jornadaAbierta(DB, false);
   const [pend, hechos] = await DB.batch([
-    DB.prepare("SELECT id, numero, tipo, mesa, items, notas, total, estado, creado, actualizado FROM pedidos " +
-      "WHERE estado != 'listo' ORDER BY id LIMIT 200"),
+    DB.prepare("SELECT id, numero, tipo, mesa, items, notas, total, estado, creado, actualizado, por, cuenta, " +
+      "(SELECT MIN(q.id) FROM pedidos q WHERE q.cuenta = pedidos.cuenta AND q.tipo = 'pedido') AS primero, " +
+      "(SELECT c.total FROM cuentas c WHERE c.id = pedidos.cuenta) AS cuenta_total " +
+      "FROM pedidos WHERE estado != 'listo' ORDER BY id LIMIT 200"),
     DB.prepare("SELECT id, numero, mesa, items, notas, total, creado, actualizado FROM pedidos " +
       "WHERE jornada = ?1 AND tipo = 'pedido' AND estado = 'listo' ORDER BY actualizado DESC LIMIT 400").bind(j ? j.id : -1),
   ]);
-  const conItems = (p) => ({ ...p, items: p.items ? JSON.parse(p.items) : [] });
+  const conItems = (p) => ({ ...p, items: p.items ? JSON.parse(p.items) : [], adicional: p.tipo === "pedido" && p.primero != null && p.primero !== p.id });
+  // Cuentas de mesa abiertas (sin cobrar)
+  const ahora = Date.now();
+  const abiertas = (await DB.prepare("SELECT * FROM cuentas WHERE cerrada IS NULL AND pedidos > 0 ORDER BY mesa").all()).results
+    .filter((c) => ahora - c.actualizada <= CUENTA_VENCE);
+  const mesas = [];
+  for (const c of abiertas) mesas.push({ ...(await detalleCuenta(DB, c)), actualizada: c.actualizada });
   return responder(200, {
     ok: true, ahora: Date.now(), hoyFecha: hoyEcuador(),
     jornada: j ? { id: j.id, fecha: j.fecha, abierta: j.abierta } : null,
     pedidos: pend.results.map(conItems),
     listos: hechos.results.map(conItems),
+    mesas,
     hoy: { pedidos: j ? j.n : 0, total: j ? j.total : 0 },
   });
 }
@@ -86,8 +96,20 @@ export async function onRequestPost({ request, env }) {
       DB.prepare("UPDATE jornadas SET cerrada = ?2, resumen = ?3 WHERE id = ?1").bind(j.id, ahora, JSON.stringify(rep)),
       // Lo que quedó sin marcar como listo se archiva con el día
       DB.prepare("UPDATE pedidos SET estado = 'listo', actualizado = ?2 WHERE jornada = ?1 AND estado != 'listo'").bind(j.id, ahora),
+      DB.prepare("UPDATE cuentas SET cerrada = ?1 WHERE cerrada IS NULL").bind(ahora),
     ]);
     return responder(200, { ok: true, reporte: rep });
+  }
+
+  // ---- Cobrar: cerrar la cuenta de una mesa ----
+  if (d.accion === "cobrar") {
+    const id = Number(d.id);
+    if (!Number.isInteger(id)) return responder(400, { ok: false, error: "Datos inválidos" });
+    await DB.prepare("UPDATE cuentas SET cerrada = ?2 WHERE id = ?1 AND cerrada IS NULL").bind(id, Date.now()).run();
+    // La próxima gente que use esa mesa empieza con el carrito vacío
+    const c = await DB.prepare("SELECT mesa FROM cuentas WHERE id = ?1").bind(id).first();
+    if (c) await DB.prepare("UPDATE carritos SET lineas = '[]', version = version + 1, actualizado = ?2, ultimo = NULL WHERE mesa = ?1").bind(c.mesa, Date.now()).run();
+    return responder(200, { ok: true });
   }
 
   // ---- Borrar días guardados ----

@@ -16,7 +16,7 @@
 //    el pedido quede guardado para la pantalla; Telegram es extra.
 // =============================================================
 
-import { hoyEcuador, prepararTablas, jornadaAbierta, responder } from "../_db.js";
+import { hoyEcuador, prepararTablas, jornadaAbierta, cuentaAbierta, responder } from "../_db.js";
 
 // Evita que alguien meta código raro en el mensaje
 const limpiar = (t, max) =>
@@ -105,16 +105,27 @@ export async function onRequestPost({ request, env }) {
   }
 
   // ---- Guardar en la base de datos (número en orden + pantalla de cocina) ----
-  let id = null, jornada = null;
+  let id = null, jornada = null, cuenta = null, cuentaAntes = null;
+  const por = String(datos.nombre ?? "").replace(/[<>"'`]/g, "").trim().slice(0, 20);
   if (env.DB) {
     try {
       await prepararTablas(env.DB);
       jornada = (await jornadaAbierta(env.DB, true)).id;
       if (tipo === "pedido") ({ numero, totalDia } = await contar(env.DB, jornada, total));
+      // Cuenta de la mesa: los pedidos de comida se suman; mesero/cuenta solo la consultan
+      const c = await cuentaAbierta(env.DB, mesa, jornada, tipo === "pedido");
+      if (c) {
+        cuentaAntes = { total: c.total, pedidos: c.pedidos };
+        if (tipo === "pedido") {
+          const r = await env.DB.prepare("UPDATE cuentas SET total = total + ?2, pedidos = pedidos + 1, actualizada = ?3 WHERE id = ?1 RETURNING total, pedidos")
+            .bind(c.id, total, ahora.getTime()).first();
+          cuenta = { id: c.id, total: r.total, pedidos: r.pedidos };
+        } else cuenta = { id: c.id, total: c.total, pedidos: c.pedidos };
+      }
       const fila = await env.DB.prepare(
-        "INSERT INTO pedidos (dia, numero, tipo, mesa, items, notas, total, estado, creado, actualizado, jornada) " +
-        "VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 'nuevo', ?8, ?8, ?9) RETURNING id"
-      ).bind(hoy, numero, tipo, mesa, items ? JSON.stringify(items) : null, notas, total, ahora.getTime(), jornada).first();
+        "INSERT INTO pedidos (dia, numero, tipo, mesa, items, notas, total, estado, creado, actualizado, jornada, cuenta, por) " +
+        "VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 'nuevo', ?8, ?8, ?9, ?10, ?11) RETURNING id"
+      ).bind(hoy, numero, tipo, mesa, items ? JSON.stringify(items) : null, notas, total, ahora.getTime(), jornada, cuenta ? cuenta.id : null, por).first();
       id = fila.id;
     } catch (e) {
       console.log("Base de datos:", String(e));
@@ -124,15 +135,17 @@ export async function onRequestPost({ request, env }) {
 
   // ---- Mensaje de Telegram ----
   if (tipo === "pedido") {
-    texto = `🔔 <b>PEDIDO #${numero}</b>\n🍽️ <b>MESA ${mesa}</b>   🕐 ${hora}\n\n`;
+    const adicional = cuenta && cuenta.pedidos > 1;
+    texto = `${adicional ? "➕ <b>PEDIDO ADICIONAL" : "🔔 <b>PEDIDO"} #${numero}</b>\n🍽️ <b>MESA ${mesa}</b>   🕐 ${hora}${por ? `   👤 ${limpiar(por, 20)}` : ""}\n\n`;
     for (const it of items)
       texto += `• <b>${it.cantidad} x</b> ${limpiar(it.nombre, 60)}  —  $${(it.cantidad * it.precio).toFixed(2)}\n`;
     texto += `\n💰 <b>Total: $${total.toFixed(2)}</b>`;
     if (notas) texto += `\n\n📝 <b>Indicaciones:</b> ${limpiar(notas, 300)}`;
+    if (adicional) texto += `\n\n🧾 Cuenta de la mesa ${mesa}: <b>$${cuenta.total.toFixed(2)}</b> (${cuenta.pedidos} pedidos)`;
     if (totalDia != null) texto += `\n\n📊 Hoy van <b>${numero}</b> pedido${numero === 1 ? "" : "s"} · $${totalDia.toFixed(2)} vendidos`;
   } else {
     texto = tipo === "cuenta"
-      ? `🧾 <b>PIDEN LA CUENTA</b>\n🍽️ <b>MESA ${mesa}</b>   🕐 ${hora}`
+      ? `🧾 <b>PIDEN LA CUENTA</b>\n🍽️ <b>MESA ${mesa}</b>   🕐 ${hora}${cuenta ? `\n💰 Total de la mesa: <b>$${cuenta.total.toFixed(2)}</b> (${cuenta.pedidos} pedidos)` : ""}`
       : `🙋 <b>LLAMAN AL MESERO</b>\n🍽️ <b>MESA ${mesa}</b>   🕐 ${hora}`;
   }
   const j = await enviarTelegram(TOKEN, CHAT, texto);
@@ -141,7 +154,15 @@ export async function onRequestPost({ request, env }) {
   // Llegó a la cocina si: Telegram lo aceptó, o quedó guardado para la pantalla de cocina
   const llego = j.ok || (usaPantalla && id != null);
   if (!llego) {
-    if (env.DB) await deshacer(env.DB, jornada, total, totalDia != null ? numero : null, id);
+    if (env.DB) {
+      await deshacer(env.DB, jornada, total, totalDia != null ? numero : null, id);
+      if (tipo === "pedido" && cuenta && cuentaAntes) {
+        try {
+          if (cuentaAntes.pedidos === 0) await env.DB.prepare("DELETE FROM cuentas WHERE id = ?1").bind(cuenta.id).run();
+          else await env.DB.prepare("UPDATE cuentas SET total = total - ?2, pedidos = pedidos - 1 WHERE id = ?1").bind(cuenta.id, total).run();
+        } catch {}
+      }
+    }
     return responder(502, {
       ok: false,
       error: "No llegó a la cocina",

@@ -65,6 +65,49 @@ main{padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280
 .pestanas button.on{background:#ffd166;color:#111}
 .pestanas .cuenta{display:inline-block;min-width:24px;padding:0 6px;margin-left:6px;border-radius:99px;background:rgba(0,0,0,.25);font-size:14px}
 .pestanas button.alerta:not(.on){background:#e63946;color:#fff;animation:latir 1s infinite}
+/* Día de trabajo */
+#dia{display:none;padding:16px;max-width:760px;margin:0 auto}
+.hoja{background:#1b2027;border-radius:18px;padding:18px;margin-bottom:14px}
+.hoja h2{font-size:15px;text-transform:uppercase;letter-spacing:1px;opacity:.7}
+.fechaGrande{font-size:26px;font-weight:900;margin-top:6px}
+.sub2{opacity:.7;font-size:14px;margin-top:4px}
+.cifras{display:flex;gap:10px;margin-top:14px}
+.cifras div{flex:1;background:#111418;border-radius:14px;padding:12px;text-align:center}
+.cifras b{display:block;font-size:28px;color:#ffd166}
+.cifras span{font-size:13px;opacity:.75}
+.bGrande{display:block;width:100%;margin-top:12px;padding:17px;border-radius:14px;font-size:18px;font-weight:900}
+.bAzul{background:#4ea1ff;color:#06203d}
+.bRojo{background:#e63946;color:#fff}
+.bVerde{background:#2ecc71;color:#08210f}
+.bGris{background:#2a313b;color:#e6e9ee}
+.campoFecha{width:100%;margin-top:12px;font-size:20px;padding:12px;border-radius:12px;border:2px solid #333a44;background:#111418;color:#fff}
+.dias .d{display:flex;align-items:center;gap:10px;padding:12px 4px;border-bottom:1px solid #2a313b;cursor:pointer}
+.dias .d:last-child{border:none}
+.dias .d .f{flex:1;font-weight:700}
+.dias .d .f small{display:block;font-weight:400;opacity:.6;text-transform:none}
+.dias .d .t{font-weight:900;color:#6ee7a0}
+.dias .d .x{background:none;color:#ff8a8a;font-size:20px;padding:4px 8px}
+.borrarFila{display:flex;gap:10px;margin-top:12px}
+.borrarFila button{flex:1;padding:12px;border-radius:12px;background:#2a1517;color:#ff8a8a;font-weight:800;font-size:15px}
+/* Reporte de caja */
+#reporte{position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.75);display:none;align-items:flex-start;justify-content:center;padding:14px;overflow:auto}
+#reporte.ver{display:flex}
+.caja{background:#fffaf0;color:#1d1d1f;width:100%;max-width:520px;border-radius:18px;padding:20px;margin:auto 0}
+.caja h3{font-size:24px;font-weight:900}
+.caja .fechaR{font-weight:700;margin-top:2px}
+.caja .hrs{color:#6b6458;font-size:14px;margin-top:4px}
+.caja .grandes{display:flex;gap:8px;margin-top:14px}
+.caja .grandes div{flex:1;background:#0d3b4f;color:#fff;border-radius:12px;padding:10px;text-align:center}
+.caja .grandes b{display:block;font-size:22px;color:#ffd166}
+.caja .grandes span{font-size:12px;opacity:.85}
+.caja h4{margin-top:18px;font-size:14px;text-transform:uppercase;letter-spacing:.5px;color:#7a7266}
+.caja table{width:100%;border-collapse:collapse;margin-top:6px;font-size:15px}
+.caja th{text-align:left;font-size:12px;color:#7a7266;border-bottom:2px solid #e2d8c6;padding:5px 4px}
+.caja td{padding:7px 4px;border-bottom:1px dashed #e2d8c6}
+.caja .r{text-align:right;white-space:nowrap}
+.caja .totF td{border:none;font-weight:900;font-size:18px;padding-top:10px}
+.caja .alerta{margin-top:12px;background:#fde8e8;color:#9b1c1c;border-radius:10px;padding:10px;font-weight:700;font-size:14px}
+.caja .botones{margin-top:18px;display:grid;gap:10px}
 /* Preparados */
 #preparados{display:none;padding:16px}
 .resumen{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
@@ -110,17 +153,19 @@ main{padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280
 <section id="panel">
   <header>
     <h1 id="nombre">Cocina</h1>
-    <span class="dato">Hoy: <b id="hoyN">0</b> pedidos</span>
-    <span class="dato">Vendido: <b id="hoyT">$0</b></span>
+    <span class="dato">Día: <b id="hoyN">0</b> pedidos</span>
     <span id="estado">● En línea</span>
   </header>
   <div id="avisoSonido">🔇 Toca cualquier parte de la pantalla para activar el sonido</div>
   <nav class="pestanas">
-    <button id="tabPend" class="on">🔥 Pendientes<span class="cuenta" id="cPend">0</span></button>
+    <button id="tabDia">📅 Día</button>
+    <button id="tabPend">🔥 Pendientes<span class="cuenta" id="cPend">0</span></button>
     <button id="tabPrep">✅ Pedidos preparados<span class="cuenta" id="cPrep">0</span></button>
   </nav>
   <main id="lista"><div class="vacio"><b>✅</b>Sin pedidos pendientes</div></main>
   <section id="preparados"></section>
+  <section id="dia"></section>
+  <div id="reporte" role="dialog"><div class="caja" id="caja"></div></div>
   <div id="detalle" role="dialog"><div class="ticket" id="ticket"></div></div>
 </section>
 
@@ -216,7 +261,7 @@ async function entrar(){
   if (ok === false){ $("#errEntrar").textContent = "No hay conexión. Intenta de nuevo."; return; }
   guardar("cocina_clave", CLAVE);
   $("#entrar").style.display = "none"; $("#panel").style.display = "block";
-  pedirPantallaEncendida(); revisarSonido();
+  pedirPantallaEncendida(); revisarSonido(); verVista("dia");
 }
 $("#btnEntrar").onclick = entrar;
 $("#clave").addEventListener("keydown", e=>{ if (e.key === "Enter") entrar(); });
@@ -245,14 +290,18 @@ const esc = t => String(t ?? "").replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt
 const hace = ms => { const m = Math.floor((datos.ahora - ms) / 60000); return m < 1 ? "recién" : `hace ${m} min`; };
 const hora = ms => new Date(ms).toLocaleTimeString("es-EC", { hour: "2-digit", minute: "2-digit" });
 
-let vista = "pend";
+let vista = "dia";
 function verVista(v){
   vista = v;
+  $("#tabDia").classList.toggle("on", v === "dia");
   $("#tabPend").classList.toggle("on", v === "pend"); $("#tabPrep").classList.toggle("on", v === "prep");
   $("#lista").style.display = v === "pend" ? "grid" : "none";
   $("#preparados").style.display = v === "prep" ? "block" : "none";
+  $("#dia").style.display = v === "dia" ? "block" : "none";
+  if (v === "dia") cargarDias();
   pintar();
 }
+$("#tabDia").onclick = ()=>verVista("dia");
 $("#tabPend").onclick = ()=>verVista("pend");
 $("#tabPrep").onclick = ()=>verVista("prep");
 
@@ -265,7 +314,7 @@ function pintarPreparados(){
   $("#preparados").innerHTML = `
     <div class="resumen">
       <div><b>${L.length}</b><span>pedidos preparados hoy</span></div>
-      <div><b>$${suma.toFixed(2)}</b><span>vendido en preparados</span></div>
+      <div><b>$${Number(datos.hoy?.total ?? suma).toFixed(2)}</b><span>Venta del día</span></div>
     </div>
     ${top ? `<p style="opacity:.75;margin:0 2px 14px;font-size:14px">Más pedidos: ${top}</p>` : ""}
     ${L.length ? L.map(p => `<div class="fila">
@@ -282,8 +331,8 @@ function pintar(){
   $("#cPrep").textContent = (datos.listos || []).length;
   $("#tabPend").classList.toggle("alerta", datos.pedidos.some(p => p.estado === "nuevo"));
   if (vista === "prep") pintarPreparados();
+  if (vista === "dia") pintarDia();
   $("#hoyN").textContent = datos.hoy?.pedidos ?? 0;
-  $("#hoyT").textContent = "$" + Number(datos.hoy?.total ?? 0).toFixed(2);
   const lista = datos.pedidos;
   if (!lista.length){ $("#lista").innerHTML = `<div class="vacio"><b>✅</b>Sin pedidos pendientes</div>`; return; }
   $("#lista").innerHTML = lista.map(p => {
@@ -328,6 +377,133 @@ $("#preparados").addEventListener("click", e=>{
   const id = Number(f.querySelector("[data-detalle]").dataset.detalle);
   const p = (datos.listos || []).find(x => x.id === id); if (p) verDetalle(p);
 });
+/* ---------- Día de trabajo y cierre de caja ---------- */
+const fechaLarga = f => { const [a,m,d] = String(f).split("-").map(Number); const t = new Date(a, m-1, d).toLocaleDateString("es-EC", { weekday:"long", day:"numeric", month:"long", year:"numeric" }); return t.charAt(0).toUpperCase() + t.slice(1); };
+const plata = n => "$" + Number(n || 0).toFixed(2);
+let dias = [], pintadoDia = "";
+
+async function api(metodo, cuerpo, q = ""){
+  const r = await fetch("/api/cocina" + q, { method: metodo, headers: { "Content-Type": "application/json", "x-clave": CLAVE }, cache: "no-store", body: cuerpo ? JSON.stringify(cuerpo) : undefined });
+  return r.json().catch(()=>({ ok:false, error:"Sin conexión" }));
+}
+async function cargarDias(){
+  const j = await api("GET", null, "?dias=1");
+  if (j.ok){ dias = j.dias; pintadoDia = ""; pintarDia(); }
+}
+
+function pintarDia(){
+  const J = datos.jornada;
+  // No redibujar si nada cambió (para no borrar la fecha que estás escribiendo)
+  const firma = JSON.stringify([J, datos.hoy, dias.map(d => d.id)]);
+  if (firma === pintadoDia) return;
+  pintadoDia = firma;
+  const arriba = J ? `
+    <div class="hoja">
+      <h2>📅 Día de trabajo abierto</h2>
+      <div class="fechaGrande">${fechaLarga(J.fecha)}</div>
+      <div class="sub2">Abierto desde las ${hora(J.abierta)}</div>
+      <div class="cifras"><div><b>${datos.hoy.pedidos}</b><span>pedidos</span></div><div><b>${plata(datos.hoy.total)}</b><span>vendido</span></div></div>
+      <button class="bGrande bAzul" data-ir="pend">🔥 Ir a los pedidos</button>
+      <button class="bGrande bRojo" id="bCulminar">🏁 Culminar día de trabajo</button>
+    </div>` : `
+    <div class="hoja">
+      <h2>☀️ No hay un día de trabajo abierto</h2>
+      <div class="sub2">Elige la fecha y empieza. Si llega un pedido antes, el día se abre solo con la fecha de hoy.</div>
+      <input type="date" class="campoFecha" id="fechaNueva" value="${datos.hoyFecha}">
+      <button class="bGrande bVerde" id="bNuevo">☀️ Nuevo día laboral</button>
+    </div>`;
+  const carpeta = `
+    <div class="hoja">
+      <h2>📁 Días guardados</h2>
+      ${dias.length ? `<div class="dias">${dias.map(d => `
+        <div class="d" data-dia="${d.id}">
+          <div class="f">${fechaLarga(d.fecha)}<small>${d.n} pedidos · cerrado ${new Date(d.cerrada).toLocaleDateString("es-EC")} ${hora(d.cerrada)}</small></div>
+          <div class="t">${plata(d.total)}</div>
+          <button class="x" data-borrar="${d.id}" aria-label="Eliminar este día">🗑</button>
+        </div>`).join("")}</div>
+        <div class="borrarFila"><button id="bSemana">🗑 Eliminar última semana</button><button id="bTodo">🗑 Eliminar todo</button></div>`
+      : `<div class="sub2">Aquí se guarda el cierre de caja de cada día cuando lo culminas.</div>`}
+    </div>`;
+  $("#dia").innerHTML = arriba + carpeta;
+}
+
+function htmlReporte(R, guardado){
+  return `
+    <h3>${guardado ? "🧾 Cierre de caja" : "🏁 Culminar día de trabajo"}</h3>
+    <div class="fechaR">${fechaLarga(R.fecha)}</div>
+    <div class="hrs">Abierto ${hora(R.abierta)}${R.cerrada ? " · cerrado " + hora(R.cerrada) : ""}${R.primero ? ` · primer pedido ${hora(R.primero)} · último ${hora(R.ultimo)}` : ""}</div>
+    <div class="grandes">
+      <div><b>${R.pedidos}</b><span>pedidos</span></div>
+      <div><b>${plata(R.total)}</b><span>vendido</span></div>
+      <div><b>${plata(R.promedio)}</b><span>promedio</span></div>
+    </div>
+    ${!guardado && R.pendientes ? `<div class="alerta">⚠️ Hay ${R.pendientes} pedido(s) sin marcar como listo. Se incluyen en el total y se archivarán al confirmar.</div>` : ""}
+    <h4>Ventas por plato</h4>
+    <table><tr><th>Cant.</th><th>Plato</th><th class="r">P. unit.</th><th class="r">Total</th></tr>
+      ${R.platos.map(x => `<tr><td>${x.cantidad}</td><td>${esc(x.nombre)}</td><td class="r">${plata(x.precio)}</td><td class="r">${plata(x.total)}</td></tr>`).join("") || `<tr><td colspan="4">Sin ventas</td></tr>`}
+      <tr class="totF"><td colspan="3">Total vendido</td><td class="r">${plata(R.total)}</td></tr></table>
+    ${R.mesas.length ? `<h4>Por mesa</h4><table><tr><th>Mesa</th><th class="r">Pedidos</th><th class="r">Total</th></tr>
+      ${R.mesas.map(m => `<tr><td>Mesa ${m.mesa}</td><td class="r">${m.pedidos}</td><td class="r">${plata(m.total)}</td></tr>`).join("")}</table>` : ""}
+    ${R.lista.length ? `<h4>Pedidos del día</h4><table><tr><th>#</th><th>Hora</th><th>Mesa</th><th class="r">Total</th></tr>
+      ${R.lista.map(p => `<tr><td>${p.numero ?? "—"}</td><td>${hora(p.creado)}</td><td>${p.mesa}</td><td class="r">${plata(p.total)}</td></tr>`).join("")}</table>` : ""}
+    <div class="hrs" style="margin-top:12px">Avisos: 🙋 ${R.mesero} llamadas al mesero · 🧾 ${R.cuenta} cuentas pedidas</div>`;
+}
+function abrirReporte(html){ $("#caja").innerHTML = html; $("#reporte").classList.add("ver"); $("#reporte").scrollTop = 0; }
+const cerrarReporte = ()=> $("#reporte").classList.remove("ver");
+
+$("#dia").addEventListener("click", async e=>{
+  const ir = e.target.closest("[data-ir]"); if (ir){ verVista(ir.dataset.ir); return; }
+  if (e.target.id === "bNuevo"){
+    const f = $("#fechaNueva").value;
+    e.target.disabled = true; e.target.textContent = "Abriendo…";
+    const j = await api("POST", { accion: "abrir", fecha: f });
+    if (!j.ok) alert(j.error || "No se pudo abrir el día");
+    pintadoDia = ""; await cargar(); return;
+  }
+  if (e.target.id === "bCulminar"){
+    e.target.textContent = "Calculando…";
+    const j = await api("POST", { accion: "previa" });
+    pintadoDia = ""; pintarDia();
+    if (!j.ok){ alert(j.error); return; }
+    abrirReporte(htmlReporte(j.reporte, false) + `<div class="botones">
+      <button class="bGrande bVerde" id="bConfirmar">✅ Confirmar y guardar</button>
+      <button class="bGrande bGris" data-cerrar>Volver</button></div>`);
+    return;
+  }
+  if (e.target.id === "bSemana"){
+    if (!confirm("¿Eliminar los días guardados de los últimos 7 días? No se puede deshacer.")) return;
+    const j = await api("POST", { accion: "borrar", alcance: "semana" }); if (j.ok) alert(`Se eliminaron ${j.borrados} día(s).`);
+    cargarDias(); return;
+  }
+  if (e.target.id === "bTodo"){
+    const t = prompt("Esto elimina TODOS los días guardados y no se puede deshacer.\\nEscribe BORRAR para confirmar:");
+    if ((t || "").trim().toUpperCase() !== "BORRAR") return;
+    const j = await api("POST", { accion: "borrar", alcance: "todo" }); if (j.ok) alert(`Se eliminaron ${j.borrados} día(s).`);
+    cargarDias(); return;
+  }
+  const x = e.target.closest("[data-borrar]");
+  if (x){
+    if (!confirm("¿Eliminar este día guardado? No se puede deshacer.")) return;
+    await api("POST", { accion: "borrar", alcance: "dia", id: Number(x.dataset.borrar) }); cargarDias(); return;
+  }
+  const d = e.target.closest("[data-dia]");
+  if (d){
+    const j = await api("GET", null, "?dia=" + d.dataset.dia);
+    if (j.ok) abrirReporte(htmlReporte(j.reporte, true) + `<div class="botones"><button class="bGrande bGris" data-cerrar>Cerrar</button></div>`);
+  }
+});
+$("#reporte").addEventListener("click", async e=>{
+  if (e.target.id === "reporte" || e.target.closest("[data-cerrar]")){ cerrarReporte(); return; }
+  if (e.target.id === "bConfirmar"){
+    e.target.disabled = true; e.target.textContent = "Guardando…";
+    const j = await api("POST", { accion: "cerrar" });
+    if (!j.ok){ alert(j.error || "No se pudo guardar"); e.target.disabled = false; e.target.textContent = "✅ Confirmar y guardar"; return; }
+    abrirReporte(htmlReporte(j.reporte, true) + `<div class="alerta" style="background:#e7f6ec;color:#1a7f37">✅ Día guardado en "Días guardados".</div>
+      <div class="botones"><button class="bGrande bVerde" data-cerrar>☀️ Listo, empezar un nuevo día</button></div>`);
+    await cargar(); cargarDias();
+  }
+});
+
 function verDetalle(p){
   const min = Math.max(0, Math.round((p.actualizado - p.creado) / 60000));
   $("#ticket").innerHTML = `
@@ -345,7 +521,7 @@ function verDetalle(p){
 $("#detalle").addEventListener("click", e=>{ if (e.target.id === "detalle" || e.target.closest(".cerrar")) $("#detalle").classList.remove("ver"); });
 
 // Si ya había clave guardada, intenta entrar solo (el sonido se activa con el primer toque)
-if (CLAVE) cargar().then(ok => { if (ok === true){ $("#entrar").style.display = "none"; $("#panel").style.display = "block"; revisarSonido(); pedirPantallaEncendida(); } });
+if (CLAVE) cargar().then(ok => { if (ok === true){ $("#entrar").style.display = "none"; $("#panel").style.display = "block"; revisarSonido(); pedirPantallaEncendida(); verVista("dia"); } });
 document.addEventListener("click", activarSonido, { capture: true });
 document.addEventListener("touchend", activarSonido, { capture: true });
 })();

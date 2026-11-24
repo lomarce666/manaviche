@@ -10,13 +10,13 @@
 //  · El token del bot NO va aquí: es la variable secreta TELEGRAM_TOKEN.
 //  · Mesas, precios y grupo de Telegram salen de restaurante.json
 //    (así los precios no se pueden falsear desde el celular del cliente).
-//  · Los pedidos se numeran 1, 2, 3… y el contador vuelve a 1 todos
-//    los días a las 5:00 a. m.
+//  · Los pedidos se numeran 1, 2, 3… dentro de cada día de trabajo
+//    (lo abre y lo cierra la cocina; si no hay uno abierto, se abre solo).
 //  · Si restaurante.json tiene "pantalla_cocina": true, basta con que
 //    el pedido quede guardado para la pantalla; Telegram es extra.
 // =============================================================
 
-import { diaDeTrabajo, prepararTablas, responder } from "../_db.js";
+import { hoyEcuador, prepararTablas, jornadaAbierta, responder } from "../_db.js";
 
 // Evita que alguien meta código raro en el mensaje
 const limpiar = (t, max) =>
@@ -25,20 +25,18 @@ const limpiar = (t, max) =>
 // Quita espacios, saltos de línea y comillas que se cuelan al copiar y pegar
 const sinBasura = (v) => String(v ?? "").trim().replace(/^["'\s]+|["'\s]+$/g, "");
 
-async function contar(DB, dia, monto) {
+async function contar(DB, jornada, monto) {
   // Suma 1 de forma segura aunque lleguen varios pedidos al mismo tiempo
-  const fila = await DB.prepare(
-    "INSERT INTO contador (dia, n, total) VALUES (?1, 1, ?2) " +
-    "ON CONFLICT(dia) DO UPDATE SET n = n + 1, total = total + ?2 RETURNING n, total"
-  ).bind(dia, monto).first();
+  const fila = await DB.prepare("UPDATE jornadas SET n = n + 1, total = total + ?2 WHERE id = ?1 RETURNING n, total")
+    .bind(jornada, monto).first();
   return { numero: fila.n, totalDia: fila.total };
 }
 
-async function deshacer(DB, dia, monto, numero, id) {
+async function deshacer(DB, jornada, monto, numero, id) {
   try {
     // Devuelve el monto; y si nadie pidió después, también el número (así no quedan saltos)
-    if (numero) await DB.prepare("UPDATE contador SET total = total - ?2, n = CASE WHEN n = ?3 THEN n - 1 ELSE n END WHERE dia = ?1")
-      .bind(dia, monto, numero).run();
+    if (numero && jornada) await DB.prepare("UPDATE jornadas SET total = total - ?2, n = CASE WHEN n = ?3 THEN n - 1 ELSE n END WHERE id = ?1")
+      .bind(jornada, monto, numero).run();
     if (id) await DB.prepare("DELETE FROM pedidos WHERE id = ?1").bind(id).run();
   } catch {}
 }
@@ -90,7 +88,7 @@ export async function onRequestPost({ request, env }) {
 
   const ahora = new Date();
   const hora = ahora.toLocaleTimeString("es-EC", { timeZone: "America/Guayaquil", hour: "2-digit", minute: "2-digit" });
-  const hoy = diaDeTrabajo(ahora);
+  const hoy = hoyEcuador(ahora.getTime());
   const tipo = datos.tipo === "mesero" || datos.tipo === "cuenta" ? datos.tipo : "pedido";
   let texto, numero = null, totalDia = null, total = 0, items = null, notas = "";
 
@@ -107,15 +105,16 @@ export async function onRequestPost({ request, env }) {
   }
 
   // ---- Guardar en la base de datos (número en orden + pantalla de cocina) ----
-  let id = null;
+  let id = null, jornada = null;
   if (env.DB) {
     try {
       await prepararTablas(env.DB);
-      if (tipo === "pedido") ({ numero, totalDia } = await contar(env.DB, hoy, total));
+      jornada = (await jornadaAbierta(env.DB, true)).id;
+      if (tipo === "pedido") ({ numero, totalDia } = await contar(env.DB, jornada, total));
       const fila = await env.DB.prepare(
-        "INSERT INTO pedidos (dia, numero, tipo, mesa, items, notas, total, estado, creado, actualizado) " +
-        "VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 'nuevo', ?8, ?8) RETURNING id"
-      ).bind(hoy, numero, tipo, mesa, items ? JSON.stringify(items) : null, notas, total, ahora.getTime()).first();
+        "INSERT INTO pedidos (dia, numero, tipo, mesa, items, notas, total, estado, creado, actualizado, jornada) " +
+        "VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 'nuevo', ?8, ?8, ?9) RETURNING id"
+      ).bind(hoy, numero, tipo, mesa, items ? JSON.stringify(items) : null, notas, total, ahora.getTime(), jornada).first();
       id = fila.id;
     } catch (e) {
       console.log("Base de datos:", String(e));
@@ -142,7 +141,7 @@ export async function onRequestPost({ request, env }) {
   // Llegó a la cocina si: Telegram lo aceptó, o quedó guardado para la pantalla de cocina
   const llego = j.ok || (usaPantalla && id != null);
   if (!llego) {
-    if (env.DB) await deshacer(env.DB, hoy, total, totalDia != null ? numero : null, id);
+    if (env.DB) await deshacer(env.DB, jornada, total, totalDia != null ? numero : null, id);
     return responder(502, {
       ok: false,
       error: "No llegó a la cocina",

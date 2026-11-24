@@ -395,7 +395,7 @@ function pintarPreparados(){
     ${L.length ? L.map(p => `<div class="fila">
         <div class="n">#${p.numero ?? "—"}</div>
         <div class="det" data-detalle="${p.id}"><b>Mesa ${p.mesa}</b> · ${p.items.map(it => `${it.cantidad} x ${esc(it.nombre)}`).join(", ")}
-          <small>Pedido ${hora(p.creado)} · listo ${hora(p.actualizado)}</small>
+          <small>Pedido ${hora(p.creado)} · entregado ${hora(p.actualizado)}</small>
           <span class="ver">🧾 Ver detalle</span></div>
         <div class="monto">$${Number(p.total).toFixed(2)}<button class="volver" data-id="${p.id}" data-estado="preparando">↩ Volver a pendientes</button></div>
       </div>`).join("") : `<div class="vacio"><b>🍽️</b>Todavía no hay pedidos preparados hoy</div>`}`;
@@ -424,7 +424,7 @@ function pintar(){
     }
     const boton = p.estado === "nuevo"
       ? `<button class="b-recibido" data-id="${p.id}" data-estado="preparando">✅ Recibido</button>`
-      : `<button class="b-listo" data-id="${p.id}" data-estado="listo">🍽️ Listo</button>`;
+      : `<button class="b-listo" data-id="${p.id}" data-estado="listo">🛎️ Pedido entregado a la mesa</button>`;
     return `<div class="tarjeta ${p.estado}${tarde ? " tarde" : ""}">
       <div class="cab"><span class="num">#${p.numero ?? "—"}${p.adicional ? `<span class="adic">➕ ADICIONAL</span>` : ""}</span><span class="mesa">MESA ${p.mesa}</span></div>
       <div class="meta">${hora(p.creado)} · ${hace(p.creado)}${p.estado === "preparando" ? " · preparando" : ""}${tarde ? " · ⏰ demorado" : ""}</div>
@@ -587,7 +587,7 @@ function verDetalle(p){
   const min = Math.max(0, Math.round((p.actualizado - p.creado) / 60000));
   $("#ticket").innerHTML = `
     <h3>Pedido #${p.numero ?? "—"} <span class="m">MESA ${p.mesa}</span></h3>
-    <div class="hrs">🕐 Pedido: ${hora(p.creado)}<br>✅ Listo: ${hora(p.actualizado)} (${min} min)</div>
+    <div class="hrs">🕐 Pedido: ${hora(p.creado)}<br>🛎️ Entregado: ${hora(p.actualizado)} (${min} min)</div>
     <table>
       <tr><th>Cant.</th><th>Plato</th><th class="d">P. unit.</th><th class="d">Subtotal</th></tr>
       ${p.items.map(it => `<tr><td>${it.cantidad}</td><td>${esc(it.nombre)}</td><td class="d">$${Number(it.precio).toFixed(2)}</td><td class="d">$${(it.cantidad * it.precio).toFixed(2)}</td></tr>`).join("")}

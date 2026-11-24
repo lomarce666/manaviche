@@ -41,7 +41,7 @@ export async function onRequestGet({ request, env }) {
   // Carpeta de días guardados
   if (url.searchParams.get("dias")) {
     const { results } = await DB.prepare(
-      "SELECT id, fecha, abierta, cerrada, n, total FROM jornadas WHERE cerrada IS NOT NULL ORDER BY cerrada DESC LIMIT 400"
+      "SELECT id, fecha, abierta, cerrada, n, total FROM jornadas WHERE cerrada IS NOT NULL ORDER BY fecha DESC, cerrada DESC LIMIT 1200"
     ).all();
     return responder(200, { ok: true, dias: results });
   }

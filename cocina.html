@@ -108,6 +108,14 @@ main{padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280
 .dias .d .t{font-weight:900;color:#6ee7a0}
 .dias .d .x{background:none;color:#ff8a8a;font-size:20px;padding:4px 8px}
 .borrarFila{display:flex;gap:10px;margin-top:12px}
+.filtroF{margin-top:10px}
+.rapidos{display:flex;gap:6px;flex-wrap:wrap}
+.rapidos button{flex:1 0 auto;padding:9px 10px;border-radius:10px;background:#111418;color:#cfd6df;font-weight:800;font-size:14px}
+.rapidos button.on{background:#4ea1ff;color:#06203d}
+.rangoF{display:flex;gap:10px;margin-top:10px}
+.rangoF label{flex:1;font-size:13px;opacity:.85;font-weight:700}
+.rangoF input{display:block;width:100%;margin-top:4px;font-size:17px;padding:10px;border-radius:10px;border:2px solid #333a44;background:#111418;color:#fff;color-scheme:dark}
+.quitarF{background:#2a313b;color:#e6e9ee;border-radius:8px;padding:4px 8px;font-size:13px;font-weight:800;margin-left:6px}
 .borrarFila button{flex:1;padding:12px;border-radius:12px;background:#2a1517;color:#ff8a8a;font-weight:800;font-size:15px}
 /* Reporte de caja */
 #reporte{position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.75);display:none;align-items:flex-start;justify-content:center;padding:14px;overflow:auto}
@@ -564,7 +572,17 @@ $("#preparados").addEventListener("click", e=>{
 /* ---------- Día de trabajo y cierre de caja ---------- */
 const fechaLarga = f => { const [a,m,d] = String(f).split("-").map(Number); const t = new Date(a, m-1, d).toLocaleDateString("es-EC", { weekday:"long", day:"numeric", month:"long", year:"numeric" }); return t.charAt(0).toUpperCase() + t.slice(1); };
 const plata = n => "$" + Number(n || 0).toFixed(2);
-let dias = [], pintadoDia = "";
+let dias = [], pintadoDia = "", filtro = null;   // filtro = {desde, hasta, nombre} o null (últimos 7 días)
+const fechaISO = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+function rangoRapido(tipo){
+  const h = new Date(); h.setHours(12, 0, 0, 0);
+  const lunes = new Date(h); lunes.setDate(h.getDate() - ((h.getDay() + 6) % 7));
+  if (tipo === "semana") return { desde: fechaISO(lunes), hasta: fechaISO(h), nombre: "Esta semana" };
+  if (tipo === "pasada"){ const a = new Date(lunes); a.setDate(lunes.getDate() - 7); const b = new Date(lunes); b.setDate(lunes.getDate() - 1); return { desde: fechaISO(a), hasta: fechaISO(b), nombre: "Semana pasada" }; }
+  if (tipo === "mes") return { desde: fechaISO(new Date(h.getFullYear(), h.getMonth(), 1)), hasta: fechaISO(h), nombre: "Este mes" };
+  if (tipo === "mesPasado") return { desde: fechaISO(new Date(h.getFullYear(), h.getMonth() - 1, 1)), hasta: fechaISO(new Date(h.getFullYear(), h.getMonth(), 0)), nombre: "Mes pasado" };
+  return null;
+}
 
 async function api(metodo, cuerpo, q = ""){
   const r = await fetch("/api/cocina" + q, { method: metodo, headers: { "Content-Type": "application/json", "x-clave": CLAVE }, cache: "no-store", body: cuerpo ? JSON.stringify(cuerpo) : undefined });
@@ -578,7 +596,7 @@ async function cargarDias(){
 function pintarDia(){
   const J = datos.jornada;
   // No redibujar si nada cambió (para no borrar la fecha que estás escribiendo)
-  const firma = JSON.stringify([J, datos.hoy, dias.map(d => d.id)]);
+  const firma = JSON.stringify([J, datos.hoy, dias.map(d => d.id), filtro]);
   if (firma === pintadoDia) return;
   pintadoDia = firma;
   const arriba = J ? `
@@ -596,17 +614,31 @@ function pintarDia(){
       <input type="date" class="campoFecha" id="fechaNueva" value="${datos.hoyFecha}">
       <button class="bGrande bVerde" id="bNuevo">☀️ Nuevo día laboral</button>
     </div>`;
+  // Sin filtro: solo los últimos 7 días trabajados. Con filtro: los del rango elegido.
+  const lista = filtro ? dias.filter(d => d.fecha >= filtro.desde && d.fecha <= filtro.hasta) : dias.slice(0, 7);
+  const sumaN = lista.reduce((t, d) => t + d.n, 0), sumaT = lista.reduce((t, d) => t + d.total, 0);
+  const primero = dias.length ? dias[dias.length - 1].fecha : datos.hoyFecha;
   const carpeta = `
     <div class="hoja">
       <h2>📁 Días guardados</h2>
-      ${dias.length ? `<div class="dias">${dias.map(d => `
+      <div class="filtroF">
+        <div class="rapidos">${[["semana","Esta semana"],["pasada","Semana pasada"],["mes","Este mes"],["mesPasado","Mes pasado"]].map(([k, t]) => `<button data-rapido="${k}" class="${filtro && filtro.nombre === t ? "on" : ""}">${t}</button>`).join("")}</div>
+        <div class="rangoF">
+          <label>Desde<input type="date" id="fDesde" min="${primero}" max="${datos.hoyFecha}" value="${filtro ? filtro.desde : ""}"></label>
+          <label>Hasta<input type="date" id="fHasta" min="${primero}" max="${datos.hoyFecha}" value="${filtro ? filtro.hasta : ""}"></label>
+        </div>
+        <div class="sub2" style="margin-top:8px">${filtro
+          ? `📅 <b>${filtro.desde === filtro.hasta ? fechaLarga(filtro.desde) : `${fechaLarga(filtro.desde)} → ${fechaLarga(filtro.hasta)}`}</b> · ${lista.length} día(s) · ${sumaN} pedidos · <b>${plata(sumaT)}</b> <button class="quitarF" id="quitarF">✕ Quitar filtro</button>`
+          : `Mostrando los últimos ${Math.min(7, dias.length)} días trabajados${dias.length > 7 ? ` de ${dias.length}. Usa el calendario para ver días anteriores.` : "."}`}</div>
+      </div>
+      ${lista.length ? `<div class="dias">${lista.map(d => `
         <div class="d" data-dia="${d.id}">
           <div class="f">${fechaLarga(d.fecha)}<small>${d.n} pedidos · cerrado ${new Date(d.cerrada).toLocaleDateString("es-EC")} ${hora(d.cerrada)}</small></div>
           <div class="t">${plata(d.total)}</div>
           <button class="x" data-borrar="${d.id}" aria-label="Eliminar este día">🗑</button>
         </div>`).join("")}</div>
         <div class="borrarFila"><button id="bSemana">🗑 Eliminar última semana</button><button id="bTodo">🗑 Eliminar todo</button></div>`
-      : `<div class="sub2">Aquí se guarda el cierre de caja de cada día cuando lo culminas.</div>`}
+      : `<div class="sub2" style="margin-top:12px">${filtro ? "No hay días guardados en esas fechas." : "Aquí se guarda el cierre de caja de cada día cuando lo culminas."}</div>`}
     </div>`;
   $("#dia").innerHTML = arriba + carpeta;
 }
@@ -649,7 +681,17 @@ function textoReporte(R){
 function abrirReporte(html, R){ reporteActual = R || null; $("#caja").innerHTML = html; $("#reporte").classList.add("ver"); $("#reporte").scrollTop = 0; }
 const cerrarReporte = ()=> $("#reporte").classList.remove("ver");
 
+$("#dia").addEventListener("change", e=>{
+  if (e.target.id !== "fDesde" && e.target.id !== "fHasta") return;
+  let a = $("#fDesde").value, b = $("#fHasta").value;
+  if (!a && !b) return;
+  if (!a) a = b; if (!b) b = a;                 // un solo día: elegir solo "Desde"
+  if (a > b) [a, b] = [b, a];
+  filtro = { desde: a, hasta: b, nombre: "" }; pintarDia();
+});
 $("#dia").addEventListener("click", async e=>{
+  const r = e.target.closest("[data-rapido]"); if (r){ filtro = rangoRapido(r.dataset.rapido); pintarDia(); return; }
+  if (e.target.id === "quitarF"){ filtro = null; pintarDia(); return; }
   const ir = e.target.closest("[data-ir]"); if (ir){ verVista(ir.dataset.ir); return; }
   if (e.target.id === "bNuevo"){
     const f = $("#fechaNueva").value;

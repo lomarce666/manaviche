@@ -257,6 +257,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 <div id="pista"></div>
 
 <script>
+// Si el celular guardó una versión vieja de /cocina, lo mandamos a la pantalla de cocina
+if (/^\/cocina/.test(location.pathname) && !/[?&]v=/.test(location.search)) location.replace("/cocina?v=" + Date.now());
 (async function(){
 /* =================================================================
    Los platos, precios, mesas y datos del restaurante están en

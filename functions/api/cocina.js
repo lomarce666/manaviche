@@ -22,15 +22,19 @@ export async function onRequestGet({ request, env }) {
   if (!env.DB) return responder(500, { ok: false, error: "Falta conectar la base de datos (DB)" });
   await prepararTablas(env.DB);
   const hoy = diaDeTrabajo();
-  const [lista, resumen] = await env.DB.batch([
+  const [lista, resumen, hechos] = await env.DB.batch([
     // Pendientes de hoy, y también los de ayer que quedaron sin terminar
     env.DB.prepare("SELECT id, numero, tipo, mesa, items, notas, total, estado, creado, actualizado FROM pedidos " +
       "WHERE estado != 'listo' AND creado > ?1 ORDER BY id").bind(Date.now() - 18 * 3600 * 1000),
     env.DB.prepare("SELECT n, total FROM contador WHERE dia = ?1").bind(hoy),
+    // Pedidos ya preparados hoy (los más recientes primero)
+    env.DB.prepare("SELECT id, numero, mesa, items, notas, total, creado, actualizado FROM pedidos " +
+      "WHERE dia = ?1 AND tipo = 'pedido' AND estado = 'listo' ORDER BY actualizado DESC LIMIT 300").bind(hoy),
   ]);
   const pedidos = lista.results.map((p) => ({ ...p, items: p.items ? JSON.parse(p.items) : [] }));
   const r = resumen.results[0] || { n: 0, total: 0 };
-  return responder(200, { ok: true, dia: hoy, ahora: Date.now(), pedidos, hoy: { pedidos: r.n, total: r.total } });
+  const listos = hechos.results.map((p) => ({ ...p, items: p.items ? JSON.parse(p.items) : [] }));
+  return responder(200, { ok: true, dia: hoy, ahora: Date.now(), pedidos, listos, hoy: { pedidos: r.n, total: r.total } });
 }
 
 export async function onRequestPost({ request, env }) {

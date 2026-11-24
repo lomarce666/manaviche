@@ -59,6 +59,24 @@ main{padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280
 .b-listo{background:#2ecc71;color:#08210f}
 .b-ok{background:#4ea1ff;color:#06203d}
 .titulo-aviso{font-size:24px;font-weight:900;margin-top:6px}
+/* Pestañas */
+.pestanas{display:flex;gap:8px;padding:12px 16px 0}
+.pestanas button{flex:1;padding:12px;border-radius:12px;background:#1b2027;color:#cfd6df;font-size:16px;font-weight:800}
+.pestanas button.on{background:#ffd166;color:#111}
+.pestanas .cuenta{display:inline-block;min-width:24px;padding:0 6px;margin-left:6px;border-radius:99px;background:rgba(0,0,0,.25);font-size:14px}
+.pestanas button.alerta:not(.on){background:#e63946;color:#fff;animation:latir 1s infinite}
+/* Preparados */
+#preparados{display:none;padding:16px}
+.resumen{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.resumen div{flex:1;min-width:140px;background:#16351f;border-radius:16px;padding:14px;text-align:center}
+.resumen b{display:block;font-size:30px;color:#6ee7a0}
+.resumen span{font-size:14px;opacity:.8}
+.fila{display:flex;gap:12px;align-items:flex-start;background:#1b2027;border-radius:14px;padding:12px 14px;margin-bottom:10px}
+.fila .n{font-size:20px;font-weight:900;min-width:52px}
+.fila .det{flex:1;font-size:15px;line-height:1.45}
+.fila .det small{display:block;opacity:.65;font-size:13px}
+.fila .monto{font-weight:900;font-size:18px;color:#ffd166;text-align:right}
+.fila .volver{display:block;margin-top:6px;background:none;color:#9aa4b1;font-size:12px;text-decoration:underline;padding:0}
 </style>
 </head>
 <body>
@@ -82,7 +100,12 @@ main{padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280
     <span id="estado">● En línea</span>
   </header>
   <div id="avisoSonido">🔇 Toca aquí para activar el sonido</div>
+  <nav class="pestanas">
+    <button id="tabPend" class="on">🔥 Pendientes<span class="cuenta" id="cPend">0</span></button>
+    <button id="tabPrep">✅ Pedidos preparados<span class="cuenta" id="cPrep">0</span></button>
+  </nav>
   <main id="lista"><div class="vacio"><b>✅</b>Sin pedidos pendientes</div></main>
+  <section id="preparados"></section>
 </section>
 
 <script>
@@ -184,7 +207,42 @@ const esc = t => String(t ?? "").replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt
 const hace = ms => { const m = Math.floor((datos.ahora - ms) / 60000); return m < 1 ? "recién" : `hace ${m} min`; };
 const hora = ms => new Date(ms).toLocaleTimeString("es-EC", { hour: "2-digit", minute: "2-digit" });
 
+let vista = "pend";
+function verVista(v){
+  vista = v;
+  $("#tabPend").classList.toggle("on", v === "pend"); $("#tabPrep").classList.toggle("on", v === "prep");
+  $("#lista").style.display = v === "pend" ? "grid" : "none";
+  $("#preparados").style.display = v === "prep" ? "block" : "none";
+  pintar();
+}
+$("#tabPend").onclick = ()=>verVista("pend");
+$("#tabPrep").onclick = ()=>verVista("prep");
+
+function pintarPreparados(){
+  const L = datos.listos || [];
+  const suma = L.reduce((t,p)=>t + Number(p.total), 0);
+  const platos = {};
+  L.forEach(p => p.items.forEach(it => { platos[it.nombre] = (platos[it.nombre] || 0) + it.cantidad; }));
+  const top = Object.entries(platos).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([n,c])=>`${c} ${esc(n)}`).join(" · ");
+  $("#preparados").innerHTML = `
+    <div class="resumen">
+      <div><b>${L.length}</b><span>pedidos preparados hoy</span></div>
+      <div><b>$${suma.toFixed(2)}</b><span>vendido en preparados</span></div>
+    </div>
+    ${top ? `<p style="opacity:.75;margin:0 2px 14px;font-size:14px">Más pedidos: ${top}</p>` : ""}
+    ${L.length ? L.map(p => `<div class="fila">
+        <div class="n">#${p.numero ?? "—"}</div>
+        <div class="det"><b>Mesa ${p.mesa}</b> · ${p.items.map(it => `${it.cantidad} x ${esc(it.nombre)}`).join(", ")}
+          <small>Pedido ${hora(p.creado)} · listo ${hora(p.actualizado)}</small></div>
+        <div class="monto">$${Number(p.total).toFixed(2)}<button class="volver" data-id="${p.id}" data-estado="preparando">↩ Volver a pendientes</button></div>
+      </div>`).join("") : `<div class="vacio"><b>🍽️</b>Todavía no hay pedidos preparados hoy</div>`}`;
+}
+
 function pintar(){
+  $("#cPend").textContent = datos.pedidos.length;
+  $("#cPrep").textContent = (datos.listos || []).length;
+  $("#tabPend").classList.toggle("alerta", datos.pedidos.some(p => p.estado === "nuevo"));
+  if (vista === "prep") pintarPreparados();
   $("#hoyN").textContent = datos.hoy?.pedidos ?? 0;
   $("#hoyT").textContent = "$" + Number(datos.hoy?.total ?? 0).toFixed(2);
   const lista = datos.pedidos;
@@ -212,18 +270,21 @@ function pintar(){
 }
 
 /* ---------- Botones Recibido / Listo ---------- */
-$("#lista").addEventListener("click", async e=>{
+async function alTocar(e){
   const b = e.target.closest("[data-id]"); if (!b) return;
   activarSonido();
   const id = Number(b.dataset.id), estado = b.dataset.estado;
   // Cambia en pantalla al instante, y se guarda por detrás
   const p = datos.pedidos.find(x => x.id === id);
-  if (p){ if (estado === "listo") datos.pedidos = datos.pedidos.filter(x => x.id !== id); else p.estado = estado; pintar(); }
+  if (p){ if (estado === "listo"){ datos.pedidos = datos.pedidos.filter(x => x.id !== id); if (p.tipo === "pedido") (datos.listos = datos.listos || []).unshift({ ...p, actualizado: Date.now() }); } else p.estado = estado; pintar(); }
+  else if (datos.listos){ const q = datos.listos.find(x => x.id === id); if (q){ datos.listos = datos.listos.filter(x => x.id !== id); datos.pedidos.push({ ...q, tipo: "pedido", estado }); pintar(); } }
   try {
     await fetch("/api/cocina", { method: "POST", headers: { "Content-Type": "application/json", "x-clave": CLAVE }, body: JSON.stringify({ id, estado }) });
   } catch(e){}
   cargar();
-});
+}
+$("#lista").addEventListener("click", alTocar);
+$("#preparados").addEventListener("click", e=>{ if (e.target.closest(".volver") && confirm("¿Volver este pedido a pendientes?")) alTocar(e); });
 
 // Si ya había clave guardada, intenta entrar solo (el sonido se activa con el primer toque)
 if (CLAVE) cargar().then(ok => { if (ok === true){ $("#entrar").style.display = "none"; $("#panel").style.display = "block"; revisarSonido(); pedirPantallaEncendida(); } });

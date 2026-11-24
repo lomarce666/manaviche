@@ -10,10 +10,16 @@
 //  POST {accion:"previa"}          → cierre de caja (sin guardar)
 //  POST {accion:"cerrar"}          → Culminar día de trabajo (guarda)
 //  POST {accion:"borrar", alcance:"dia"|"semana"|"todo", id?}
-//  POST {accion:"cobrar", id}      → cerrar la cuenta de una mesa (ya pagó)
+//  POST {accion:"cobrar", id, metodo} → cerrar la cuenta de una mesa (ya pagó)
+//  GET ?carta=1                    → carta con agotados/precios/plato del día
+//  GET ?stats=7                    → estadísticas de los últimos N días
+//  POST {accion:"plato", id, agotado?, precio?}   → cambiar un plato
+//  POST {accion:"promo", id, texto} / {accion:"promo"} → plato del día / quitarlo
 // =============================================================
 
-import { hoyEcuador, prepararTablas, jornadaAbierta, resumenJornada, detalleCuenta, CUENTA_VENCE, responder } from "../_db.js";
+import { hoyEcuador, prepararTablas, jornadaAbierta, resumenJornada, detalleCuenta, cartaEfectiva, CUENTA_VENCE, responder } from "../_db.js";
+
+const METODOS = ["Efectivo", "Transferencia", "Tarjeta"];
 
 const ESTADOS = ["nuevo", "recibido", "preparando", "listo"];
 const fechaValida = (f) => /^\d{4}-\d{2}-\d{2}$/.test(String(f || ""));
@@ -44,6 +50,41 @@ export async function onRequestGet({ request, env }) {
     const j = await DB.prepare("SELECT * FROM jornadas WHERE id = ?1").bind(Number(url.searchParams.get("dia"))).first();
     if (!j) return responder(404, { ok: false, error: "Ese día ya no existe" });
     return responder(200, { ok: true, reporte: j.resumen ? JSON.parse(j.resumen) : await resumenJornada(DB, j) });
+  }
+
+  // Carta (para la pestaña Carta)
+  if (url.searchParams.get("carta")) {
+    const R = await cartaEfectiva(env, request.url);
+    const base = await (await env.ASSETS.fetch(new URL("/restaurante.json", request.url))).json();
+    const original = Object.fromEntries((base.platos || []).map((p, i) => [p.id || "p" + i, p.precio]));
+    return responder(200, { ok: true, platos: R.platos.map((p) => ({ id: p.id, nombre: p.nombre, precio: p.precio, original: original[p.id], agotado: !!p.agotado, categoria: p.categoria || "" })), promo: R.promo || null });
+  }
+  // Estadísticas
+  if (url.searchParams.get("stats")) {
+    const dias = Math.min(Math.max(Number(url.searchParams.get("stats")) || 7, 1), 90);
+    const desde = Date.now() - dias * 86400000;
+    const { results } = await DB.prepare("SELECT items, total, creado FROM pedidos WHERE tipo = 'pedido' AND creado >= ?1 LIMIT 20000").bind(desde).all();
+    const platos = {}, porDia = {}, porHora = Array(24).fill(0);
+    let total = 0;
+    const NOMBRES = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+    for (const p of results) {
+      total += p.total;
+      const f = new Date(p.creado - 5 * 3600000);
+      const dia = f.toISOString().slice(0, 10);
+      porDia[dia] = porDia[dia] || { dia, nombre: NOMBRES[f.getUTCDay()], pedidos: 0, total: 0 };
+      porDia[dia].pedidos++; porDia[dia].total += p.total;
+      porHora[f.getUTCHours()]++;
+      for (const it of p.items ? JSON.parse(p.items) : []) {
+        platos[it.nombre] = platos[it.nombre] || { nombre: it.nombre, cantidad: 0, total: 0 };
+        platos[it.nombre].cantidad += it.cantidad; platos[it.nombre].total += it.cantidad * it.precio;
+      }
+    }
+    const r2 = (x) => Math.round(x * 100) / 100;
+    return responder(200, { ok: true, dias, pedidos: results.length, total: r2(total),
+      ticket: results.length ? r2(total / results.length) : 0,
+      platos: Object.values(platos).sort((a, b) => b.cantidad - a.cantidad).map((x) => ({ ...x, total: r2(x.total) })),
+      porDia: Object.values(porDia).sort((a, b) => a.dia.localeCompare(b.dia)).map((x) => ({ ...x, total: r2(x.total) })),
+      porHora });
   }
 
   const j = await jornadaAbierta(DB, false);
@@ -105,10 +146,40 @@ export async function onRequestPost({ request, env }) {
   if (d.accion === "cobrar") {
     const id = Number(d.id);
     if (!Number.isInteger(id)) return responder(400, { ok: false, error: "Datos inválidos" });
-    await DB.prepare("UPDATE cuentas SET cerrada = ?2 WHERE id = ?1 AND cerrada IS NULL").bind(id, Date.now()).run();
+    const metodo = METODOS.includes(d.metodo) ? d.metodo : null;
+    await DB.prepare("UPDATE cuentas SET cerrada = ?2, metodo = ?3 WHERE id = ?1 AND cerrada IS NULL").bind(id, Date.now(), metodo).run();
     // La próxima gente que use esa mesa empieza con el carrito vacío
     const c = await DB.prepare("SELECT mesa FROM cuentas WHERE id = ?1").bind(id).first();
     if (c) await DB.prepare("UPDATE carritos SET lineas = '[]', version = version + 1, actualizado = ?2, ultimo = NULL WHERE mesa = ?1").bind(c.mesa, Date.now()).run();
+    return responder(200, { ok: true });
+  }
+
+  // ---- Carta: agotado / precio de un plato ----
+  if (d.accion === "plato") {
+    const R = await cartaEfectiva(env, request.url);
+    const p = R.platos.find((x) => x.id === String(d.id));
+    if (!p) return responder(404, { ok: false, error: "Ese plato no existe" });
+    const actual = await DB.prepare("SELECT valor FROM ajustes WHERE clave = ?1").bind("plato:" + p.id).first();
+    const v = actual ? JSON.parse(actual.valor) : {};
+    if (typeof d.agotado === "boolean") v.agotado = d.agotado;
+    if (d.precio !== undefined) {
+      const pr = Math.round(Number(d.precio) * 100) / 100;
+      if (d.precio === null) delete v.precio;
+      else if (!(pr > 0 && pr <= 1000)) return responder(400, { ok: false, error: "Precio no válido" });
+      else v.precio = pr;
+    }
+    await DB.prepare("INSERT INTO ajustes (clave, valor, actualizado) VALUES (?1, ?2, ?3) ON CONFLICT(clave) DO UPDATE SET valor = ?2, actualizado = ?3")
+      .bind("plato:" + p.id, JSON.stringify(v), Date.now()).run();
+    return responder(200, { ok: true });
+  }
+  // ---- Plato del día ----
+  if (d.accion === "promo") {
+    if (!d.id) { await DB.prepare("DELETE FROM ajustes WHERE clave = 'promo'").run(); return responder(200, { ok: true }); }
+    const R = await cartaEfectiva(env, request.url);
+    if (!R.platos.some((x) => x.id === String(d.id))) return responder(404, { ok: false, error: "Ese plato no existe" });
+    const texto = String(d.texto ?? "").replace(/[<>]/g, "").trim().slice(0, 80);
+    await DB.prepare("INSERT INTO ajustes (clave, valor, actualizado) VALUES ('promo', ?1, ?2) ON CONFLICT(clave) DO UPDATE SET valor = ?1, actualizado = ?2")
+      .bind(JSON.stringify({ id: String(d.id), texto }), Date.now()).run();
     return responder(200, { ok: true });
   }
 

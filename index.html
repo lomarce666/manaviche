@@ -193,6 +193,51 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 #ayudaMsg{margin-top:10px;font-size:14px;color:#a8242f;min-height:18px}
 #ayudaMsg a{color:#179c4a;font-weight:800}
 
+/* Carta completa */
+#cartaBtn{position:fixed;right:14px;top:calc(14px + env(safe-area-inset-top));z-index:58;border:none;border-radius:99px;background:rgba(255,255,255,.92);color:#0d3b4f;font:inherit;font-weight:900;font-size:14px;padding:10px 14px;box-shadow:0 6px 18px rgba(0,0,0,.25);cursor:pointer}
+#carta{position:fixed;inset:0;z-index:90;background:#fffaf0;color:#1d1d1f;transform:translate3d(0,100%,0);transition:transform .35s cubic-bezier(.2,.9,.3,1);display:flex;flex-direction:column}
+#carta.ver{transform:translate3d(0,0,0)}
+#carta .cab{padding:calc(14px + env(safe-area-inset-top)) 16px 10px;border-bottom:1px solid #eadfcb;background:#fffaf0}
+#carta .cab h3{font-size:22px;font-weight:900;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center}
+#carta .cab .x{border:none;background:#efe6d6;width:38px;height:38px;border-radius:50%;font-size:24px;cursor:pointer}
+#buscar{width:100%;margin-top:10px;padding:11px 12px;border:2px solid #e2d8c6;border-radius:12px;font:inherit;font-size:16px;outline:none;background:#fff}
+#buscar:focus{border-color:#0d3b4f}
+#cats{display:flex;gap:8px;overflow-x:auto;margin-top:10px;padding-bottom:2px;scrollbar-width:none}
+#cats button{flex:none;border:2px solid #e2d8c6;background:#fff;border-radius:99px;padding:7px 13px;font:inherit;font-size:14px;font-weight:800;color:#4a443b;cursor:pointer}
+#cats button.on{background:#0d3b4f;border-color:#0d3b4f;color:#fff}
+#cartaLista{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:6px 16px calc(110px + env(safe-area-inset-bottom))}
+#cartaLista h4{font-size:15px;font-weight:900;text-transform:uppercase;color:#0d3b4f;margin:16px 0 4px}
+.cp{display:flex;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid #efe6d6}
+.cp .nm{flex:1;min-width:0}
+.cp .nm b{display:block;font-size:16px}
+.cp .nm small{display:block;font-size:13px;color:#7a7266;margin-top:2px;line-height:1.35}
+.cp .pr{font-weight:900;font-size:16px;color:#0d3b4f;white-space:nowrap}
+.cp .pedir{border:none;background:#0d3b4f;color:#fff;border-radius:99px;padding:9px 13px;font:inherit;font-size:14px;font-weight:800;cursor:pointer;white-space:nowrap}
+.cp .pedir.listo{background:#179c4a}
+.cp .ago{font-size:13px;font-weight:800;color:#a8242f;white-space:nowrap}
+.cp.estrella{background:#fff3cf;margin:0 -16px;padding:12px 16px}
+body.conCarta #burbuja{z-index:91}
+body.conCarta #cartaBtn,body.conCarta #promo,body.conCarta #ayudaBtn{visibility:hidden}
+#cartaVacia{display:none;text-align:center;color:#7a7266;margin-top:30px}
+/* Plato del día */
+#promo{position:fixed;left:50%;top:calc(66px + env(safe-area-inset-top));transform:translate3d(-50%,0,0);z-index:57;display:none;align-items:center;gap:10px;width:calc(100% - 28px);max-width:440px;background:var(--amarillo);color:#1d1d1f;border-radius:16px;padding:9px 10px 9px 14px;box-shadow:0 8px 22px rgba(0,0,0,.3);font-size:14px;line-height:1.25}
+#promo.ver{display:flex}
+#promo b{font-weight:900;text-transform:uppercase;font-size:12px;display:block}
+#promo .pedir{flex:none;border:none;background:#1d1d1f;color:#fff;border-radius:99px;padding:8px 12px;font:inherit;font-size:13px;font-weight:800;cursor:pointer}
+#promo .x{flex:none;border:none;background:none;font-size:20px;cursor:pointer;color:#1d1d1f;opacity:.6}
+/* Cerrado / sin QR */
+#franja{display:none;background:#a8242f;color:#fff;border-radius:14px;padding:10px 12px;margin:2px 0 8px;font-size:14px;font-weight:700;text-align:center}
+#franja.ver{display:block}
+/* Estado de cada pedido y cuánto le toca a cada uno */
+.estados{margin-top:8px;display:grid;gap:5px}
+.estados div{display:flex;justify-content:space-between;font-size:13px;background:#f6f0e4;border-radius:10px;padding:6px 10px}
+.estados .e-nuevo{color:#7a5b00}.estados .e-prep{color:#b5540b}.estados .e-listo{color:#179c4a}
+.reparto{margin-top:10px;border-top:1px dashed #e2d8c6;padding-top:8px}
+.reparto summary{font-weight:900;font-size:14px;color:#0d3b4f;cursor:pointer}
+.reparto li{font-size:14px}
+/* Gracias + reseña */
+.estrellas{font-size:34px;letter-spacing:4px;margin-top:6px}
+
 @media (prefers-reduced-motion:reduce){
   #enviar:not(:disabled){animation:none}
   .flotar,.vapor path,#desliza b{animation:none}
@@ -231,6 +276,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
     👥 <b id="compTitulo">Carrito de la mesa</b><br><span id="compTexto">Todos en la mesa ven este carrito y cualquiera puede enviarlo.</span>
     <input id="miNombre" maxlength="20" placeholder="Tu nombre (opcional)" autocomplete="given-name">
   </div>
+  <div id="franja"></div>
   <div class="yaPedido" id="yaPedido"></div>
   <div class="agregarMas" id="agregarMas"></div>
   <div id="lista"></div>
@@ -262,6 +308,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 
 <!-- Llamar mesero / pedir cuenta -->
 <button id="ayudaBtn" aria-label="Llamar al mesero">🙋</button>
+<button id="cartaBtn" aria-label="Ver carta completa">📋 Carta completa</button>
+<div id="promo"><span>⭐</span><div style="flex:1;min-width:0"><b>Plato del día</b><span id="promoTxt"></span></div><button class="pedir" id="promoPedir">Agregar +</button><button class="x" id="promoX" aria-label="Ocultar">×</button></div>
+<div id="carta" role="dialog" aria-label="Carta completa">
+  <div class="cab">
+    <h3>Carta completa <button class="x" id="cartaX" aria-label="Cerrar">×</button></h3>
+    <input id="buscar" type="search" placeholder="🔎 Buscar un plato…" autocomplete="off">
+    <div id="cats"></div>
+  </div>
+  <div id="cartaLista"></div>
+</div>
 <div id="ayudaPanel" role="dialog" aria-label="Llamar al mesero">
   <div class="caja">
     <h4>¿En qué te ayudamos?</h4>
@@ -288,16 +344,28 @@ if (/^\/cocina/.test(location.pathname) && !/[?&]v=/.test(location.search)) loca
    restaurante.json  ←  para cambiar precios se edita ESE archivo.
    Aquí está el diseño y el funcionamiento del menú.
    ================================================================= */
-let NEGOCIO;
+let NEGOCIO, INFO = { horario: { abierto: true }, exigeQR: false, mesaValida: true };
+const QS = new URLSearchParams(location.search);
+const CLAVE_QR = (QS.get("k") || "").replace(/[^a-z0-9]/gi, "").slice(0, 16);
 try {
-  const r = await fetch("/restaurante.json", { cache: "no-cache" });
-  if (!r.ok) throw new Error("no existe");
-  NEGOCIO = await r.json();
+  // Primero la carta con los cambios de la cocina (agotados, precios, plato del día);
+  // si eso falla, el archivo normal.
+  try {
+    const r0 = await fetch(`/api/carta?mesa=${encodeURIComponent(QS.get("mesa") || "")}&k=${CLAVE_QR}`, { cache: "no-store" });
+    const j0 = r0.ok ? await r0.json() : null;
+    if (!j0 || !j0.ok) throw 0;
+    NEGOCIO = j0.carta; INFO = j0;
+  } catch (e0) {
+    const r = await fetch("/restaurante.json", { cache: "no-cache" });
+    if (!r.ok) throw new Error("no existe");
+    NEGOCIO = await r.json();
+  }
 } catch (e) {
   document.body.innerHTML = `<div style="min-height:100vh;display:grid;place-items:center;text-align:center;padding:30px;font-family:system-ui;background:#0d3b4f;color:#fff7e6"><div><div style="font-size:56px">🍽️</div><h1 style="margin-top:10px">Menú no disponible</h1><p style="opacity:.8;margin-top:8px">Intenta de nuevo en un momento o pide tu carta al mesero.</p></div></div>`;
   return;
 }
-const PLATOS = (NEGOCIO.platos || []).map((p, i) => ({ ...p, id: p.id || ("p" + i), comida: p.dibujo || "", fondo: p.fondo || "#2b4162" }));
+const PLATOS = (NEGOCIO.platos || []).map((p, i) => ({ ...p, i, id: p.id || ("p" + i), comida: p.dibujo || "", fondo: p.fondo || "#2b4162" }));
+const ESCENA = PLATOS.filter(p => !p.solo_carta);          // los que salen en la animación
 const COLORES = NEGOCIO.colores || {};
 if (COLORES.acento) document.documentElement.style.setProperty("--amarillo", COLORES.acento);
 document.querySelector('meta[name="theme-color"]')?.setAttribute("content", COLORES.inicio || "#0d3b4f");
@@ -408,19 +476,19 @@ document.title = NEGOCIO.nombre + " · Menú";
 $("#eslogan").textContent = NEGOCIO.eslogan || "";
 
 const platosBox = $("#platos"), puntos = $("#puntos");
-const nodos = PLATOS.map((p,i)=>{
+const nodos = ESCENA.map((p,i)=>{
   const lado = i % 2 === 0 ? "der" : "izq";
   const el = document.createElement("div");
   el.className = "plato";
   el.innerHTML = `
     <div class="mano ${lado}"><div class="flotar" style="animation-delay:-${i*0.5}s">${manoSVG(p.comida, p.foto, i)}</div></div>
     <div class="texto">
-      <div class="num">${String(i+1).padStart(2,"0")} / ${String(PLATOS.length).padStart(2,"0")}</div>
+      <div class="num">${String(i+1).padStart(2,"0")} / ${String(ESCENA.length).padStart(2,"0")}</div>
       <h2>${p.nombre}</h2>
       <p>${p.desc || ""}</p>
       <div class="fila">
         <span class="precio">${precioTxt(p.precio)}</span>
-        ${p.agotado ? `<span class="agotado">Agotado hoy</span>` : `<button class="pedir clic" data-i="${i}">Agregar +</button>`}
+        ${p.agotado ? `<span class="agotado">Agotado hoy</span>` : `<button class="pedir clic" data-i="${p.i}">Agregar +</button>`}
       </div>
     </div>`;
   platosBox.appendChild(el);
@@ -435,8 +503,13 @@ const carrito = {};                       // índice del plato -> cantidad
 const burbuja = $("#burbuja"), ventana = $("#ventana"), sombra = $("#sombra");
 const mesaIn = $("#mesa"), enviar = $("#enviar");
 // Si el cliente llegó por el QR de su mesa (?mesa=14) se llena sola
-const MESA_QR = (()=>{ const n = Number(new URLSearchParams(location.search).get("mesa")); return Number.isInteger(n) && n >= 1 && n <= NEGOCIO.mesas ? n : 0; })();
+const MESA_QR = (()=>{ const n = Number(QS.get("mesa")); return Number.isInteger(n) && n >= 1 && n <= NEGOCIO.mesas && (!INFO.exigeQR || INFO.mesaValida) ? n : 0; })();
+// Si el restaurante exige QR, sin un QR válido solo se puede mirar la carta
+const SOLO_VER = INFO.exigeQR && !MESA_QR;
+const ABIERTO = !INFO.horario || INFO.horario.abierto !== false;
+const kQR = MESA_QR ? `&k=${CLAVE_QR}` : "";
 if (MESA_QR){ mesaIn.value = MESA_QR; mesaIn.readOnly = true; mesaIn.classList.add("fija"); $("#mesaLabel").textContent = `🍽️ Estás en la mesa ${MESA_QR}`; }
+if (SOLO_VER){ mesaIn.readOnly = true; mesaIn.placeholder = "QR"; }
 
 const cuenta = () => Object.values(carrito).reduce((a,b)=>a+b, 0);
 const suma = () => Object.entries(carrito).reduce((t,[i,q])=>t + PLATOS[i].precio*q, 0);
@@ -458,7 +531,9 @@ function aplicarMesa(e, desdeServidor){
   if (e.version < versionMesa && desdeServidor) return;           // respuesta vieja
   if (enVuelo && desdeServidor === "consulta") return;            // esperando la respuesta de mi propio cambio
   const antes = new Map(lineasMesa.map(l => [l.p + "|" + l.por, l.q]));
-  versionMesa = e.version; lineasMesa = e.lineas; personasMesa = e.personas; cuentaMesa = e.cuenta || null;
+  versionMesa = e.version; lineasMesa = e.lineas; personasMesa = e.personas;
+  seguirCuenta(e.cuenta || null);
+  cuentaMesa = e.cuenta || null;
   // Avisar lo que agregó otra persona
   e.lineas.forEach(l => {
     if (l.por === YO) return;
@@ -485,7 +560,7 @@ async function consultarMesa(){
   if (!MESA_QR) return null;
   const ping = Date.now() - ultimoPing > 15000;
   try {
-    const r = await fetch(`/api/mesa?mesa=${MESA_QR}&yo=${encodeURIComponent(YO)}&nombre=${encodeURIComponent(miNombre)}${ping ? "&ping=1" : ""}`, { cache: "no-store" });
+    const r = await fetch(`/api/mesa?mesa=${MESA_QR}${kQR}&yo=${encodeURIComponent(YO)}&nombre=${encodeURIComponent(miNombre)}${ping ? "&ping=1" : ""}`, { cache: "no-store" });
     if (!r.ok) return null;
     if (ping) ultimoPing = Date.now();
     return await r.json();
@@ -495,7 +570,7 @@ async function cambiarMesa(plato, delta){
   enVuelo++;
   try {
     const r = await fetch("/api/mesa", { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mesa: MESA_QR, yo: YO, nombre: miNombre, plato, delta }) });
+      body: JSON.stringify({ mesa: MESA_QR, k: CLAVE_QR, yo: YO, nombre: miNombre, plato, delta }) });
     const j = await r.json();
     if (j.ok) aplicarMesa(j, true); else { avisar(j.error || "No se pudo actualizar"); aplicarMesa(await consultarMesa(), true); }
   } catch(e){ avisar("Sin conexión, intenta de nuevo"); }
@@ -526,6 +601,33 @@ function quienesPidieron(i){
   document.addEventListener("visibilitychange", async ()=>{ if (!document.hidden){ ultimoPing = 0; aplicarMesa(await consultarMesa(), true); pintarCompartido(); } });
 })();
 $("#miNombre").addEventListener("change", e=>{ miNombre = e.target.value.replace(/[<>"'`]/g,"").trim().slice(0,20); guardarLS("mesa_nombre", miNombre); ultimoPing = 0; });
+
+// Avisos cuando cambia el estado de un pedido, y "gracias" cuando cobran la cuenta
+let estadosVistos = null, cuentaVista = null;
+function seguirCuenta(c){
+  const nuevos = {};
+  (c && c.pedidos || []).forEach(p => nuevos[p.numero] = p.estado);
+  if (estadosVistos) for (const [num, est] of Object.entries(nuevos)){
+    if (est !== estadosVistos[num] && estadosVistos[num]){
+      if (est === "listo") avisar(`✅ Pedido #${num} entregado. ¡Buen provecho!`);
+      else if (est === "recibido" || est === "preparando") avisar(`👨‍🍳 La cocina ya está preparando tu pedido #${num}`);
+    }
+  }
+  estadosVistos = nuevos;
+  if (cuentaVista && !c) pedirResena(cuentaVista);
+  cuentaVista = c && c.pedidos && c.pedidos.length ? c : null;
+}
+const ESTADO_TXT = { nuevo: ["📨 Enviado", "e-nuevo"], recibido: ["👨‍🍳 En preparación", "e-prep"], preparando: ["👨‍🍳 En preparación", "e-prep"], listo: ["✅ Entregado", "e-listo"] };
+function pedirResena(c){
+  const link = NEGOCIO.resena_google || NEGOCIO.mapa || "";
+  const box = resultado.querySelector(".caja");
+  box.innerHTML = `<div class="emoji grande-emoji">🙏</div><h4>¡Gracias por venir!</h4>
+    <p>Tu cuenta de la mesa ${c.mesa} ($${c.total.toFixed(2)}) ya fue cobrada.</p>
+    ${link ? `<p>¿Te gustó? Una reseña nos ayuda muchísimo 💛</p><div class="estrellas">⭐⭐⭐⭐⭐</div>
+    <a class="btn-wa" style="background:#0d3b4f" href="${link}" target="_blank" rel="noopener" data-cerrar>Dejar reseña en Google</a>` : ""}
+    <button class="btn-secundario" data-cerrar>Ahora no</button>`;
+  resultado.classList.add("ver");
+}
 
 function avisar(txt){
   const a = $("#aviso"); a.textContent = txt; a.classList.add("ver");
@@ -563,6 +665,8 @@ function refrescar(){
   if (hayCuenta){
     ya.innerHTML = `<h5>🧾 Ya pidió la mesa ${MESA_QR} <span>$${cuentaMesa.total.toFixed(2)}</span></h5>
       <ul>${cuentaMesa.platos.map(x => `<li><span><b>${x.cantidad} x</b> ${x.nombre}</span><span>$${x.total.toFixed(2)}</span></li>`).join("")}</ul>
+      <div class="estados">${cuentaMesa.pedidos.map(p => { const e = ESTADO_TXT[p.estado] || ESTADO_TXT.nuevo; return `<div><span>Pedido #${p.numero} · $${p.total.toFixed(2)}</span><b class="${e[1]}">${e[0]}</b></div>`; }).join("")}</div>
+      ${(cuentaMesa.personas || []).length > 1 ? `<details class="reparto"><summary>👥 ¿Cuánto le toca a cada uno?</summary><ul>${cuentaMesa.personas.map(x => `<li><span>${x.nombre}</span><span>$${x.total.toFixed(2)}</span></li>`).join("")}</ul><div class="nota2">Según quién agregó cada plato al carrito.</div></details>` : ""}
       <div class="nota2">✅ Ya está en la cocina (${cuentaMesa.pedidos.length} pedido${cuentaMesa.pedidos.length === 1 ? "" : "s"}). Si quieren algo más, agréguenlo abajo y se suma a esta cuenta.</div>`;
   }
   $("#agregarMas").textContent = hayCuenta ? (n > 0 ? "➕ Para agregar a la cuenta" : "➕ ¿Algo más? Toca \"Agregar +\" en el menú") : "";
@@ -579,7 +683,7 @@ function refrescar(){
   $("#lista").innerHTML = Object.entries(carrito).map(([i,q])=>{
     const p = PLATOS[i];
     return `<div class="item">
-      <div class="ic" style="background:${p.fondo}22">${ICONOS[p.comida]||"🍽️"}</div>
+      <div class="ic" style="background:${p.fondo}22">${ICONOS[p.comida] || (p.categoria === "Bebidas" ? "🥤" : "🍽️")}</div>
       <div class="nm"><b>${p.nombre}</b><small>${plata(p.precio)} c/u · ${plata(p.precio*q)}</small>${COMPARTIDO && quienesPidieron(i) ? `<small class="de">👤 ${quienesPidieron(i)}</small>` : ""}</div>
       <div class="cant"><button class="menos" data-menos="${i}" aria-label="Quitar uno">−</button><span>${q}</span><button class="mas" data-mas="${i}" aria-label="Agregar uno">+</button></div>
     </div>`;
@@ -592,12 +696,18 @@ function refrescar(){
 function validar(){
   const v = mesaIn.value.trim(), n = Number(v);
   const existe = v !== "" && Number.isInteger(n) && n >= 1 && n <= NEGOCIO.mesas;
-  const ok = existe && cuenta() > 0;
+  const ok = existe && cuenta() > 0 && ABIERTO && !SOLO_VER;
   enviar.disabled = !ok;
+  const fr = $("#franja");
+  fr.classList.toggle("ver", !ABIERTO || SOLO_VER);
+  fr.textContent = !ABIERTO ? `🕒 Estamos cerrados en este momento${INFO.horario.hoy ? ` · Hoy atendemos de ${INFO.horario.hoy[0]} a ${INFO.horario.hoy[1]}` : ""}. Puedes ver la carta.`
+                 : SOLO_VER ? "📷 Para pedir, escanea el código QR de tu mesa." : "";
   mesaIn.classList.toggle("mal", v !== "" && !existe);
   const ayuda = $("#ayuda");
   ayuda.classList.toggle("error", v !== "" && !existe);
-  if (v === "") ayuda.textContent = "Escribe tu número de mesa para enviar el pedido";
+  if (!ABIERTO) ayuda.textContent = "Los pedidos se reciben en el horario de atención";
+  else if (SOLO_VER) ayuda.textContent = "Escanea el QR que está en tu mesa";
+  else if (v === "") ayuda.textContent = "Escribe tu número de mesa para enviar el pedido";
   else if (!existe) ayuda.textContent = `⚠️ Esa mesa no existe. Tenemos mesas del 1 al ${NEGOCIO.mesas}`;
   else ayuda.textContent = `Mesa ${n} · ${cuenta()} plato(s) · ${plata(suma())}`;
 }
@@ -612,7 +722,7 @@ document.addEventListener("click", e=>{
   if (mas){ const i = mas.dataset.mas; carrito[i]++; refrescar(); if (COMPARTIDO) cambiarMesa(PLATOS[i].id, 1); }
   if (menos){ const i = menos.dataset.menos; if(--carrito[i] <= 0) delete carrito[i]; refrescar(); if (COMPARTIDO) cambiarMesa(PLATOS[i].id, -1); }
 });
-burbuja.onclick = abrirVentana;
+burbuja.onclick = ()=>{ cartaBox.classList.remove("ver"); document.body.classList.remove("conCarta"); abrirVentana(); };
 $("#cerrar").onclick = cerrarVentana;
 sombra.onclick = cerrarVentana;
 $("#vaciar").onclick = ()=>{
@@ -693,7 +803,9 @@ $("#confSi").onclick = async ()=>{
   const datos = {
     tipo: "pedido", mesa, notas,
     items: Object.entries(carrito).map(([i,q])=>({ id: PLATOS[i].id, cantidad: q })),
-    compartido: COMPARTIDO && mesa === MESA_QR, yo: YO, nombre: miNombre
+    compartido: COMPARTIDO && mesa === MESA_QR, yo: YO, nombre: miNombre, k: CLAVE_QR,
+    // quién agregó cada plato, para dividir la cuenta
+    reparto: COMPARTIDO ? lineasMesa.map(l => ({ p: l.p, q: l.q, n: l.por === YO ? miNombre : (l.n || "") })) : null
   };
   btn.disabled = true; btn.textContent = "Enviando… ⏳";
   const j = await enviarACocina(datos);
@@ -701,6 +813,7 @@ $("#confSi").onclick = async ()=>{
   btn.disabled = false; btn.textContent = "✅ Sí, enviar a la cocina";
   confirma.classList.remove("ver");
   if (ok){ ultimoVisto = Date.now(); limpiarPedido(); mostrar("ok", mesa, null, j.numero); if (COMPARTIDO) consultarMesa().then(x => aplicarMesa(x, true)); }
+  else if (j.codigo === "cerrado" || j.codigo === "sin_qr"){ avisar(j.error); }
   else   { mostrar("error", mesa, linkWA); }                  // plan B: WhatsApp o mesero
 };
 /* ---------- Llamar al mesero / pedir la cuenta ---------- */
@@ -718,17 +831,59 @@ ayudaPanel.addEventListener("click", async e=>{
   const tipo = b.dataset.tipo, txt = tipo === "cuenta" ? "la cuenta 🧾" : "al mesero 🙋";
   [...ayudaPanel.querySelectorAll("[data-tipo]")].forEach(x=>x.disabled = true);
   $("#ayudaMsg").textContent = "Enviando… ⏳";
-  const j = await enviarACocina({ tipo, mesa });
+  const j = await enviarACocina({ tipo, mesa, k: CLAVE_QR });
   [...ayudaPanel.querySelectorAll("[data-tipo]")].forEach(x=>x.disabled = false);
-  if (j.ok){ ayudaPanel.classList.remove("ver"); avisar(tipo === "cuenta" ? `Ya te llevamos la cuenta a la mesa ${mesa} 🧾` : `El mesero va a la mesa ${mesa} 🙋`); }
+  if (j.codigo === "sin_qr"){ $("#ayudaMsg").textContent = "📷 Escanea el QR de tu mesa, o llama al mesero con la mano."; }
+  else if (j.ok){ ayudaPanel.classList.remove("ver"); avisar(tipo === "cuenta" ? `Ya te llevamos la cuenta a la mesa ${mesa} 🧾` : `El mesero va a la mesa ${mesa} 🙋`); }
   else { $("#ayudaMsg").innerHTML = `No se pudo enviar. <a href="${wa(`Mesa ${mesa}: por favor ${tipo === "cuenta" ? "la cuenta" : "un mesero"}`)}" target="_blank" rel="noopener">Avisar por WhatsApp</a> o llama al mesero.`; }
 });
+
+/* ---------- Carta completa con categorías y buscador ---------- */
+const cartaBox = $("#carta"), cartaLista = $("#cartaLista"), buscar = $("#buscar");
+const CATS = [...new Set(PLATOS.map(p => p.categoria || "Otros"))];
+let catSel = "";
+const sinTilde = t => String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+$("#cats").innerHTML = (CATS.length > 1 ? [`<button data-cat="" class="on">Todo</button>`, ...CATS.map(c => `<button data-cat="${c}">${c}</button>`)] : []).join("");
+function pintarCarta(){
+  const q = sinTilde(buscar.value.trim());
+  const promoId = NEGOCIO.promo && NEGOCIO.promo.id;
+  let html = "", hay = 0;
+  for (const c of CATS){
+    if (catSel && c !== catSel) continue;
+    const lista = PLATOS.filter(p => (p.categoria || "Otros") === c && (!q || sinTilde(p.nombre + " " + (p.desc || "")).includes(q)));
+    if (!lista.length) continue;
+    hay += lista.length;
+    html += `<h4>${c}</h4>` + lista.map(p => `<div class="cp${p.id === promoId ? " estrella" : ""}">
+      <div class="nm"><b>${p.id === promoId ? "⭐ " : ""}${p.nombre}</b>${p.desc ? `<small>${p.desc}</small>` : ""}</div>
+      <span class="pr">${precioTxt(p.precio)}</span>
+      ${p.agotado ? `<span class="ago">Agotado</span>` : `<button class="pedir" data-i="${p.i}">Agregar +</button>`}
+    </div>`).join("");
+  }
+  cartaLista.innerHTML = html + `<p id="cartaVacia" style="display:${hay ? "none" : "block"}">No encontramos "${buscar.value.replace(/[<>]/g, "")}" 🤔</p>`;
+  refrescar();
+}
+$("#cartaBtn").onclick = () => { pintarCarta(); cartaBox.classList.add("ver"); document.body.classList.add("conCarta"); document.documentElement.style.overflow = "hidden"; };
+$("#cartaX").onclick = () => { cartaBox.classList.remove("ver"); document.body.classList.remove("conCarta"); document.documentElement.style.overflow = ""; };
+buscar.addEventListener("input", pintarCarta);
+$("#cats").addEventListener("click", e => { const b = e.target.closest("[data-cat]"); if (!b) return; catSel = b.dataset.cat; [...$("#cats").children].forEach(x => x.classList.toggle("on", x === b)); pintarCarta(); });
+
+// Plato del día (lo pone el dueño desde la pantalla de cocina)
+(() => {
+  const pr = NEGOCIO.promo, p = pr && PLATOS.find(x => x.id === pr.id);
+  if (!p || p.agotado) return;
+  $("#promoTxt").textContent = `${p.nombre} · ${precioTxt(p.precio)}${pr.texto ? " — " + pr.texto : ""}`;
+  $("#promoPedir").dataset.i = p.i; $("#promoPedir").classList.add("pedir");
+  $("#promo").classList.add("ver");
+  $("#promoX").onclick = () => $("#promo").classList.remove("ver");
+  const ocultar = () => { if (scrollY > innerHeight * 0.5){ $("#promo").classList.remove("ver"); removeEventListener("scroll", ocultar); } };
+  addEventListener("scroll", ocultar, { passive: true });
+})();
 
 $("#dir").innerHTML = `${NEGOCIO.direccion ? "📍 " + NEGOCIO.direccion : ""}${NEGOCIO.mapa ? `<br><a class="clic" href="${NEGOCIO.mapa}" target="_blank" rel="noopener">Ver ubicación</a>` : ""}`;
 
 // pasos: inicio + platos + final
 const pista = $("#pista");
-for (let i = 0; i < PLATOS.length + 2; i++){ const d = document.createElement("div"); d.className = "paso"; pista.appendChild(d); }
+for (let i = 0; i < ESCENA.length + 2; i++){ const d = document.createElement("div"); d.className = "paso"; pista.appendChild(d); }
 
 /* ---------- Animación con el scroll ---------- */
 const clamp = (v,a=0,b=1) => Math.min(b, Math.max(a, v));
@@ -743,7 +898,7 @@ function medir(){ alto = pista.firstElementChild.offsetHeight || innerHeight; vw
 
 // Colores: el fondo cambia poco a poco siguiendo el dedo
 const hex = c => { const n = parseInt(c.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255]; };
-const COLORES_PASO = [FONDO_INICIO, ...PLATOS.map(p => p.fondo), FONDO_INICIO].map(hex);
+const COLORES_PASO = [FONDO_INICIO, ...ESCENA.map(p => p.fondo), FONDO_INICIO].map(hex);
 let colorActual = "", activoActual = -2, marcaK = -1;
 
 function pintar(){
@@ -783,7 +938,7 @@ function pintar(){
   });
 
   // Pantalla final
-  const tf = p - (PLATOS.length + 1);
+  const tf = p - (ESCENA.length + 1);
   const of = clamp(1 + tf * 2.2);
   final.style.opacity = of.toFixed(3);
   final.style.transform = `translate3d(0, ${(Math.max(0, -tf) * 60).toFixed(1)}px, 0)`;
@@ -798,7 +953,7 @@ function pintar(){
   // Puntitos: solo cuando cambia el plato
   if (activo !== activoActual){
     activoActual = activo;
-    document.documentElement.style.background = activo >= 0 ? PLATOS[activo].fondo : FONDO_INICIO;
+    document.documentElement.style.background = activo >= 0 ? ESCENA[activo].fondo : FONDO_INICIO;
     puntos.style.opacity = activo >= 0 ? 1 : 0;
     pts.forEach((d,i)=>d.classList.toggle("on", i === activo));
   }

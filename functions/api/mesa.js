@@ -12,15 +12,13 @@
 //  Un carrito sin movimiento por 3 horas se considera vacío (mesa nueva).
 // =============================================================
 
-import { prepararTablas, cuentaAbierta, detalleCuenta, responder } from "../_db.js";
+import { prepararTablas, cuentaAbierta, detalleCuenta, cartaEfectiva, mesaAutorizada, responder } from "../_db.js";
 
 const VENCE = 3 * 3600 * 1000;     // carrito viejo = vacío
 const CONECTADO = 25 * 1000;       // visto en los últimos 25 s = está en la mesa
 const limpio = (t, max) => String(t ?? "").replace(/[<>"'`]/g, "").trim().slice(0, max);
 
-async function restaurante(env, url) {
-  return (await env.ASSETS.fetch(new URL("/restaurante.json", url))).json();
-}
+const restaurante = (env, url) => cartaEfectiva(env, url);   // con agotados de la cocina
 
 async function leerMesa(DB, mesa, yo) {
   const ahora = Date.now();
@@ -54,6 +52,7 @@ export async function onRequestGet({ request, env }) {
   const yo = limpio(url.searchParams.get("yo"), 40);
   const R = await restaurante(env, request.url);
   if (!validarMesa(R, mesa) || !yo) return responder(400, { ok: false, error: "Datos inválidos" });
+  if (!(await mesaAutorizada(env, mesa, url.searchParams.get("k")))) return responder(403, { ok: false, error: "QR no válido", codigo: "sin_qr" });
   await prepararTablas(env.DB);
   // Avisar "estoy en la mesa" (el celular lo pide cada ~15 s, no en cada consulta)
   if (url.searchParams.get("ping")) {
@@ -72,6 +71,7 @@ export async function onRequestPost({ request, env }) {
   const delta = Math.sign(Number(d.delta)) || 0;
   const plato = (R.platos || []).find((p, i) => (p.id || "p" + i) === String(d.plato));
   if (!validarMesa(R, mesa) || !yo || !delta || !plato) return responder(400, { ok: false, error: "Datos inválidos" });
+  if (!(await mesaAutorizada(env, mesa, d.k))) return responder(403, { ok: false, error: "QR no válido", codigo: "sin_qr" });
   if (delta > 0 && plato.agotado) return responder(409, { ok: false, error: "Ese plato está agotado" });
   const pid = plato.id;
   await prepararTablas(env.DB);

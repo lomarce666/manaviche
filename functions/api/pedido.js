@@ -16,7 +16,7 @@
 //    el pedido quede guardado para la pantalla; Telegram es extra.
 // =============================================================
 
-import { hoyEcuador, prepararTablas, jornadaAbierta, cuentaAbierta, responder } from "../_db.js";
+import { hoyEcuador, prepararTablas, jornadaAbierta, cuentaAbierta, cartaEfectiva, estadoHorario, mesaAutorizada, responder } from "../_db.js";
 
 // Evita que alguien meta código raro en el mensaje
 const limpiar = (t, max) =>
@@ -72,7 +72,7 @@ export async function onRequestPost({ request, env }) {
   // ---- Datos del restaurante ----
   let R;
   try {
-    R = await (await env.ASSETS.fetch(new URL("/restaurante.json", request.url))).json();
+    R = await cartaEfectiva(env, request.url);   // incluye agotados y precios cambiados desde la cocina
   } catch {
     return responder(500, { ok: false, error: "No se pudo leer restaurante.json" });
   }
@@ -85,6 +85,9 @@ export async function onRequestPost({ request, env }) {
   const mesa = Number(datos.mesa);
   if (!Number.isInteger(mesa) || mesa < 1 || mesa > Number(R.mesas || 0))
     return responder(400, { ok: false, error: "Mesa no válida" });
+  // Solo quien escaneó el QR real de la mesa puede pedir (si hay MESA_SECRETO)
+  if (!(await mesaAutorizada(env, mesa, datos.k)))
+    return responder(403, { ok: false, error: "Escanea el código QR de tu mesa para pedir", codigo: "sin_qr" });
 
   const ahora = new Date();
   const hora = ahora.toLocaleTimeString("es-EC", { timeZone: "America/Guayaquil", hour: "2-digit", minute: "2-digit" });
@@ -92,6 +95,11 @@ export async function onRequestPost({ request, env }) {
   const tipo = datos.tipo === "mesero" || datos.tipo === "cuenta" ? datos.tipo : "pedido";
   let texto, numero = null, totalDia = null, total = 0, items = null, notas = "";
 
+  // Fuera de horario no se reciben pedidos (sí se puede llamar al mesero o pedir la cuenta)
+  if (tipo === "pedido" && !estadoHorario(R).abierto)
+    return responder(409, { ok: false, error: "El local está cerrado en este momento", codigo: "cerrado" });
+
+  let reparto = null;
   if (tipo === "pedido") {
     // Los precios salen de restaurante.json, no de lo que manda el celular
     const porId = new Map((R.platos || []).map((p, i) => [p.id || "p" + i, p]));
@@ -102,6 +110,18 @@ export async function onRequestPost({ request, env }) {
     total = lista.reduce((t, it) => t + it.cantidad * Number(it.p.precio), 0);
     notas = String(datos.notas ?? "").slice(0, 300).trim();
     items = lista.map((it) => ({ nombre: it.p.nombre, cantidad: it.cantidad, precio: Number(it.p.precio) }));
+    // Quién agregó cada plato (para dividir la cuenta); se ajusta a lo que de verdad se pidió
+    if (Array.isArray(datos.reparto)) {
+      const queda = Object.fromEntries(lista.map((it) => [it.p.id, it.cantidad]));
+      reparto = [];
+      for (const r of datos.reparto.slice(0, 80)) {
+        const id = String(r.p), q = Math.min(Math.floor(Number(r.q)) || 0, queda[id] || 0);
+        if (q < 1) continue;
+        queda[id] -= q;
+        reparto.push({ n: String(r.n ?? "").replace(/[<>"'`]/g, "").trim().slice(0, 20), plato: porId.get(id).nombre, q });
+      }
+      for (const [id, q] of Object.entries(queda)) if (q > 0) reparto.push({ n: "", plato: porId.get(id).nombre, q });
+    }
   }
 
   // ---- Guardar en la base de datos (número en orden + pantalla de cocina) ----
@@ -123,9 +143,9 @@ export async function onRequestPost({ request, env }) {
         } else cuenta = { id: c.id, total: c.total, pedidos: c.pedidos };
       }
       const fila = await env.DB.prepare(
-        "INSERT INTO pedidos (dia, numero, tipo, mesa, items, notas, total, estado, creado, actualizado, jornada, cuenta, por) " +
-        "VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 'nuevo', ?8, ?8, ?9, ?10, ?11) RETURNING id"
-      ).bind(hoy, numero, tipo, mesa, items ? JSON.stringify(items) : null, notas, total, ahora.getTime(), jornada, cuenta ? cuenta.id : null, por).first();
+        "INSERT INTO pedidos (dia, numero, tipo, mesa, items, notas, total, estado, creado, actualizado, jornada, cuenta, por, reparto) " +
+        "VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 'nuevo', ?8, ?8, ?9, ?10, ?11, ?12) RETURNING id"
+      ).bind(hoy, numero, tipo, mesa, items ? JSON.stringify(items) : null, notas, total, ahora.getTime(), jornada, cuenta ? cuenta.id : null, por, reparto ? JSON.stringify(reparto) : null).first();
       id = fila.id;
     } catch (e) {
       console.log("Base de datos:", String(e));

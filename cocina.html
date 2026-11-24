@@ -60,8 +60,8 @@ main{padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280
 .b-ok{background:#4ea1ff;color:#06203d}
 .titulo-aviso{font-size:24px;font-weight:900;margin-top:6px}
 /* Pestañas */
-.pestanas{display:flex;gap:8px;padding:12px 16px 0}
-.pestanas button{flex:1;padding:12px;border-radius:12px;background:#1b2027;color:#cfd6df;font-size:16px;font-weight:800}
+.pestanas{display:flex;gap:8px;padding:12px 16px 0;overflow-x:auto;scrollbar-width:none}
+.pestanas button{flex:1 0 auto;white-space:nowrap;padding:12px;border-radius:12px;background:#1b2027;color:#cfd6df;font-size:16px;font-weight:800}
 .pestanas button.on{background:#ffd166;color:#111}
 .pestanas .cuenta{display:inline-block;min-width:24px;padding:0 6px;margin-left:6px;border-radius:99px;background:rgba(0,0,0,.25);font-size:14px}
 .pestanas button.alerta:not(.on){background:#e63946;color:#fff;animation:latir 1s infinite}
@@ -119,6 +119,37 @@ main{padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280
 .caja .totF td{border:none;font-weight:900;font-size:18px;padding-top:10px}
 .caja .alerta{margin-top:12px;background:#fde8e8;color:#9b1c1c;border-radius:10px;padding:10px;font-weight:700;font-size:14px}
 .caja .botones{margin-top:18px;display:grid;gap:10px}
+/* Carta y estadísticas */
+#carta,#stats{display:none;padding:16px;max-width:760px;margin:0 auto}
+.pl{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 2px;border-bottom:1px solid #2a313b}
+.pl:last-child{border:none}
+.pl .nm{flex:1;min-width:150px;font-weight:800;font-size:17px}
+.pl .nm small{display:block;font-weight:400;opacity:.6;font-size:13px}
+.pl.ago .nm{opacity:.5;text-decoration:line-through}
+.pl input{width:86px;font-size:18px;padding:8px;border-radius:10px;border:2px solid #333a44;background:#111418;color:#fff;text-align:right}
+.pl button{padding:10px 12px;border-radius:10px;font-weight:800;font-size:14px;background:#2a313b;color:#e6e9ee}
+.pl button.agoB{background:#4a1515;color:#ff8a8a}
+.pl button.agoB.si{background:#16351f;color:#6ee7a0}
+.pl button.estB.si{background:#ffd166;color:#111}
+.campoTxt{width:100%;margin-top:10px;font-size:17px;padding:12px;border-radius:12px;border:2px solid #333a44;background:#111418;color:#fff}
+.barra{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:14px}
+.barra .et{width:118px;flex:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;opacity:.85}
+.barra .bg{flex:1;background:#111418;border-radius:8px;height:22px;overflow:hidden}
+.barra .bg i{display:block;height:100%;background:#ffd166;border-radius:8px}
+.barra .v{width:84px;flex:none;text-align:right;font-weight:800}
+.rango{display:flex;gap:8px;margin-bottom:12px}
+.rango button{flex:1;padding:10px;border-radius:12px;background:#1b2027;color:#cfd6df;font-weight:800}
+.rango button.on{background:#4ea1ff;color:#06203d}
+.metodos{display:grid;gap:10px;margin-top:14px}
+.metodos button{padding:18px;border-radius:14px;font-size:19px;font-weight:900;background:#0d3b4f;color:#fff}
+.reparto2{margin-top:8px;font-size:14px;opacity:.85}
+@media print{
+  body{background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  #panel>*:not(#reporte){display:none!important}
+  #reporte{position:static;display:block!important;background:none;padding:0;overflow:visible}
+  .caja{max-width:none;border-radius:0;padding:0}
+  .caja .botones,.noImprimir{display:none!important}
+}
 /* Mesas (cuentas abiertas) */
 #mesas{display:none;padding:16px}
 #mesas .rejilla{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
@@ -186,11 +217,15 @@ main{padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280
     <button id="tabPend">🔥 Pendientes<span class="cuenta" id="cPend">0</span></button>
     <button id="tabMesas">🧾 Mesas<span class="cuenta" id="cMesas">0</span></button>
     <button id="tabPrep">✅ Pedidos preparados<span class="cuenta" id="cPrep">0</span></button>
+    <button id="tabCarta">📋 Carta</button>
+    <button id="tabStats">📊 Estadísticas</button>
   </nav>
   <main id="lista"><div class="vacio"><b>✅</b>Sin pedidos pendientes</div></main>
   <section id="preparados"></section>
   <section id="mesas"></section>
   <section id="dia"></section>
+  <section id="carta"></section>
+  <section id="stats"></section>
   <div id="reporte" role="dialog"><div class="caja" id="caja"></div></div>
   <div id="avisos" aria-live="assertive"></div>
   <div id="detalle" role="dialog"><div class="ticket" id="ticket"></div></div>
@@ -204,7 +239,9 @@ const leer = k => { try { return localStorage.getItem(k); } catch(e){ return nul
 let CLAVE = leer("cocina_clave") || "";
 let datos = { pedidos: [] }, vistos = new Set(), primeraCarga = true;
 
+let NOMBRE = "";
 fetch("/restaurante.json").then(r=>r.json()).then(R=>{
+  NOMBRE = R.nombre;
   document.title = "Cocina · " + R.nombre;
   $("#nombre").textContent = "Cocina " + R.nombre;
   $("#nombreEntrar").textContent = "Cocina " + R.nombre;
@@ -353,13 +390,20 @@ function verVista(v){
   $("#lista").style.display = v === "pend" ? "grid" : "none";
   $("#preparados").style.display = v === "prep" ? "block" : "none";
   $("#dia").style.display = v === "dia" ? "block" : "none";
+  $("#tabCarta").classList.toggle("on", v === "carta"); $("#tabStats").classList.toggle("on", v === "stats");
+  $("#carta").style.display = v === "carta" ? "block" : "none";
+  $("#stats").style.display = v === "stats" ? "block" : "none";
   if (v === "dia") cargarDias();
+  if (v === "carta") cargarCarta();
+  if (v === "stats") cargarStats();
   pintar();
 }
 $("#tabDia").onclick = ()=>verVista("dia");
 $("#tabPend").onclick = ()=>verVista("pend");
 $("#tabPrep").onclick = ()=>verVista("prep");
 $("#tabMesas").onclick = ()=>verVista("mesas");
+$("#tabCarta").onclick = ()=>verVista("carta");
+$("#tabStats").onclick = ()=>verVista("stats");
 
 function pintarMesas(){
   const M = datos.mesas || [];
@@ -368,17 +412,30 @@ function pintarMesas(){
       <div class="cab2"><span class="mesa">MESA ${c.mesa}</span><span class="tot">$${Number(c.total).toFixed(2)}</span></div>
       <div class="meta2">${c.pedidos.length} pedido(s) · desde ${hora(c.abierta)}</div>
       <ul>${c.platos.map(x => `<li><span><b>${x.cantidad} x</b> ${esc(x.nombre)}</span><span>$${Number(x.total).toFixed(2)}</span></li>`).join("")}</ul>
+      ${(c.personas || []).length > 1 ? `<div class="reparto2">👥 ${c.personas.map(x => `${esc(x.nombre)}: $${Number(x.total).toFixed(2)}`).join(" · ")}</div>` : ""}
       <button class="b-cobrar" data-cobrar="${c.id}" data-mesa="${c.mesa}" data-total="${Number(c.total).toFixed(2)}">💵 Cobrado · cerrar cuenta</button>
     </div>`).join("")}</div>`
     : `<div class="vacio"><b>🧾</b>No hay mesas con cuenta abierta</div>`;
 }
 $("#mesas").addEventListener("click", async e=>{
   const b = e.target.closest("[data-cobrar]"); if (!b) return;
-  if (!confirm(`¿La mesa ${b.dataset.mesa} ya pagó $${b.dataset.total}? Se cerrará su cuenta.`)) return;
-  datos.mesas = (datos.mesas || []).filter(c => c.id !== Number(b.dataset.cobrar)); pintar();
-  try { await fetch("/api/cocina", { method: "POST", headers: { "Content-Type": "application/json", "x-clave": CLAVE }, body: JSON.stringify({ accion: "cobrar", id: Number(b.dataset.cobrar) }) }); } catch(e){}
-  cargar();
+  // Preguntar cómo pagó
+  abrirReporte(`<h3>💵 Cobrar mesa ${b.dataset.mesa}</h3>
+    <div class="fechaR" style="font-size:30px;margin-top:6px">$${b.dataset.total}</div>
+    <div class="hrs">¿Cómo pagó? Al elegir se cierra la cuenta de la mesa.</div>
+    <div class="metodos">
+      <button data-metodo="Efectivo" data-id="${b.dataset.cobrar}">💵 Efectivo</button>
+      <button data-metodo="Transferencia" data-id="${b.dataset.cobrar}">📲 Transferencia</button>
+      <button data-metodo="Tarjeta" data-id="${b.dataset.cobrar}">💳 Tarjeta</button>
+    </div>
+    <div class="botones"><button class="bGrande bGris" data-cerrar>Cancelar</button></div>`);
 });
+async function cobrar(id, metodo){
+  cerrarReporte();
+  datos.mesas = (datos.mesas || []).filter(c => c.id !== id); pintar();
+  try { await fetch("/api/cocina", { method: "POST", headers: { "Content-Type": "application/json", "x-clave": CLAVE }, body: JSON.stringify({ accion: "cobrar", id, metodo }) }); } catch(e){}
+  cargar();
+}
 
 function pintarPreparados(){
   const L = datos.listos || [];
@@ -525,9 +582,23 @@ function htmlReporte(R, guardado){
       ${R.mesas.map(m => `<tr><td>Mesa ${m.mesa}</td><td class="r">${m.pedidos}</td><td class="r">${plata(m.total)}</td></tr>`).join("")}</table>` : ""}
     ${R.lista.length ? `<h4>Pedidos del día</h4><table><tr><th>#</th><th>Hora</th><th>Mesa</th><th class="r">Total</th></tr>
       ${R.lista.map(p => `<tr><td>${p.numero ?? "—"}</td><td>${hora(p.creado)}</td><td>${p.mesa}</td><td class="r">${plata(p.total)}</td></tr>`).join("")}</table>` : ""}
-    <div class="hrs" style="margin-top:12px">Avisos: 🙋 ${R.mesero} llamadas al mesero · 🧾 ${R.cuenta} cuentas pedidas</div>`;
+    ${(R.pagos || []).length ? `<h4>Cobros por forma de pago</h4><table><tr><th>Forma de pago</th><th class="r">Cuentas</th><th class="r">Total</th></tr>
+      ${R.pagos.map(x => `<tr><td>${esc(x.metodo)}</td><td class="r">${x.cuentas}</td><td class="r">${plata(x.total)}</td></tr>`).join("")}</table>` : ""}
+    <div class="hrs" style="margin-top:12px">Avisos: 🙋 ${R.mesero} llamadas al mesero · 🧾 ${R.cuenta} cuentas pedidas</div>
+    <div class="botones noImprimir" style="grid-template-columns:1fr 1fr">
+      <button class="bGrande bAzul" data-imprimir style="margin:0">🖨️ Descargar PDF</button>
+      <button class="bGrande bVerde" data-wa style="margin:0">💬 Enviar por WhatsApp</button>
+    </div>`;
 }
-function abrirReporte(html){ $("#caja").innerHTML = html; $("#reporte").classList.add("ver"); $("#reporte").scrollTop = 0; }
+let reporteActual = null;
+function textoReporte(R){
+  let t = `🧾 *Cierre de caja · ${NOMBRE}*\n${fechaLarga(R.fecha)}\n\n`;
+  t += `Pedidos: ${R.pedidos}\n*Vendido: ${plata(R.total)}*\nPromedio: ${plata(R.promedio)}\n`;
+  if ((R.pagos || []).length) t += `\n*Formas de pago*\n` + R.pagos.map(x => `• ${x.metodo}: ${plata(x.total)} (${x.cuentas})`).join("\n") + "\n";
+  if (R.platos.length) t += `\n*Por plato*\n` + R.platos.map(x => `• ${x.cantidad} x ${x.nombre} — ${plata(x.total)}`).join("\n");
+  return t;
+}
+function abrirReporte(html, R){ reporteActual = R || null; $("#caja").innerHTML = html; $("#reporte").classList.add("ver"); $("#reporte").scrollTop = 0; }
 const cerrarReporte = ()=> $("#reporte").classList.remove("ver");
 
 $("#dia").addEventListener("click", async e=>{
@@ -544,9 +615,9 @@ $("#dia").addEventListener("click", async e=>{
     const j = await api("POST", { accion: "previa" });
     pintadoDia = ""; pintarDia();
     if (!j.ok){ alert(j.error); return; }
-    abrirReporte(htmlReporte(j.reporte, false) + `<div class="botones">
+    abrirReporte(htmlReporte(j.reporte, false) + `<div class="botones noImprimir">
       <button class="bGrande bVerde" id="bConfirmar">✅ Confirmar y guardar</button>
-      <button class="bGrande bGris" data-cerrar>Volver</button></div>`);
+      <button class="bGrande bGris" data-cerrar>Volver</button></div>`, j.reporte);
     return;
   }
   if (e.target.id === "bSemana"){
@@ -568,20 +639,94 @@ $("#dia").addEventListener("click", async e=>{
   const d = e.target.closest("[data-dia]");
   if (d){
     const j = await api("GET", null, "?dia=" + d.dataset.dia);
-    if (j.ok) abrirReporte(htmlReporte(j.reporte, true) + `<div class="botones"><button class="bGrande bGris" data-cerrar>Cerrar</button></div>`);
+    if (j.ok) abrirReporte(htmlReporte(j.reporte, true) + `<div class="botones"><button class="bGrande bGris" data-cerrar>Cerrar</button></div>`, j.reporte);
   }
 });
 $("#reporte").addEventListener("click", async e=>{
   if (e.target.id === "reporte" || e.target.closest("[data-cerrar]")){ cerrarReporte(); return; }
+  const m = e.target.closest("[data-metodo]"); if (m){ cobrar(Number(m.dataset.id), m.dataset.metodo); return; }
+  if (e.target.closest("[data-imprimir]")){ window.print(); return; }
+  if (e.target.closest("[data-wa]") && reporteActual){ window.open("https://wa.me/?text=" + encodeURIComponent(textoReporte(reporteActual)), "_blank"); return; }
   if (e.target.id === "bConfirmar"){
     e.target.disabled = true; e.target.textContent = "Guardando…";
     const j = await api("POST", { accion: "cerrar" });
     if (!j.ok){ alert(j.error || "No se pudo guardar"); e.target.disabled = false; e.target.textContent = "✅ Confirmar y guardar"; return; }
     abrirReporte(htmlReporte(j.reporte, true) + `<div class="alerta" style="background:#e7f6ec;color:#1a7f37">✅ Día guardado en "Días guardados".</div>
-      <div class="botones"><button class="bGrande bVerde" data-cerrar>☀️ Listo, empezar un nuevo día</button></div>`);
+      <div class="botones"><button class="bGrande bVerde" data-cerrar>☀️ Listo, empezar un nuevo día</button></div>`, j.reporte);
     await cargar(); cargarDias();
   }
 });
+
+/* ---------- Carta: agotados, precios y plato del día ---------- */
+let carta = null;
+async function cargarCarta(){
+  const j = await api("GET", null, "?carta=1");
+  if (!j.ok){ $("#carta").innerHTML = `<div class="vacio">No se pudo cargar la carta</div>`; return; }
+  carta = j; pintarCarta();
+}
+function pintarCarta(){
+  const P = carta.platos, promo = carta.promo;
+  const pp = promo && P.find(p => p.id === promo.id);
+  $("#carta").innerHTML = `
+    <div class="hoja">
+      <h2>⭐ Plato del día</h2>
+      ${pp ? `<div class="fechaGrande">${esc(pp.nombre)}</div><div class="sub2">${esc(promo.texto || "Sin mensaje")}</div>
+        <button class="bGrande bGris" id="quitarPromo">Quitar plato del día</button>`
+        : `<div class="sub2">Elige un plato con el botón ⭐ de abajo. Aparece destacado arriba en el menú del cliente.</div>`}
+      <input class="campoTxt" id="promoTxt" maxlength="80" placeholder="Mensaje (opcional): ej. ¡Recién hecho!" value="${esc(promo?.texto || "")}">
+      ${pp ? `<button class="bGrande bAzul" id="guardarPromo">Guardar mensaje</button>` : ""}
+    </div>
+    <div class="hoja">
+      <h2>📋 Platos · cambios al instante en el menú</h2>
+      ${P.map(p => `<div class="pl${p.agotado ? " ago" : ""}" data-pl="${esc(p.id)}">
+        <div class="nm">${esc(p.nombre)}<small>${esc(p.categoria)}${p.precio !== p.original ? ` · precio original ${plata(p.original)}` : ""}</small></div>
+        <input type="number" step="0.05" min="0.05" inputmode="decimal" value="${p.precio}" aria-label="Precio">
+        <button data-precio>Guardar $</button>
+        <button class="agoB${p.agotado ? "" : " si"}" data-ago="${p.agotado ? 0 : 1}">${p.agotado ? "🚫 Agotado" : "✅ Hay"}</button>
+        <button class="estB${pp && pp.id === p.id ? " si" : ""}" data-estrella>⭐</button>
+      </div>`).join("")}
+      <div class="sub2" style="margin-top:10px">Toca "✅ Hay / 🚫 Agotado" para cambiarlo. Los precios nuevos se cobran desde el siguiente pedido.</div>
+    </div>`;
+}
+$("#carta").addEventListener("click", async e=>{
+  if (e.target.id === "guardarPromo"){ await api("POST", { accion: "promo", id: carta.promo.id, texto: $("#promoTxt").value }); return cargarCarta(); }
+  if (e.target.id === "quitarPromo"){ await api("POST", { accion: "promo" }); return cargarCarta(); }
+  const fila = e.target.closest("[data-pl]"); if (!fila) return;
+  const id = fila.dataset.pl;
+  if (e.target.closest("[data-ago]")){ await api("POST", { accion: "plato", id, agotado: e.target.dataset.ago === "1" }); return cargarCarta(); }
+  if (e.target.closest("[data-precio]")){
+    const v = Number(fila.querySelector("input").value);
+    const j = await api("POST", { accion: "plato", id, precio: v });
+    if (!j.ok) alert(j.error || "No se pudo guardar"); else e.target.textContent = "✓ Guardado";
+    return setTimeout(cargarCarta, 700);
+  }
+  if (e.target.closest("[data-estrella]")){ await api("POST", { accion: "promo", id, texto: $("#promoTxt").value }); return cargarCarta(); }
+});
+
+/* ---------- Estadísticas ---------- */
+let rangoStats = 7;
+async function cargarStats(){
+  $("#stats").innerHTML = `<div class="vacio">Calculando…</div>`;
+  const j = await api("GET", null, "?stats=" + rangoStats);
+  if (!j.ok){ $("#stats").innerHTML = `<div class="vacio">No se pudieron cargar</div>`; return; }
+  const barras = (lista, et, val, txt) => { const max = Math.max(...lista.map(val), 1);
+    return lista.map(x => `<div class="barra"><span class="et">${esc(et(x))}</span><span class="bg"><i style="width:${(val(x) / max * 100).toFixed(1)}%"></i></span><span class="v">${txt(x)}</span></div>`).join(""); };
+  const horas = j.porHora.map((n, h) => ({ h, n })).filter(x => x.n > 0);
+  const pico = horas.slice().sort((a, b) => b.n - a.n)[0];
+  const mejorDia = j.porDia.slice().sort((a, b) => b.total - a.total)[0];
+  $("#stats").innerHTML = `
+    <div class="rango">${[7, 30, 90].map(d => `<button data-rango="${d}" class="${d === rangoStats ? "on" : ""}">${d === 7 ? "Última semana" : d === 30 ? "Último mes" : "3 meses"}</button>`).join("")}</div>
+    <div class="hoja"><h2>📊 Resumen</h2>
+      <div class="cifras"><div><b>${j.pedidos}</b><span>pedidos</span></div><div><b>${plata(j.total)}</b><span>vendido</span></div><div><b>${plata(j.ticket)}</b><span>por pedido</span></div></div>
+      ${pico ? `<div class="sub2" style="margin-top:12px">⏰ Hora más llena: <b>${pico.h}:00 a ${pico.h + 1}:00</b>${mejorDia ? ` · 🏆 Mejor día: <b>${mejorDia.nombre} ${mejorDia.dia.slice(8)}/${mejorDia.dia.slice(5, 7)}</b> (${plata(mejorDia.total)})` : ""}</div>` : ""}
+    </div>
+    ${j.pedidos ? `
+    <div class="hoja"><h2>🍽️ Platos más vendidos</h2>${barras(j.platos.slice(0, 10), x => x.nombre, x => x.cantidad, x => `${x.cantidad} · ${plata(x.total)}`)}</div>
+    <div class="hoja"><h2>📅 Ventas por día</h2>${barras(j.porDia, x => `${x.nombre} ${x.dia.slice(8)}/${x.dia.slice(5, 7)}`, x => x.total, x => plata(x.total))}</div>
+    <div class="hoja"><h2>⏰ Pedidos por hora</h2>${barras(horas, x => `${x.h}:00`, x => x.n, x => `${x.n}`)}</div>`
+    : `<div class="vacio"><b>📊</b>Todavía no hay pedidos en este periodo</div>`}`;
+}
+$("#stats").addEventListener("click", e=>{ const b = e.target.closest("[data-rango]"); if (b){ rangoStats = Number(b.dataset.rango); cargarStats(); } });
 
 function verDetalle(p){
   const min = Math.max(0, Math.round((p.actualizado - p.creado) / 60000));

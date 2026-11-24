@@ -19,8 +19,11 @@ const limpiar = (t, max) =>
 export default async (req) => {
   if (req.method !== "POST") return responder(405, { ok: false, error: "Método no permitido" });
 
-  const TOKEN = process.env.TELEGRAM_TOKEN;
-  const CHAT = process.env.TELEGRAM_CHAT_ID;
+  // Limpia espacios, saltos de línea y comillas que se cuelan al copiar y pegar
+  const limpia = (v) => String(v ?? "").trim().replace(/^["'\s]+|["'\s]+$/g, "");
+  let TOKEN = limpia(process.env.TELEGRAM_TOKEN);
+  if (TOKEN.toLowerCase().startsWith("bot")) TOKEN = TOKEN.slice(3);   // por si pegaron "bot123:ABC"
+  const CHAT = limpia(process.env.TELEGRAM_CHAT_ID).replace(/\s/g, "");
   if (!TOKEN || !CHAT) return responder(500, { ok: false, error: "Falta configurar Telegram en Netlify" });
 
   let datos;
@@ -61,7 +64,16 @@ export default async (req) => {
       body: JSON.stringify({ chat_id: CHAT, text: texto, parse_mode: "HTML" }),
     });
     const j = await r.json();
-    if (!j.ok) return responder(502, { ok: false, error: "Telegram no aceptó el mensaje" });
+    if (!j.ok) {
+      console.log("Telegram rechazó:", j.error_code, j.description);
+      return responder(502, {
+        ok: false,
+        error: "Telegram no aceptó el mensaje",
+        motivo: `${j.error_code}: ${j.description}`,
+        nuevo_chat_id: j.parameters?.migrate_to_chat_id,
+        pista: `token: ${TOKEN.length} caracteres, ${TOKEN.includes(":") ? "con" : "SIN"} dos puntos · chat_id empieza con "${CHAT.slice(0, 4)}"`,
+      });
+    }
     return responder(200, { ok: true });
   } catch {
     return responder(502, { ok: false, error: "No se pudo conectar con Telegram" });

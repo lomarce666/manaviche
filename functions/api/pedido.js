@@ -126,6 +126,8 @@ export async function onRequestPost({ request, env }) {
 
   // ---- Guardar en la base de datos (número en orden + pantalla de cocina) ----
   let id = null, jornada = null, cuenta = null, cuentaAntes = null;
+  // Cómo piensa pagar el cliente (lo elige en el celular; la cocina lo confirma al cobrar)
+  const pago = ["Efectivo", "Transferencia", "Tarjeta"].includes(datos.pago) ? datos.pago : "";
   const por = String(datos.nombre ?? "").replace(/[<>"'`]/g, "").trim().slice(0, 20);
   if (env.DB) {
     try {
@@ -141,6 +143,7 @@ export async function onRequestPost({ request, env }) {
             .bind(c.id, total, ahora.getTime()).first();
           cuenta = { id: c.id, total: r.total, pedidos: r.pedidos };
         } else cuenta = { id: c.id, total: c.total, pedidos: c.pedidos };
+        if (pago) await env.DB.prepare("UPDATE cuentas SET pago_pref = ?2 WHERE id = ?1").bind(c.id, pago).run();
       }
       const fila = await env.DB.prepare(
         "INSERT INTO pedidos (dia, numero, tipo, mesa, items, notas, total, estado, creado, actualizado, jornada, cuenta, por, reparto) " +
@@ -161,11 +164,12 @@ export async function onRequestPost({ request, env }) {
       texto += `• <b>${it.cantidad} x</b> ${limpiar(it.nombre, 60)}  —  $${(it.cantidad * it.precio).toFixed(2)}\n`;
     texto += `\n💰 <b>Total: $${total.toFixed(2)}</b>`;
     if (notas) texto += `\n\n📝 <b>Indicaciones:</b> ${limpiar(notas, 300)}`;
+    if (pago) texto += `\n💳 Pagará con: <b>${pago}</b>`;
     if (adicional) texto += `\n\n🧾 Cuenta de la mesa ${mesa}: <b>$${cuenta.total.toFixed(2)}</b> (${cuenta.pedidos} pedidos)`;
     if (totalDia != null) texto += `\n\n📊 Hoy van <b>${numero}</b> pedido${numero === 1 ? "" : "s"} · $${totalDia.toFixed(2)} vendidos`;
   } else {
     texto = tipo === "cuenta"
-      ? `🧾 <b>PIDEN LA CUENTA</b>\n🍽️ <b>MESA ${mesa}</b>   🕐 ${hora}${cuenta ? `\n💰 Total de la mesa: <b>$${cuenta.total.toFixed(2)}</b> (${cuenta.pedidos} pedidos)` : ""}`
+      ? `🧾 <b>PIDEN LA CUENTA</b>\n🍽️ <b>MESA ${mesa}</b>   🕐 ${hora}${cuenta ? `\n💰 Total de la mesa: <b>$${cuenta.total.toFixed(2)}</b> (${cuenta.pedidos} pedidos)` : ""}${pago ? `\n💳 Pagará con: <b>${pago}</b>` : ""}`
       : `🙋 <b>LLAMAN AL MESERO</b>\n🍽️ <b>MESA ${mesa}</b>   🕐 ${hora}`;
   }
   const j = await enviarTelegram(TOKEN, CHAT, texto);

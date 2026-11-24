@@ -139,7 +139,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 #confirma .emoji{font-size:34px}
 #confirma p{font-size:17px;font-weight:700;margin-top:6px}
 #confirma .grande{font-size:84px;font-weight:900;line-height:1;color:#0d3b4f;margin:6px 0}
-#confirma small{display:block;color:#7a7266;font-size:14px;margin-bottom:18px}
+#confirma small{display:block;color:#7a7266;font-size:14px;margin-bottom:12px}
+.pagoEl{margin:4px 0 14px}
+.pagoEl p{font-size:14px;font-weight:800;color:#0d3b4f;margin:0 0 6px}
+.chips{display:flex;gap:6px}
+.chips button{flex:1;padding:9px 4px;border:2px solid #e2d8c6;background:#fff;border-radius:12px;font:inherit;font-size:13px;font-weight:800;color:#4a443b;cursor:pointer}
+.chips button.on{background:#0d3b4f;border-color:#0d3b4f;color:#fff}
 #confSi{width:100%;padding:15px;border:none;border-radius:14px;background:#e63946;color:#fff;font:inherit;font-size:17px;font-weight:800;cursor:pointer;box-shadow:0 5px 0 #a8242f}
 #confNo{width:100%;margin-top:10px;padding:12px;border:none;background:none;color:#0d3b4f;font:inherit;font-size:15px;font-weight:700;text-decoration:underline;cursor:pointer}
 
@@ -305,6 +310,7 @@ body.conCarta #cartaBtn,body.conCarta #promo,body.conCarta #ayudaBtn{visibility:
     <p>¿Estás en la mesa…</p>
     <div class="grande" id="confMesa">0</div>
     <small id="confDetalle"></small>
+    <div class="pagoEl"><p>💳 ¿Cómo vas a pagar?</p><div class="chips"><button data-pago="Efectivo">💵 Efectivo</button><button data-pago="Transferencia">📲 Transferencia</button><button data-pago="Tarjeta">💳 Tarjeta</button></div></div>
     <button id="confSi">✅ Sí, enviar a la cocina</button>
     <button id="confNo">Cambiar número</button>
   </div>
@@ -331,6 +337,7 @@ body.conCarta #cartaBtn,body.conCarta #promo,body.conCarta #ayudaBtn{visibility:
     <label for="ayudaMesa">Tu mesa</label>
     <input id="ayudaMesa" type="number" inputmode="numeric" min="1" placeholder="#">
     <button class="op" data-tipo="mesero">🙋 Llamar al mesero</button>
+    <div class="pagoEl"><p>💳 ¿Cómo vas a pagar?</p><div class="chips"><button data-pago="Efectivo">💵 Efectivo</button><button data-pago="Transferencia">📲 Transferencia</button><button data-pago="Tarjeta">💳 Tarjeta</button></div></div>
     <button class="op" data-tipo="cuenta">🧾 Pedir la cuenta</button>
     <p id="ayudaMsg"></p>
     <button class="btn-secundario" data-cerrar-ayuda>Cerrar</button>
@@ -624,7 +631,7 @@ function seguirCuenta(c){
     }
   }
   estadosVistos = nuevos;
-  if (cuentaVista && !c) pedirResena(cuentaVista);
+  if (cuentaVista && !c){ pedirResena(cuentaVista); miPago = ""; guardarLS("mesa_pago", ""); pintarPago(); }
   cuentaVista = c && c.pedidos && c.pedidos.length ? c : null;
 }
 const ESTADO_TXT = { nuevo: ["📨 Enviado", "e-nuevo"], recibido: ["👨‍🍳 En preparación", "e-prep"], preparando: ["👨‍🍳 En preparación", "e-prep"], listo: ["✅ Completo", "e-listo"] };
@@ -816,7 +823,7 @@ $("#confSi").onclick = async ()=>{
   const datos = {
     tipo: "pedido", mesa, notas,
     items: Object.entries(carrito).map(([i,q])=>({ id: PLATOS[i].id, cantidad: q })),
-    compartido: COMPARTIDO && mesa === MESA_QR, yo: YO, nombre: miNombre, k: CLAVE_QR,
+    compartido: COMPARTIDO && mesa === MESA_QR, yo: YO, nombre: miNombre, k: CLAVE_QR, pago: miPago,
     // quién agregó cada plato, para dividir la cuenta
     reparto: COMPARTIDO ? lineasMesa.map(l => ({ p: l.p, q: l.q, n: l.por === YO ? miNombre : (l.n || "") })) : null
   };
@@ -844,12 +851,19 @@ ayudaPanel.addEventListener("click", async e=>{
   const tipo = b.dataset.tipo, txt = tipo === "cuenta" ? "la cuenta 🧾" : "al mesero 🙋";
   [...ayudaPanel.querySelectorAll("[data-tipo]")].forEach(x=>x.disabled = true);
   $("#ayudaMsg").textContent = "Enviando… ⏳";
-  const j = await enviarACocina({ tipo, mesa, k: CLAVE_QR });
+  const j = await enviarACocina({ tipo, mesa, k: CLAVE_QR, pago: tipo === "cuenta" ? miPago : "" });
   [...ayudaPanel.querySelectorAll("[data-tipo]")].forEach(x=>x.disabled = false);
   if (j.codigo === "sin_qr"){ $("#ayudaMsg").textContent = "📷 Escanea el QR de tu mesa, o llama al mesero con la mano."; }
   else if (j.ok){ ayudaPanel.classList.remove("ver"); avisar(tipo === "cuenta" ? `Ya te llevamos la cuenta a la mesa ${mesa} 🧾` : `El mesero va a la mesa ${mesa} 🙋`); }
   else { $("#ayudaMsg").innerHTML = `No se pudo enviar. <a href="${wa(`Mesa ${mesa}: por favor ${tipo === "cuenta" ? "la cuenta" : "un mesero"}`)}" target="_blank" rel="noopener">Avisar por WhatsApp</a> o llama al mesero.`; }
 });
+
+/* ---------- Forma de pago que elige el cliente (opcional, se recuerda) ---------- */
+let miPago = leerLS("mesa_pago") || "";
+function pintarPago(){ document.querySelectorAll("[data-pago]").forEach(b => b.classList.toggle("on", b.dataset.pago === miPago)); }
+document.addEventListener("click", e => { const b = e.target.closest("[data-pago]"); if (!b) return;
+  miPago = miPago === b.dataset.pago ? "" : b.dataset.pago; guardarLS("mesa_pago", miPago); pintarPago(); });
+pintarPago();
 
 /* ---------- Carta completa con categorías y buscador ---------- */
 const cartaBox = $("#carta"), cartaLista = $("#cartaLista"), buscar = $("#buscar");

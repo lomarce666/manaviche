@@ -44,6 +44,7 @@ export async function prepararTablas(DB) {
   try { await DB.prepare("ALTER TABLE pedidos ADD COLUMN reparto TEXT").run(); } catch {}
   try { await DB.prepare("ALTER TABLE pedidos ADD COLUMN servidos TEXT").run(); } catch {}
   try { await DB.prepare("ALTER TABLE cuentas ADD COLUMN metodo TEXT").run(); } catch {}
+  try { await DB.prepare("ALTER TABLE cuentas ADD COLUMN pago_pref TEXT").run(); } catch {}
   listo = true;
 }
 
@@ -98,7 +99,7 @@ export async function detalleCuenta(DB, c) {
     platos[it.nombre] = platos[it.nombre] || { nombre: it.nombre, cantidad: 0, precio: it.precio, total: 0 };
     platos[it.nombre].cantidad += it.cantidad; platos[it.nombre].total += it.cantidad * it.precio;
   }
-  return { id: c.id, mesa: c.mesa, abierta: c.abierta, total: Math.round(c.total * 100) / 100, pedidos, platos: Object.values(platos),
+  return { id: c.id, mesa: c.mesa, abierta: c.abierta, pago: c.pago_pref || null, total: Math.round(c.total * 100) / 100, pedidos, platos: Object.values(platos),
     personas: Object.values(personas).map((x) => ({ ...x, total: Math.round(x.total * 100) / 100 })) };
 }
 

@@ -91,7 +91,9 @@ export async function onRequestGet({ request, env }) {
   const [pend, hechos] = await DB.batch([
     DB.prepare("SELECT id, numero, tipo, mesa, items, notas, total, estado, creado, actualizado, por, cuenta, servidos, " +
       "(SELECT MIN(q.id) FROM pedidos q WHERE q.cuenta = pedidos.cuenta AND q.tipo = 'pedido') AS primero, " +
-      "(SELECT c.total FROM cuentas c WHERE c.id = pedidos.cuenta) AS cuenta_total " +
+      "(SELECT c.total FROM cuentas c WHERE c.id = pedidos.cuenta) AS cuenta_total, " +
+      "(SELECT c.pago_pref FROM cuentas c WHERE c.id = pedidos.cuenta) AS pago, " +
+      "(SELECT c.id FROM cuentas c WHERE c.id = pedidos.cuenta AND c.cerrada IS NULL) AS cuenta_abierta " +
       "FROM pedidos WHERE estado != 'listo' ORDER BY id LIMIT 200"),
     DB.prepare("SELECT id, numero, mesa, items, notas, total, creado, actualizado FROM pedidos " +
       "WHERE jornada = ?1 AND tipo = 'pedido' AND estado = 'listo' ORDER BY actualizado DESC LIMIT 400").bind(j ? j.id : -1),
@@ -150,7 +152,12 @@ export async function onRequestPost({ request, env }) {
     await DB.prepare("UPDATE cuentas SET cerrada = ?2, metodo = ?3 WHERE id = ?1 AND cerrada IS NULL").bind(id, Date.now(), metodo).run();
     // La próxima gente que use esa mesa empieza con el carrito vacío
     const c = await DB.prepare("SELECT mesa FROM cuentas WHERE id = ?1").bind(id).first();
-    if (c) await DB.prepare("UPDATE carritos SET lineas = '[]', version = version + 1, actualizado = ?2, ultimo = NULL WHERE mesa = ?1").bind(c.mesa, Date.now()).run();
+    if (c) await DB.batch([
+      DB.prepare("UPDATE carritos SET lineas = '[]', version = version + 1, actualizado = ?2, ultimo = NULL WHERE mesa = ?1").bind(c.mesa, Date.now()),
+      // Los avisos de esa mesa (mesero / cuenta) ya quedan atendidos
+      DB.prepare("UPDATE pedidos SET estado = 'listo', actualizado = ?2 WHERE mesa = ?1 AND tipo != 'pedido' AND estado != 'listo'").bind(c.mesa, Date.now()),
+      DB.prepare("DELETE FROM presencia WHERE mesa = ?1").bind(c.mesa),
+    ]);
     return responder(200, { ok: true });
   }
 

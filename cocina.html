@@ -152,6 +152,8 @@ main{padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280
 .metodos{display:grid;gap:10px;margin-top:14px}
 .metodos button{padding:18px;border-radius:14px;font-size:19px;font-weight:900;background:#0d3b4f;color:#fff}
 .reparto2{margin-top:8px;font-size:14px;opacity:.85}
+.pagoC{margin-top:8px;background:#16351f;color:#6ee7a0;border-radius:10px;padding:8px 10px;font-size:15px}
+.toastOk{position:fixed;left:50%;bottom:30px;transform:translateX(-50%);background:#2ecc71;color:#08210f;font-weight:900;font-size:18px;padding:14px 22px;border-radius:99px;z-index:50;box-shadow:0 10px 30px rgba(0,0,0,.5)}
 @media print{
   body{background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   #panel>*:not(#reporte){display:none!important}
@@ -422,28 +424,44 @@ function pintarMesas(){
       <div class="meta2">${c.pedidos.length} pedido(s) · desde ${hora(c.abierta)}</div>
       <ul>${c.platos.map(x => `<li><span><b>${x.cantidad} x</b> ${esc(x.nombre)}</span><span>$${Number(x.total).toFixed(2)}</span></li>`).join("")}</ul>
       ${(c.personas || []).length > 1 ? `<div class="reparto2">👥 ${c.personas.map(x => `${esc(x.nombre)}: $${Number(x.total).toFixed(2)}`).join(" · ")}</div>` : ""}
-      <button class="b-cobrar" data-cobrar="${c.id}" data-mesa="${c.mesa}" data-total="${Number(c.total).toFixed(2)}">💵 Cobrado · cerrar cuenta</button>
+      ${c.pago ? `<div class="pagoC">💳 El cliente pagará con: <b>${esc(c.pago)}</b></div>` : ""}
+      ${c.pedidos.some(p => p.estado !== "listo") ? `<div class="reparto2">⏳ Todavía hay platos por servir</div>` : `<div class="reparto2">✅ Todo servido</div>`}
+      <button class="b-cobrar" data-cobrar="${c.id}" data-mesa="${c.mesa}" data-total="${Number(c.total).toFixed(2)}" data-pago="${esc(c.pago || "")}">💵 Cobrar mesa ${c.mesa} · $${Number(c.total).toFixed(2)}</button>
     </div>`).join("")}</div>`
     : `<div class="vacio"><b>🧾</b>No hay mesas con cuenta abierta</div>`;
 }
-$("#mesas").addEventListener("click", async e=>{
-  const b = e.target.closest("[data-cobrar]"); if (!b) return;
-  // Preguntar cómo pagó
-  abrirReporte(`<h3>💵 Cobrar mesa ${b.dataset.mesa}</h3>
-    <div class="fechaR" style="font-size:30px;margin-top:6px">$${b.dataset.total}</div>
-    <div class="hrs">¿Cómo pagó? Al elegir se cierra la cuenta de la mesa.</div>
-    <div class="metodos">
-      <button data-metodo="Efectivo" data-id="${b.dataset.cobrar}">💵 Efectivo</button>
-      <button data-metodo="Transferencia" data-id="${b.dataset.cobrar}">📲 Transferencia</button>
-      <button data-metodo="Tarjeta" data-id="${b.dataset.cobrar}">💳 Tarjeta</button>
-    </div>
+// Cobrar: 1) cómo pagó (el que eligió el cliente sale primero)  2) "Mesa N terminada"
+const ICON_PAGO = { Efectivo: "💵", Transferencia: "📲", Tarjeta: "💳" };
+function abrirCobro(id, mesa, total, pago){
+  const orden = ["Efectivo", "Transferencia", "Tarjeta"].sort((a, b) => (b === pago) - (a === pago));
+  abrirReporte(`<h3>💵 Cobrar mesa ${mesa}</h3>
+    <div class="fechaR" style="font-size:30px;margin-top:6px">$${total}</div>
+    <div class="hrs">${pago ? `El cliente eligió <b>${esc(pago)}</b>.` : "¿Cómo pagó?"}</div>
+    <div class="metodos">${orden.map(m => `<button data-metodo="${m}" data-id="${id}" data-mesa="${mesa}"${m === pago ? ` style="background:#2ecc71;color:#08210f"` : ""}>${ICON_PAGO[m]} Cobrar por ${m}${m === pago ? " ✓" : ""}</button>`).join("")}</div>
     <div class="botones"><button class="bGrande bGris" data-cerrar>Cancelar</button></div>`);
+}
+function confirmarTerminar(id, mesa, metodo){
+  abrirReporte(`<h3>🏁 Mesa ${mesa} terminada</h3>
+    <div class="hrs" style="font-size:16px;margin-top:8px">Cobrado por <b>${esc(metodo)}</b>. La mesa ${mesa} ya acabó de comer.</div>
+    <div class="alerta" style="background:#eef6f6;color:#0d3b4f">Al terminar se borra todo lo de esta mesa en el celular: el próximo cliente que escanee el QR de la mesa ${mesa} empieza desde cero.</div>
+    <div class="botones">
+      <button class="bGrande bVerde" data-terminar="${id}" data-mesa="${mesa}" data-metodo2="${esc(metodo)}">✅ Terminar mesa ${mesa}</button>
+      <button class="bGrande bGris" data-cerrar>Volver</button></div>`);
+}
+$("#mesas").addEventListener("click", e=>{
+  const b = e.target.closest("[data-cobrar]"); if (!b) return;
+  abrirCobro(b.dataset.cobrar, b.dataset.mesa, b.dataset.total, b.dataset.pago);
 });
-async function cobrar(id, metodo){
+async function cobrar(id, metodo, mesa){
   cerrarReporte();
   datos.mesas = (datos.mesas || []).filter(c => c.id !== id); pintar();
   try { await fetch("/api/cocina", { method: "POST", headers: { "Content-Type": "application/json", "x-clave": CLAVE }, body: JSON.stringify({ accion: "cobrar", id, metodo }) }); } catch(e){}
+  mostrarListo(`✅ Mesa ${mesa} terminada · lista para nuevos clientes`);
   cargar();
+}
+function mostrarListo(txt){
+  const t = document.createElement("div"); t.className = "toastOk"; t.textContent = txt;
+  document.body.appendChild(t); setTimeout(() => t.remove(), 3500);
 }
 
 function pintarPreparados(){
@@ -486,7 +504,9 @@ function pintar(){
         <div class="cab"><span class="mesa">MESA ${p.mesa}</span><span class="meta">${hora(p.creado)} · ${hace(p.creado)}</span></div>
         <div class="titulo-aviso">${p.tipo === "cuenta" ? "🧾 Piden la cuenta" : "🙋 Llaman al mesero"}</div>
         ${p.tipo === "cuenta" && p.cuenta_total != null ? `<div class="ctaMesa" style="font-size:18px">Total: $${Number(p.cuenta_total).toFixed(2)}</div>` : ""}
-        <div class="acciones"><button class="b-ok" data-id="${p.id}" data-estado="listo">OK, voy</button></div></div>`;
+        ${p.tipo === "cuenta" && p.pago ? `<div class="pagoC">💳 Pagará con: <b>${esc(p.pago)}</b></div>` : ""}
+        <div class="acciones"><button class="b-ok" data-id="${p.id}" data-estado="listo">OK, voy</button>
+        ${p.tipo === "cuenta" && p.cuenta_abierta ? `<button class="b-listo completo" data-cobrar2="${p.cuenta_abierta}" data-mesa="${p.mesa}" data-total="${Number(p.cuenta_total).toFixed(2)}" data-pago="${esc(p.pago || "")}">💵 Cobrar</button>` : ""}</div></div>`;
     }
     const serv = p.items.map((it, i) => Math.min(Number((p.servidos || [])[i]) || 0, it.cantidad));
     const faltan = p.items.reduce((t, it, i) => t + it.cantidad - serv[i], 0);
@@ -508,6 +528,8 @@ function pintar(){
 
 /* ---------- Botones Recibido / vistos / Pedido servido ---------- */
 async function alTocar(e){
+  const cb = e.target.closest("[data-cobrar2]");
+  if (cb){ abrirCobro(cb.dataset.cobrar2, cb.dataset.mesa, cb.dataset.total, cb.dataset.pago); return; }
   // Visto de un plato servido
   const v = e.target.closest("[data-servir]");
   if (v){
@@ -670,7 +692,8 @@ $("#dia").addEventListener("click", async e=>{
 });
 $("#reporte").addEventListener("click", async e=>{
   if (e.target.id === "reporte" || e.target.closest("[data-cerrar]")){ cerrarReporte(); return; }
-  const m = e.target.closest("[data-metodo]"); if (m){ cobrar(Number(m.dataset.id), m.dataset.metodo); return; }
+  const m = e.target.closest("[data-metodo]"); if (m){ confirmarTerminar(Number(m.dataset.id), m.dataset.mesa, m.dataset.metodo); return; }
+  const t = e.target.closest("[data-terminar]"); if (t){ cobrar(Number(t.dataset.terminar), t.dataset.metodo2, t.dataset.mesa); return; }
   if (e.target.closest("[data-imprimir]")){ window.print(); return; }
   if (e.target.closest("[data-wa]") && reporteActual){ window.open("https://wa.me/?text=" + encodeURIComponent(textoReporte(reporteActual)), "_blank"); return; }
   if (e.target.id === "bConfirmar"){

@@ -1,0 +1,36 @@
+{
+  "nombre": "Manaviche",
+  "eslogan": "Sabor manabita",
+  "mesas": 6,
+  "whatsapp": "593998083141",
+  "telegram_chat_id": "-5274191814",
+  "direccion": "Tu dirección aquí, Machala",
+  "mapa": "https://maps.google.com/?q=Machala",
+  "colores": { "inicio": "#0d3b4f", "acento": "#ffd166" },
+
+  "platos": [
+    { "id": "ceviche-jipijapa", "nombre": "Ceviche Jipijapa", "precio": 7,
+      "desc": "Camarón fresco al estilo manabita, con su toque de maní. Con chifles y limón.",
+      "dibujo": "ceviche", "foto": "", "fondo": "#c8553d", "agotado": false },
+
+    { "id": "encebollado", "nombre": "Encebollado", "precio": 4.50,
+      "desc": "Albacora, yuca y cebolla curtida. El que levanta a cualquiera.",
+      "dibujo": "encebollado", "foto": "", "fondo": "#1f6f78", "agotado": false },
+
+    { "id": "viche-pescado", "nombre": "Viche de pescado", "precio": 8,
+      "desc": "Sopa manabita de maní con verde, choclo, pescado y mariscos.",
+      "dibujo": "viche", "foto": "", "fondo": "#4f7f35", "agotado": false },
+
+    { "id": "corviche", "nombre": "Corviche", "precio": 4.50,
+      "desc": "Masa de verde rellena de pescado, frita y crocante. 3 unidades con curtido.",
+      "dibujo": "corviche", "foto": "", "fondo": "#d07a1e", "agotado": false },
+
+    { "id": "cazuela-mariscos", "nombre": "Cazuela de mariscos", "precio": 9,
+      "desc": "En olla de barro, con maní, verde y mariscos frescos.",
+      "dibujo": "cazuela", "foto": "", "fondo": "#7a3b2e", "agotado": false },
+
+    { "id": "bolon-mixto", "nombre": "Bolón mixto", "precio": 3.50,
+      "desc": "Verde majado con queso y chicharrón, con huevo frito.",
+      "dibujo": "bolon", "foto": "", "fondo": "#2b4162", "agotado": false }
+  ]
+}

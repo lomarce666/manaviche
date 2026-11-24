@@ -163,6 +163,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 .agotado{background:rgba(0,0,0,.25);color:var(--crema);font-weight:800;font-size:14px;padding:10px 16px;border-radius:99px}
 .mesa input.fija{background:#eef6f6;border-color:#0d3b4f}
 .ticket{display:inline-block;margin-top:10px;background:#0d3b4f;color:#fff;font-weight:900;font-size:22px;padding:6px 16px;border-radius:12px;letter-spacing:1px}
+#mesaChip{position:fixed;left:50%;bottom:calc(30px + env(safe-area-inset-bottom));transform:translate(-50%,140%);background:rgba(13,59,79,.92);color:#fff;font-weight:800;font-size:14px;padding:9px 14px;border-radius:99px;z-index:55;transition:transform .35s cubic-bezier(.2,1.4,.4,1);white-space:nowrap;box-shadow:0 8px 20px rgba(0,0,0,.3)}
+#mesaChip.ver{transform:translate(-50%,0)}
+.compartida{display:none;background:#eef6f6;border-radius:14px;padding:10px 12px;margin:2px 0 8px;font-size:14px;color:#0d3b4f}
+.compartida.ver{display:block}
+.compartida b{font-weight:900}
+.compartida input{width:100%;margin-top:8px;padding:9px 10px;border:2px solid #cfe3e3;border-radius:10px;font:inherit;font-size:15px;outline:none;background:#fff}
+.compartida input:focus{border-color:#0d3b4f}
+.item .de{display:block;font-size:12px;color:#0d6e6e;font-weight:700;margin-top:2px}
 #ayudaBtn{position:fixed;left:18px;bottom:calc(20px + env(safe-area-inset-bottom));width:56px;height:56px;border-radius:50%;border:none;background:rgba(255,255,255,.92);font-size:26px;box-shadow:0 8px 22px rgba(0,0,0,.3);z-index:60;cursor:pointer}
 #ayudaPanel{position:fixed;inset:0;z-index:97;background:rgba(0,0,0,.55);display:grid;place-items:center;padding:24px;opacity:0;pointer-events:none;transition:opacity .25s}
 #ayudaPanel.ver{opacity:1;pointer-events:auto}
@@ -202,6 +210,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
   </div>
 </div>
 
+<div id="mesaChip"></div>
 <!-- Carrito flotante -->
 <button id="burbuja" aria-label="Ver mi pedido">🛒<span id="contador">0</span></button>
 
@@ -210,6 +219,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 <div id="ventana" role="dialog" aria-label="Tu pedido">
   <div class="agarre"></div>
   <div class="cabeza"><h3>Tu pedido</h3><button class="x" id="cerrar" aria-label="Cerrar">×</button></div>
+  <div class="compartida" id="compartida">
+    👥 <b id="compTitulo">Carrito de la mesa</b><br><span id="compTexto">Todos en la mesa ven este carrito y cualquiera puede enviarlo.</span>
+    <input id="miNombre" maxlength="20" placeholder="Tu nombre (opcional)" autocomplete="given-name">
+  </div>
   <div id="lista"></div>
   <div class="total"><span>Total</span><b id="total">$0</b></div>
   <div class="mesa">
@@ -419,6 +432,93 @@ const cuenta = () => Object.values(carrito).reduce((a,b)=>a+b, 0);
 const suma = () => Object.entries(carrito).reduce((t,[i,q])=>t + PLATOS[i].precio*q, 0);
 const plata = n => "$" + n.toFixed(2);
 
+/* ---------- Carrito compartido de la mesa ----------
+   Si el cliente entró por el QR de su mesa, el carrito vive en el servidor y lo
+   ven todos los celulares de esa mesa. Si no hay conexión, funciona como antes. */
+const leerLS = k => { try { return localStorage.getItem(k); } catch(e){ return null; } };
+const guardarLS = (k,v) => { try { localStorage.setItem(k,v); } catch(e){} };
+const YO = leerLS("mesa_yo") || (()=>{ const id = Math.random().toString(36).slice(2) + Date.now().toString(36); guardarLS("mesa_yo", id); return id; })();
+let miNombre = leerLS("mesa_nombre") || "";
+const idxDe = new Map(PLATOS.map((p,i)=>[p.id, i]));
+let COMPARTIDO = false, versionMesa = -1, lineasMesa = [], personasMesa = [], ultimoVisto = 0, ultimoPing = 0, cargadoMesa = false, enVuelo = 0;
+
+function aplicarMesa(e, desdeServidor){
+  if (!e || !e.ok) return;
+  if (e.version < versionMesa && desdeServidor) return;           // respuesta vieja
+  if (enVuelo && desdeServidor === "consulta") return;            // esperando la respuesta de mi propio cambio
+  const antes = new Map(lineasMesa.map(l => [l.p + "|" + l.por, l.q]));
+  versionMesa = e.version; lineasMesa = e.lineas; personasMesa = e.personas;
+  // Avisar lo que agregó otra persona
+  e.lineas.forEach(l => {
+    if (l.por === YO) return;
+    const q0 = antes.get(l.p + "|" + l.por) || 0;
+    if (l.q > q0 && cargadoMesa){
+      const i = idxDe.get(l.p); if (i != null) avisar(`${l.n || "Alguien de tu mesa"} agregó ${PLATOS[i].nombre}`);
+    }
+  });
+  // Otra persona ya envió el pedido
+  if (e.ultimo && e.ultimo.cuando > ultimoVisto){
+    const primera = ultimoVisto === 0;
+    ultimoVisto = e.ultimo.cuando;
+    if (!primera && e.ultimo.yo !== YO){
+      $("#notas").value = "";
+      mostrar("ok", MESA_QR, null, e.ultimo.numero, e.ultimo.nombre || "Alguien de tu mesa");
+    }
+  }
+  for (const k in carrito) delete carrito[k];
+  e.lineas.forEach(l => { const i = idxDe.get(l.p); if (i != null) carrito[i] = (carrito[i] || 0) + l.q; });
+  cargadoMesa = true;
+  refrescar();
+}
+async function consultarMesa(){
+  if (!MESA_QR) return null;
+  const ping = Date.now() - ultimoPing > 15000;
+  try {
+    const r = await fetch(`/api/mesa?mesa=${MESA_QR}&yo=${encodeURIComponent(YO)}&nombre=${encodeURIComponent(miNombre)}${ping ? "&ping=1" : ""}`, { cache: "no-store" });
+    if (!r.ok) return null;
+    if (ping) ultimoPing = Date.now();
+    return await r.json();
+  } catch(e){ return null; }
+}
+async function cambiarMesa(plato, delta){
+  enVuelo++;
+  try {
+    const r = await fetch("/api/mesa", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mesa: MESA_QR, yo: YO, nombre: miNombre, plato, delta }) });
+    const j = await r.json();
+    if (j.ok) aplicarMesa(j, true); else { avisar(j.error || "No se pudo actualizar"); aplicarMesa(await consultarMesa(), true); }
+  } catch(e){ avisar("Sin conexión, intenta de nuevo"); }
+  finally { enVuelo--; }
+}
+function pintarCompartido(){
+  if (!COMPARTIDO) return;
+  const otros = personasMesa.filter(p => !p.soyYo);
+  $("#compartida").classList.add("ver");
+  $("#compTitulo").textContent = `Carrito de la mesa ${MESA_QR}`;
+  $("#compTexto").textContent = otros.length
+    ? `Conectados: tú y ${otros.map(o => o.nombre || "otra persona").join(", ")}. Todos ven este carrito y cualquiera puede enviarlo.`
+    : "Si otra persona de tu mesa escanea el QR, verá este mismo carrito.";
+  const chip = $("#mesaChip");
+  chip.textContent = `👥 ${personasMesa.length} en la mesa ${MESA_QR}`;
+  chip.classList.toggle("ver", otros.length > 0 && !ventana.classList.contains("ver") && !burbuja.classList.contains("ver"));
+}
+function quienesPidieron(i){
+  const nombres = [...new Set(lineasMesa.filter(l => idxDe.get(l.p) == i).map(l => l.por === YO ? "ti" : (l.n || "otra persona")))];
+  return nombres.length && (nombres.length > 1 || nombres[0] !== "ti") ? `Pedido por ${nombres.join(" y ")}` : "";
+}
+(async ()=>{
+  if (!MESA_QR) return;
+  const e = await consultarMesa();
+  if (!e || !e.ok) return;                                       // sin servidor: carrito normal
+  COMPARTIDO = true;
+  ultimoVisto = e.ultimo ? e.ultimo.cuando : 1;
+  $("#miNombre").value = miNombre;
+  aplicarMesa(e, true); pintarCompartido();
+  setInterval(async ()=>{ if (!document.hidden){ const x = await consultarMesa(); if (x){ aplicarMesa(x, "consulta"); pintarCompartido(); } } }, 3000);
+  document.addEventListener("visibilitychange", async ()=>{ if (!document.hidden){ ultimoPing = 0; aplicarMesa(await consultarMesa(), true); pintarCompartido(); } });
+})();
+$("#miNombre").addEventListener("change", e=>{ miNombre = e.target.value.replace(/[<>"'`]/g,"").trim().slice(0,20); guardarLS("mesa_nombre", miNombre); ultimoPing = 0; });
+
 function avisar(txt){
   const a = $("#aviso"); a.textContent = txt; a.classList.add("ver");
   clearTimeout(avisar.t); avisar.t = setTimeout(()=>a.classList.remove("ver"), 1800);
@@ -456,12 +556,13 @@ function refrescar(){
     const p = PLATOS[i];
     return `<div class="item">
       <div class="ic" style="background:${p.fondo}22">${ICONOS[p.comida]||"🍽️"}</div>
-      <div class="nm"><b>${p.nombre}</b><small>${plata(p.precio)} c/u · ${plata(p.precio*q)}</small></div>
+      <div class="nm"><b>${p.nombre}</b><small>${plata(p.precio)} c/u · ${plata(p.precio*q)}</small>${COMPARTIDO && quienesPidieron(i) ? `<small class="de">👤 ${quienesPidieron(i)}</small>` : ""}</div>
       <div class="cant"><button class="menos" data-menos="${i}" aria-label="Quitar uno">−</button><span>${q}</span><button class="mas" data-mas="${i}" aria-label="Agregar uno">+</button></div>
     </div>`;
   }).join("");
   if (!n) cerrarVentana();
   validar();
+  pintarCompartido();
 }
 
 function validar(){
@@ -482,15 +583,21 @@ function cerrarVentana(){ ventana.classList.remove("ver"); sombra.classList.remo
 
 document.addEventListener("click", e=>{
   const ped = e.target.closest(".pedir");
-  if (ped){ const i = ped.dataset.i; carrito[i] = (carrito[i]||0) + 1; volar(ped); refrescar(); avisar(`${PLATOS[i].nombre} agregado 😋`); return; }
+  if (ped){ const i = ped.dataset.i; carrito[i] = (carrito[i]||0) + 1; volar(ped); refrescar(); avisar(`${PLATOS[i].nombre} agregado 😋`); if (COMPARTIDO) cambiarMesa(PLATOS[i].id, 1); return; }
   const mas = e.target.closest("[data-mas]"), menos = e.target.closest("[data-menos]");
-  if (mas){ carrito[mas.dataset.mas]++; refrescar(); }
-  if (menos){ const i = menos.dataset.menos; if(--carrito[i] <= 0) delete carrito[i]; refrescar(); }
+  if (mas){ const i = mas.dataset.mas; carrito[i]++; refrescar(); if (COMPARTIDO) cambiarMesa(PLATOS[i].id, 1); }
+  if (menos){ const i = menos.dataset.menos; if(--carrito[i] <= 0) delete carrito[i]; refrescar(); if (COMPARTIDO) cambiarMesa(PLATOS[i].id, -1); }
 });
 burbuja.onclick = abrirVentana;
 $("#cerrar").onclick = cerrarVentana;
 sombra.onclick = cerrarVentana;
-$("#vaciar").onclick = ()=>{ for (const k in carrito) delete carrito[k]; refrescar(); };
+$("#vaciar").onclick = ()=>{
+  if (COMPARTIDO){
+    if (!confirm("¿Vaciar el carrito de toda la mesa?")) return;
+    Object.entries(carrito).forEach(([i,q])=>{ for (let k = 0; k < q; k++) cambiarMesa(PLATOS[i].id, -1); });
+  }
+  for (const k in carrito) delete carrito[k]; refrescar();
+};
 mesaIn.addEventListener("input", ()=>{ if (MESA_QR) return; mesaIn.value = mesaIn.value.replace(/[^0-9]/g,""); validar(); });
 
 // Paso 1: preguntar "¿Estás en la mesa X?"
@@ -532,12 +639,12 @@ async function enviarACocina(datos){
     return r.ok ? j : { ok:false, ...j };                     // ok solo si Telegram confirmó
   } catch (e) { return { ok:false, error: String(e) }; }
 }
-function mostrar(tipo, mesa, linkWA, numero){
+function mostrar(tipo, mesa, linkWA, numero, quien){
   const c = resultado.querySelector(".caja");
   if (tipo === "ok"){
     c.innerHTML = `<div class="emoji grande-emoji">🔥</div><h4>¡Pedido enviado!</h4>
       ${numero ? `<div class="ticket">Pedido #${numero}</div>` : ""}
-      <p>La cocina ya recibió el pedido de la <b>mesa ${mesa}</b>.<br>En un momento te lo llevamos 😋</p>
+      <p>${quien ? `<b>${quien}</b> envió el pedido de la mesa.<br>` : ""}La cocina ya recibió el pedido de la <b>mesa ${mesa}</b>.<br>En un momento te lo llevamos 😋</p>
       <button class="btn-principal" data-cerrar>Listo</button>`;
   } else {
     c.innerHTML = `<div class="emoji grande-emoji">📶</div><h4>No pudimos enviarlo directo</h4>
@@ -560,14 +667,15 @@ $("#confSi").onclick = async ()=>{
   const linkWA = wa(mensajeWhatsApp(mesa, notas));
   const datos = {
     tipo: "pedido", mesa, notas,
-    items: Object.entries(carrito).map(([i,q])=>({ id: PLATOS[i].id, cantidad: q }))
+    items: Object.entries(carrito).map(([i,q])=>({ id: PLATOS[i].id, cantidad: q })),
+    compartido: COMPARTIDO && mesa === MESA_QR, yo: YO, nombre: miNombre
   };
   btn.disabled = true; btn.textContent = "Enviando… ⏳";
   const j = await enviarACocina(datos);
   const ok = j.ok === true;
   btn.disabled = false; btn.textContent = "✅ Sí, enviar a la cocina";
   confirma.classList.remove("ver");
-  if (ok){ limpiarPedido(); mostrar("ok", mesa, null, j.numero); }
+  if (ok){ ultimoVisto = Date.now(); limpiarPedido(); mostrar("ok", mesa, null, j.numero); }
   else   { mostrar("error", mesa, linkWA); }                  // plan B: WhatsApp o mesero
 };
 /* ---------- Llamar al mesero / pedir la cuenta ---------- */

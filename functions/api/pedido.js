@@ -149,6 +149,14 @@ export async function onRequestPost({ request, env }) {
       nuevo_chat_id: j.parameters?.migrate_to_chat_id,
     });
   }
+  // Carrito compartido de la mesa: se vacía para todos y se avisa quién envió el pedido
+  if (tipo === "pedido" && datos.compartido && env.DB) {
+    try {
+      const ultimo = JSON.stringify({ numero, nombre: String(datos.nombre ?? "").replace(/[<>"'`]/g, "").slice(0, 20), yo: String(datos.yo ?? "").slice(0, 40), cuando: ahora.getTime(), total });
+      await env.DB.prepare("INSERT INTO carritos (mesa, lineas, version, actualizado, ultimo) VALUES (?1, '[]', 1, ?2, ?3) " +
+        "ON CONFLICT(mesa) DO UPDATE SET lineas = '[]', version = version + 1, actualizado = ?2, ultimo = ?3").bind(mesa, ahora.getTime(), ultimo).run();
+    } catch (e) { console.log("Carrito compartido:", String(e)); }
+  }
   return responder(200, { ok: true, numero: tipo === "pedido" ? numero : undefined });
 }
 

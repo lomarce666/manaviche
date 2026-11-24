@@ -27,6 +27,9 @@ export async function prepararTablas(DB) {
       n INTEGER NOT NULL DEFAULT 0, total REAL NOT NULL DEFAULT 0, resumen TEXT)`),
     // Solo puede haber UN día abierto a la vez
     DB.prepare("CREATE UNIQUE INDEX IF NOT EXISTS una_jornada_abierta ON jornadas ((cerrada IS NULL)) WHERE cerrada IS NULL"),
+    // Carrito compartido de cada mesa y quién lo está usando
+    DB.prepare("CREATE TABLE IF NOT EXISTS carritos (mesa INTEGER PRIMARY KEY, lineas TEXT NOT NULL DEFAULT '[]', version INTEGER NOT NULL DEFAULT 0, actualizado INTEGER NOT NULL DEFAULT 0, ultimo TEXT)"),
+    DB.prepare("CREATE TABLE IF NOT EXISTS presencia (mesa INTEGER NOT NULL, yo TEXT NOT NULL, nombre TEXT, visto INTEGER NOT NULL, PRIMARY KEY (mesa, yo))"),
   ]);
   // Columna nueva en bases creadas antes (si ya existe, no pasa nada)
   try { await DB.prepare("ALTER TABLE pedidos ADD COLUMN jornada INTEGER").run(); } catch {}

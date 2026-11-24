@@ -81,11 +81,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 .pedir.listo{background:var(--crema);color:#1d1d1f}
 
 /* ---------- Burbuja del carrito ---------- */
-#burbuja{position:fixed;right:18px;bottom:calc(20px + env(safe-area-inset-bottom));width:66px;height:66px;border-radius:50%;background:var(--amarillo);color:#1d1d1f;border:none;font-size:28px;display:grid;place-items:center;box-shadow:0 10px 26px rgba(0,0,0,.35);z-index:60;cursor:pointer;transform:scale(0);transition:transform .35s cubic-bezier(.2,1.6,.4,1)}
+#burbuja{position:fixed;right:16px;bottom:calc(20px + env(safe-area-inset-bottom));height:66px;padding:0 6px 0 18px;border-radius:99px;background:var(--amarillo);color:#1d1d1f;border:none;display:flex;align-items:center;gap:10px;box-shadow:0 10px 26px rgba(0,0,0,.35);z-index:60;cursor:pointer;transform:scale(0);transform-origin:right center;transition:transform .35s cubic-bezier(.2,1.6,.4,1);font-family:inherit;text-align:left}
+#burbuja .etq{display:flex;flex-direction:column;line-height:1.15;font-size:13px;font-weight:700}
+#burbuja .etq b{font-size:17px;font-weight:900;text-transform:uppercase}
+#burbuja .carro{position:relative;width:54px;height:54px;border-radius:50%;background:#fff3c4;display:grid;place-items:center;font-size:26px}
 #burbuja.ver{transform:scale(1)}
 #burbuja.salto{animation:salto .45s ease}
 @keyframes salto{30%{transform:scale(1.25) rotate(-10deg)}60%{transform:scale(.92) rotate(6deg)}100%{transform:scale(1)}}
-#contador{position:absolute;top:-4px;right:-4px;min-width:26px;height:26px;padding:0 7px;border-radius:99px;background:#e63946;color:#fff;font-size:14px;font-weight:800;display:grid;place-items:center;border:3px solid #fff}
+#contador{position:absolute;top:-8px;right:-6px;min-width:26px;height:26px;padding:0 7px;border-radius:99px;background:#e63946;color:#fff;font-size:14px;font-weight:800;display:grid;place-items:center;border:3px solid #fff}
 .volador{position:fixed;width:34px;height:34px;border-radius:50%;background:var(--amarillo);z-index:70;pointer-events:none;display:grid;place-items:center;font-size:18px;box-shadow:0 4px 12px rgba(0,0,0,.3)}
 
 /* ---------- Ventana del pedido ---------- */
@@ -163,8 +166,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 .agotado{background:rgba(0,0,0,.25);color:var(--crema);font-weight:800;font-size:14px;padding:10px 16px;border-radius:99px}
 .mesa input.fija{background:#eef6f6;border-color:#0d3b4f}
 .ticket{display:inline-block;margin-top:10px;background:#0d3b4f;color:#fff;font-weight:900;font-size:22px;padding:6px 16px;border-radius:12px;letter-spacing:1px}
-#mesaChip{position:fixed;left:50%;bottom:calc(30px + env(safe-area-inset-bottom));transform:translate(-50%,140%);background:rgba(13,59,79,.92);color:#fff;font-weight:800;font-size:14px;padding:9px 14px;border-radius:99px;z-index:55;transition:transform .35s cubic-bezier(.2,1.4,.4,1);white-space:nowrap;box-shadow:0 8px 20px rgba(0,0,0,.3)}
-#mesaChip.ver{transform:translate(-50%,0)}
 .compartida{display:none;background:#eef6f6;border-radius:14px;padding:10px 12px;margin:2px 0 8px;font-size:14px;color:#0d3b4f}
 .compartida.ver{display:block}
 .compartida b{font-weight:900}
@@ -210,9 +211,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
   </div>
 </div>
 
-<div id="mesaChip"></div>
 <!-- Carrito flotante -->
-<button id="burbuja" aria-label="Ver mi pedido">🛒<span id="contador">0</span></button>
+<button id="burbuja" aria-label="Ver mi pedido"><span class="etq"><b>Tu pedido</b>Toca aquí para verlo</span><span class="carro">🛒<span id="contador">0</span></span></button>
 
 <!-- Ventana del pedido -->
 <div id="sombra"></div>
@@ -498,9 +498,6 @@ function pintarCompartido(){
   $("#compTexto").textContent = otros.length
     ? `Conectados: tú y ${otros.map(o => o.nombre || "otra persona").join(", ")}. Todos ven este carrito y cualquiera puede enviarlo.`
     : "Si otra persona de tu mesa escanea el QR, verá este mismo carrito.";
-  const chip = $("#mesaChip");
-  chip.textContent = `👥 ${personasMesa.length} en la mesa ${MESA_QR}`;
-  chip.classList.toggle("ver", otros.length > 0 && !ventana.classList.contains("ver") && !burbuja.classList.contains("ver"));
 }
 function quienesPidieron(i){
   const nombres = [...new Set(lineasMesa.filter(l => idxDe.get(l.p) == i).map(l => l.por === YO ? "ti" : (l.n || "otra persona")))];
@@ -525,7 +522,7 @@ function avisar(txt){
 }
 
 function volar(desde){
-  const r = desde.getBoundingClientRect(), b = burbuja.getBoundingClientRect();
+  const r = desde.getBoundingClientRect(), b = (burbuja.querySelector(".carro") || burbuja).getBoundingClientRect();
   const v = document.createElement("div");
   v.className = "volador"; v.textContent = "+1";
   v.style.left = (r.left + r.width/2 - 17) + "px"; v.style.top = (r.top + r.height/2 - 17) + "px";

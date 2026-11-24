@@ -184,6 +184,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 .yaPedido li{display:flex;justify-content:space-between;gap:8px;color:#4a443b}
 .yaPedido .nota2{margin-top:8px;font-size:13px;color:#7a7266}
 .agregarMas{font-size:15px;font-weight:900;color:#0d3b4f;margin:4px 2px 6px;text-transform:uppercase}
+.agregarMas.nuevo{background:#fff3cf;border-radius:12px;padding:10px 12px;text-transform:none;font-size:15px}
+.guiaMas{display:none;background:#0d3b4f;color:#fff;border-radius:16px;padding:14px 16px;margin:6px 0 10px}
+.guiaMas.ver{display:block}
+.guiaMas h5{font-size:18px;font-weight:900;text-transform:uppercase;color:var(--amarillo)}
+.guiaMas ol{margin:8px 0 0 20px;font-size:15px;line-height:1.5}
+.guiaMas p{font-size:14px;opacity:.9;margin-top:8px}
+.btnSeguir{display:block;width:100%;margin-top:12px;padding:15px;border:none;border-radius:14px;background:var(--amarillo);color:#1d1d1f;font:inherit;font-size:18px;font-weight:900;cursor:pointer}
+#resultado .btnSeguir{font-size:17px;box-shadow:0 4px 0 #c9a13e}
 .item .de{display:block;font-size:12px;color:#0d6e6e;font-weight:700;margin-top:2px}
 #ayudaBtn{position:fixed;left:18px;bottom:calc(20px + env(safe-area-inset-bottom));width:56px;height:56px;border-radius:50%;border:none;background:rgba(255,255,255,.92);font-size:26px;box-shadow:0 8px 22px rgba(0,0,0,.3);z-index:60;cursor:pointer}
 #ayudaPanel{position:fixed;inset:0;z-index:97;background:rgba(0,0,0,.55);display:grid;place-items:center;padding:24px;opacity:0;pointer-events:none;transition:opacity .25s}
@@ -290,8 +298,19 @@ body.conCarta #cartaBtn,body.conCarta #promo,body.conCarta #ayudaBtn{visibility:
   </div>
   <div id="franja"></div>
   <div class="yaPedido" id="yaPedido"></div>
+  <div class="guiaMas" id="guiaMas">
+    <h5>➕ ¿Quieres pedir algo más?</h5>
+    <ol>
+      <li>Toca <b>"Seguir pidiendo"</b> para ver la carta.</li>
+      <li>Elige tu plato y toca <b>"Agregar +"</b>.</li>
+      <li>Vuelve aquí (botón amarillo de abajo) y toca <b>"Agregar a la cuenta"</b>.</li>
+    </ol>
+    <p>Se suma a la cuenta de tu mesa. Pagas todo junto al final 😊</p>
+    <button class="btnSeguir" data-seguir>🍽️ Seguir pidiendo</button>
+  </div>
   <div class="agregarMas" id="agregarMas"></div>
   <div id="lista"></div>
+  <div id="zonaEnvio">
   <div class="total"><span id="totalEtq">Total</span><b id="total">$0</b></div>
   <div class="mesa">
     <label for="mesa" id="mesaLabel">🍽️ Mesa (especifique el número de su mesa)</label>
@@ -301,6 +320,7 @@ body.conCarta #cartaBtn,body.conCarta #promo,body.conCarta #ayudaBtn{visibility:
   <button id="enviar" disabled>Enviar a la cocina 👨‍🍳</button>
   <p class="ayuda" id="ayuda">Escribe tu número de mesa para enviar el pedido</p>
   <button class="vaciar" id="vaciar">Vaciar pedido</button>
+  </div>
 </div>
 
 <!-- Confirmación de mesa -->
@@ -687,9 +707,14 @@ function refrescar(){
             return `<li class="${n >= it.cantidad ? "ok" : ""}"><span><b>${it.cantidad} x</b> ${it.nombre}</span><span class="chk">${Array.from({ length: Math.min(it.cantidad, 12) }, (_, k) => k < n ? "✅" : "⬜").join("")}</span></li>`; }).join("")}</ul>
           ${p.estado === "listo" ? `<div class="fin">🎉 ¡Tu pedido está completo! Buen provecho.</div>` : ""}</div>`; }).join("")}
       ${(cuentaMesa.personas || []).length > 1 ? `<details class="reparto"><summary>👥 ¿Cuánto le toca a cada uno?</summary><ul>${cuentaMesa.personas.map(x => `<li><span>${x.nombre}</span><span>$${x.total.toFixed(2)}</span></li>`).join("")}</ul><div class="nota2">Según quién agregó cada plato al carrito.</div></details>` : ""}
-      <div class="nota2">Cada ✅ es un plato que ya te sirvieron. ¿Quieren algo más? Agréguenlo abajo y se suma a esta cuenta.</div>`;
+      <div class="nota2">Cada ✅ es un plato que ya te sirvieron.</div>`;
   }
-  $("#agregarMas").textContent = hayCuenta ? (n > 0 ? "➕ Para agregar a la cuenta" : "➕ ¿Algo más? Toca \"Agregar +\" en el menú") : "";
+  // Ya pidieron: guía para seguir pidiendo, y lo nuevo se ve claramente como "se suma a tu cuenta"
+  $("#guiaMas").classList.toggle("ver", hayCuenta && n === 0);
+  $("#zonaEnvio").style.display = hayCuenta && n === 0 ? "none" : "";
+  const am = $("#agregarMas");
+  am.classList.toggle("nuevo", hayCuenta && n > 0);
+  am.innerHTML = hayCuenta && n > 0 ? "➕ <b>Lo nuevo que vas a agregar a tu cuenta:</b><br>Revisa y toca <b>\"Agregar a la cuenta\"</b> para mandarlo a la cocina." : "";
   enviar.innerHTML = hayCuenta ? "Agregar a la cuenta 👨‍🍳" : "Enviar a la cocina 👨‍🍳";
   $("#totalEtq").textContent = hayCuenta ? "Nuevo pedido" : "Total";
   $("#total").textContent = plata(suma());
@@ -799,8 +824,9 @@ function mostrar(tipo, mesa, linkWA, numero, quien){
     c.innerHTML = `<div class="emoji grande-emoji">🔥</div><h4>¡Pedido enviado!</h4>
       ${numero ? `<div class="ticket">Pedido #${numero}</div>` : ""}
       <p>${quien ? `<b>${quien}</b> envió el pedido de la mesa.<br>` : ""}La cocina ya recibió el pedido de la <b>mesa ${mesa}</b>.<br>En un momento te lo llevamos 😋</p>
-      ${COMPARTIDO ? `<p style="font-size:14px">¿Se les antoja algo más? Agréguenlo cuando quieran: se suma a la cuenta de la mesa. Toca <b>"Tu cuenta"</b> para ver todo lo que llevan.</p>` : ""}
-      <button class="btn-principal" data-cerrar>Listo</button>`;
+      <p style="font-size:14px">¿Se te antoja algo más? Puedes seguir pidiendo cuando quieras: se suma a la cuenta de la mesa.</p>
+      <button class="btn-principal" data-cerrar>Listo</button>
+      <button class="btnSeguir" data-seguir>➕ Seguir pidiendo</button>`;
   } else {
     c.innerHTML = `<div class="emoji grande-emoji">📶</div><h4>No pudimos enviarlo directo</h4>
       <p>Parece que hay un problema de conexión. Mándalo por WhatsApp con un toque:</p>
@@ -810,6 +836,12 @@ function mostrar(tipo, mesa, linkWA, numero, quien){
   }
   resultado.classList.add("ver");
 }
+// "Seguir pidiendo": cierra todo y abre la carta completa
+document.addEventListener("click", e => {
+  if (!e.target.closest("[data-seguir]")) return;
+  resultado.classList.remove("ver"); cerrarVentana();
+  $("#cartaBtn").click();
+});
 resultado.addEventListener("click", e=>{
   if (e.target.closest("[data-enviado-wa]")){ limpiarPedido(); setTimeout(()=>resultado.classList.remove("ver"), 400); }
   if (e.target.closest("[data-cerrar]")) resultado.classList.remove("ver");

@@ -25,6 +25,10 @@
   .pv .prod span{display:block;margin-top:6px;color:#ffd166;font-weight:900}
   .pv .prod:active{transform:scale(.97)}
   .pv .prod.ago{opacity:.35;text-decoration:line-through}
+  .pv .prodW{display:flex;flex-direction:column}
+  .pv .prodW .prod{flex:1}
+  .pv .prodW.sel .prod{border-color:#ffd166;border-bottom-left-radius:0;border-bottom-right-radius:0}
+  .pv .quitarP{background:#4a1515;color:#ffb3b3;font-weight:900;font-size:14px;padding:8px;border-radius:0 0 14px 14px;border:2px solid #ffd166;border-top:none}
   .pv .prod .q{float:right;background:#ffd166;color:#111;border-radius:99px;padding:1px 8px;font-size:13px}
   .pv .pvTicket li{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #2a313b;list-style:none}
   .pv .pvTicket li .n{flex:1}
@@ -67,7 +71,8 @@
   const plata = (n) => "$" + Number(n || 0).toFixed(2);
   const esc = (t) => String(t ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const hora = (ms) => new Date(ms).toLocaleTimeString("es-EC", { hour: "2-digit", minute: "2-digit" });
-  const num = (v) => { const n = Number(String(v).replace(",", ".")); return Number.isFinite(n) ? Math.round(n * 100) / 100 : NaN; };
+  // acepta coma o punto para los centavos (30,50 o 30.50)
+  const num = (v) => { const t = String(v).trim().replace(/\s/g, "").replace(",", "."); if (t === "" || !/^\d*\.?\d*$/.test(t)) return NaN; const n = Number(t); return Number.isFinite(n) ? Math.round(n * 100) / 100 : NaN; };
 
   window.montarCaja = function (raiz, claveFn) {
     let datos = null, ticket = {}, para = "mostrador", mesaSel = "", pago = "", recibido = "", buscar = "", notas = "", cargando = false;
@@ -106,7 +111,7 @@
         <div class="hoja2">
           <h2>💵 Caja · ${esc(J.fecha)}</h2>
           ${C.fondo == null ? `<div style="margin-bottom:10px">Antes de vender, escribe con cuánto efectivo empieza la caja (para dar vuelto).</div>
-            <div style="display:flex;gap:8px"><input type="number" id="pvFondo" inputmode="decimal" min="0" step="0.5" placeholder="Ej: 30.00"><button class="bPV azul" id="pvAbrir" style="margin:0;width:auto;padding:0 18px">Abrir caja</button></div>`
+            <div style="display:flex;gap:8px"><input type="text" id="pvFondo" inputmode="decimal" autocomplete="off" placeholder="Ej: 30,50"><button class="bPV azul" id="pvAbrir" style="margin:0;width:auto;padding:0 18px">Abrir caja</button></div>`
           : `<div class="estadoCaja">
             <div><span>Fondo inicial</span><b>${plata(C.fondo)}</b></div>
             <div><span>Cobrado en efectivo</span><b>${plata(C.efectivo)}</b></div>
@@ -122,11 +127,12 @@
               <button data-para="mesa" class="${para === "mesa" ? "on" : ""}">🍽️ Mesa</button>
             </div>
             ${para === "mesa" ? `<select id="pvMesa"><option value="">Elige la mesa…</option>${Array.from({ length: datos.mesasTotal }, (_, i) => `<option value="${i + 1}" ${String(i + 1) === mesaSel ? "selected" : ""}>Mesa ${i + 1}</option>`).join("")}</select>
-              <div style="font-size:13px;opacity:.7;margin:6px 2px 10px">Se suma a la cuenta de la mesa y se cobra al final.</div>` : ""}
+              <div style="font-size:13px;opacity:.7;margin:6px 2px 10px">Se suma a la cuenta de la mesa. Se cobra al final en 🔥 Pedidos ("Cobrar mesa").</div>` : ""}
             <input type="text" id="pvBuscar" class="buscarPV" placeholder="🔎 Buscar plato…" value="${esc(buscar)}">
             ${cats.map((c) => { const ps = datos.carta.filter((p) => p.categoria === c && (!q || p.nombre.toLowerCase().includes(q))); if (!ps.length) return "";
-              return `<div class="catPV">${esc(c)}</div><div class="productos">${ps.map((p) => `<button class="prod${p.agotado ? " ago" : ""}" data-add="${esc(p.id)}" ${p.agotado ? "disabled" : ""}>
-                ${ticket[p.id] ? `<i class="q">${ticket[p.id]}</i>` : ""}<b>${esc(p.nombre)}</b><span>${p.agotado ? "Agotado" : plata(p.precio)}</span></button>`).join("")}</div>`; }).join("")}
+              return `<div class="catPV">${esc(c)}</div><div class="productos">${ps.map((p) => `<div class="prodW${ticket[p.id] ? " sel" : ""}"><button class="prod${p.agotado ? " ago" : ""}" data-add="${esc(p.id)}" ${p.agotado ? "disabled" : ""}>
+                ${ticket[p.id] ? `<i class="q">${ticket[p.id]}</i>` : ""}<b>${esc(p.nombre)}</b><span>${p.agotado ? "Agotado" : plata(p.precio)}</span></button>
+                ${ticket[p.id] ? `<button class="quitarP" data-menos="${esc(p.id)}">− Quitar uno</button>` : ""}</div>`).join("")}</div>`; }).join("")}
           </div>
           <div class="hoja2 pvTicket">
             <h2>🛒 Ticket</h2>
@@ -137,20 +143,12 @@
             <input type="text" id="pvNotas" placeholder="📝 Indicaciones para la cocina (opcional)" maxlength="300" value="${esc(notas)}">
             <div style="margin:12px 0 6px;font-weight:900">💳 ${necesitaPago ? "¿Cómo paga?" : "¿Cómo pagará? (opcional)"}</div>
             <div class="chipsPV tipos">${["Efectivo", "Transferencia", "Tarjeta"].map((m) => `<button data-pagoPV="${m}" class="${pago === m ? "on" : ""}">${ICON[m]} ${m}</button>`).join("")}</div>
-            ${pago === "Efectivo" && necesitaPago && n ? `<input type="number" id="pvRecibido" inputmode="decimal" min="0" step="0.05" placeholder="¿Con cuánto paga? (opcional)" value="${esc(recibido)}">
+            ${pago === "Efectivo" && necesitaPago && n ? `<input type="text" id="pvRecibido" inputmode="decimal" autocomplete="off" placeholder="¿Con cuánto paga? (opcional)" value="${esc(recibido)}">
               <div class="rapidos2">${[t, 5, 10, 20, 50].filter((v, i, a) => (i === 0 || v > t) && a.indexOf(v) === i).slice(0, 5).map((v, i) => `<button data-rec="${v}">${i === 0 ? "Exacto" : plata(v)}</button>`).join("")}</div>
               ${vuelto != null ? `<div class="vuelto${vuelto < 0 ? " falta" : ""}">${vuelto < 0 ? `Faltan ${plata(-vuelto)}` : `Vuelto: ${plata(vuelto)}`}</div>` : ""}` : ""}
             <button class="bPV" id="pvVender" ${listo ? "" : "disabled"}>${para === "mesa" ? "🍽️ Enviar a cocina (se cobra al final)" : `✅ Cobrar ${plata(t)} y enviar a cocina`}</button>
             ${n ? `<button class="bPV gris" id="pvVaciar">Vaciar ticket</button>` : ""}
           </div>
-        </div>
-        <div class="hoja2">
-          <h2>🍽️ Mesas por cobrar (${datos.mesas.length})</h2>
-          ${datos.mesas.length ? datos.mesas.map((c) => `<div class="mesaPV">
-            <div class="cab3"><span>Mesa ${c.mesa}</span><span>${plata(c.total)}</span></div>
-            <small>${c.pedidos.length} pedido(s) · ${c.servido ? "✅ todo servido" : "⏳ falta servir"}${(c.porPago || []).length ? " · " + c.porPago.map((x) => `${ICON[x.metodo] || "💳"} ${esc(x.metodo)} ${plata(x.total)}`).join(" · ") : ""}</small>
-            <button class="bPV" style="margin-top:10px;padding:12px" data-cobrarPV="${c.id}">💵 Cobrar mesa ${c.mesa}</button></div>`).join("")
-          : `<div class="vacioPV">No hay mesas con cuenta abierta</div>`}
         </div>
         <div class="hoja2">
           <h2>🧮 Cerrar caja (arqueo)</h2>
@@ -160,7 +158,7 @@
             <div class="lineaA tot"><span>Debería haber</span><span>${plata(C.esperado)}</span></div>
             ${C.arqueo ? `<div class="difA ${C.arqueo.diferencia === 0 ? "ok" : C.arqueo.diferencia > 0 ? "mas" : "mal"}">Contado ${hora(C.arqueo.hora)}: ${plata(C.arqueo.contado)} · ${C.arqueo.diferencia === 0 ? "✅ Cuadra" : C.arqueo.diferencia > 0 ? `Sobra ${plata(C.arqueo.diferencia)}` : `⚠️ Falta ${plata(-C.arqueo.diferencia)}`}</div>` : ""}
             <div style="margin-top:12px;font-weight:900">Cuenta los billetes y monedas y escribe cuánto hay:</div>
-            <input type="number" id="pvContado" inputmode="decimal" min="0" step="0.05" placeholder="Efectivo contado" style="margin-top:8px">
+            <input type="text" id="pvContado" inputmode="decimal" autocomplete="off" placeholder="Efectivo contado" style="margin-top:8px">
             <input type="text" id="pvNotaA" placeholder="Nota (opcional): ej. se pagó al proveedor" maxlength="200" style="margin-top:8px">
             <button class="bPV azul" id="pvArqueo">🧮 Guardar arqueo</button>
             <div style="font-size:13px;opacity:.7;margin-top:8px">El arqueo sale en el cierre de caja del día. Puedes hacerlo varias veces; queda el último.</div>`}
@@ -190,7 +188,7 @@
       const efectivo = metodo === "Efectivo" || (metodo === "Mixto" && (c.porPago || []).some((x) => x.metodo === "Efectivo"));
       const enEfectivo = metodo === "Efectivo" ? c.total : (c.porPago || []).filter((x) => x.metodo === "Efectivo").reduce((t, x) => t + x.total, 0);
       abrirM(`<h3>🏁 Mesa ${c.mesa}</h3><div class="grande">${plata(c.total)}</div>
-        ${efectivo ? `<div>En efectivo: <b>${plata(enEfectivo)}</b>. ¿Con cuánto paga? (opcional)</div><input type="number" id="pvRecM" inputmode="decimal" min="0" step="0.05"><div id="pvVueltoM"></div>` : ""}
+        ${efectivo ? `<div>En efectivo: <b>${plata(enEfectivo)}</b>. ¿Con cuánto paga? (opcional)</div><input type="text" id="pvRecM" inputmode="decimal" autocomplete="off"><div id="pvVueltoM"></div>` : ""}
         <div style="margin-top:10px;font-size:14px">Al terminar, la mesa queda libre para los próximos clientes.</div>
         <button class="bM verde" data-terminarPV="${c.id}" data-metodo="${metodo}">✅ Cobrado · terminar mesa ${c.mesa}</button>
         <button class="bM gris" data-x>Volver</button>`);

@@ -36,6 +36,11 @@ header{position:sticky;top:0;z-index:5;background:#111418;border-bottom:1px soli
 header h1{font-size:20px;font-weight:900;text-transform:uppercase;flex:1;min-width:140px}
 .dato{background:#1b2027;border-radius:12px;padding:6px 12px;font-size:14px;opacity:.95}
 .dato b{font-size:18px;color:#ffd166}
+.pestanas [hidden]{display:none!important}
+#barraAjuste{align-items:center;gap:12px;max-width:760px;margin:14px auto 0;padding:0 16px}
+#barraAjuste button{padding:10px 14px;border-radius:12px;background:#2a313b;color:#e6e9ee;font-weight:900}
+#barraAjuste b{flex:1;font-size:18px}
+#barraAjuste span{font-size:13px;opacity:.6}
 .mantener{display:flex;align-items:center;gap:10px;margin-top:14px;font-size:15px;font-weight:700;text-align:left;cursor:pointer}
 .mantener input{width:22px;height:22px;accent-color:#ffd166;flex:none}
 #btnAjustes{width:40px;height:40px;border-radius:50%;background:#1b2027;font-size:20px;flex:none}
@@ -260,8 +265,8 @@ main{padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280
     <button id="tabPend">🔥 Pedidos<span class="cuenta" id="cPend">0</span></button>
     <button id="tabPrep">✅ Pedidos preparados<span class="cuenta" id="cPrep">0</span></button>
     <button id="tabCaja">💵 Caja</button>
-    <button id="tabStats">📊 Estadísticas</button>
-    <button id="tabCarta">✏️ Editar carta</button>
+    <button id="tabStats" hidden>📊 Estadísticas</button>
+    <button id="tabCarta" hidden>✏️ Editar carta</button>
     <span id="tabMesas" hidden></span><span id="cMesas" hidden></span>
   </nav>
   <main id="lista"><div class="vacio"><b>✅</b>Sin pedidos pendientes</div></main>
@@ -269,6 +274,7 @@ main{padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280
   <section id="mesas"></section>
   <section id="dia"></section>
   <section id="carta"></section>
+  <div id="barraAjuste" style="display:none"><button data-volverdia>⬅ Volver</button><b></b><span>⚙️ Configuración</span></div>
   <section id="stats"></section>
   <section id="pcaja" style="display:none"></section>
   <div id="reporte" role="dialog"><div class="caja" id="caja"></div></div>
@@ -398,10 +404,16 @@ if (CLAVE) $("#clave").value = CLAVE;
 
 /* ---------- ⚙️ Configuración: cerrar sesión ---------- */
 $("#btnAjustes").onclick = () => abrirReporte(`<h3>⚙️ Configuración</h3>
-  <div class="hrs" style="margin-top:6px">${leer("cocina_clave") ? "La sesión está abierta en este celular: entra sin pedir la clave." : "La clave se pedirá la próxima vez que abras la cocina."}</div>
+  <div class="botones">
+  <button class="bGrande bAzul" data-ajuste="stats">📊 Estadísticas</button>
+  <button class="bGrande bAzul" data-ajuste="carta">✏️ Editar carta</button></div>
+  <div class="hrs" style="margin-top:14px">${leer("cocina_clave") ? "La sesión está abierta en este celular: entra sin pedir la clave." : "La clave se pedirá la próxima vez que abras la cocina."}</div>
   <div class="botones"><button class="bGrande bRojo" id="cerrarSesion">🚪 Cerrar sesión</button>
   <button class="bGrande bGris" data-cerrar>Volver</button></div>`);
 document.addEventListener("click", e => {
+  const aj = e.target.closest("[data-ajuste]");
+  if (aj){ cerrarReporte(); verVista(aj.dataset.ajuste); scrollTo({ top: 0 }); return; }
+  if (e.target.closest("[data-volverdia]")){ verVista("dia"); return; }
   if (e.target.id !== "cerrarSesion") return;
   try { localStorage.removeItem("cocina_clave"); sessionStorage.removeItem("cocina_clave"); } catch(e){}
   CLAVE = ""; location.replace("/cocina?v=" + Date.now());      // vuelve a pedir la clave
@@ -466,6 +478,8 @@ function verVista(v){
   if (v === "dia") cargarDias();
   if (v === "carta") cargarCarta();
   if (v === "stats") cargarStats();
+  $("#barraAjuste").style.display = v === "carta" || v === "stats" ? "flex" : "none";
+  $("#barraAjuste b").textContent = v === "carta" ? "✏️ Editar carta" : "📊 Estadísticas";
   pintar();
 }
 $("#tabDia").onclick = ()=>verVista("dia");
@@ -668,7 +682,7 @@ $("#preparados").addEventListener("click", e=>{
 /* ---------- Día de trabajo y cierre de caja ---------- */
 const fechaLarga = f => { const [a,m,d] = String(f).split("-").map(Number); const t = new Date(a, m-1, d).toLocaleDateString("es-EC", { weekday:"long", day:"numeric", month:"long", year:"numeric" }); return t.charAt(0).toUpperCase() + t.slice(1); };
 const plata = n => "$" + Number(n || 0).toFixed(2);
-let dias = [], pintadoDia = "", filtro = null;   // filtro = {desde, hasta, nombre} o null (últimos 7 días)
+let dias = [], pintadoDia = "", filtro = null, verDias = false;   // filtro = {desde, hasta, nombre} o null (últimos 7 días)
 const fechaISO = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 function rangoRapido(tipo){
   const h = new Date(); h.setHours(12, 0, 0, 0);
@@ -692,7 +706,7 @@ async function cargarDias(){
 function pintarDia(){
   const J = datos.jornada;
   // No redibujar si nada cambió (para no borrar la fecha que estás escribiendo)
-  const firma = JSON.stringify([J, datos.hoy, dias.map(d => d.id), filtro]);
+  const firma = JSON.stringify([J, datos.hoy, dias.map(d => d.id), filtro, verDias]);
   if (firma === pintadoDia) return;
   pintadoDia = firma;
   const arriba = J ? `
@@ -715,9 +729,9 @@ function pintarDia(){
   const lista = filtro ? dias.filter(d => d.fecha >= filtro.desde && d.fecha <= filtro.hasta) : dias.slice(0, 7);
   const sumaN = lista.reduce((t, d) => t + d.n, 0), sumaT = lista.reduce((t, d) => t + d.total, 0);
   const primero = dias.length ? dias[dias.length - 1].fecha : datos.hoyFecha;
-  const carpeta = `
+  const carpeta = !verDias ? `<button class="bGrande bGris" id="bVerDias" style="max-width:760px">📁 Ver días guardados (${dias.length})</button>` : `
     <div class="hoja">
-      <h2>📁 Días guardados</h2>
+      <h2 style="display:flex;justify-content:space-between;align-items:center">📁 Días guardados <button class="quitarF" id="bOcultarDias">✕ Cerrar</button></h2>
       <div class="filtroF">
         <div class="rapidos">${[["semana","Esta semana"],["pasada","Semana pasada"],["mes","Este mes"],["mesPasado","Mes pasado"]].map(([k, t]) => `<button data-rapido="${k}" class="${filtro && filtro.nombre === t ? "on" : ""}">${t}</button>`).join("")}</div>
         <div class="rangoF">
@@ -857,6 +871,8 @@ $("#dia").addEventListener("change", e=>{
 $("#dia").addEventListener("click", async e=>{
   const r = e.target.closest("[data-rapido]"); if (r){ filtro = rangoRapido(r.dataset.rapido); pintarDia(); return; }
   if (e.target.id === "quitarF"){ filtro = null; pintarDia(); return; }
+  if (e.target.id === "bVerDias"){ verDias = true; pintarDia(); return; }
+  if (e.target.id === "bOcultarDias"){ verDias = false; filtro = null; pintarDia(); return; }
   const ir = e.target.closest("[data-ir]"); if (ir){ verVista(ir.dataset.ir); return; }
   if (e.target.id === "bNuevo"){
     const f = $("#fechaNueva").value;

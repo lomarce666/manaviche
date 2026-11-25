@@ -116,7 +116,8 @@
             <div><span>Fondo inicial</span><b>${plata(C.fondo)}</b></div>
             <div><span>Cobrado en efectivo</span><b>${plata(C.efectivo)}</b></div>
             <div><span>Debería haber en caja</span><b>${plata(C.esperado)}</b></div>
-          </div>`}
+          </div>
+          <button class="bPV gris" id="pvEditarFondo" style="padding:11px;font-size:15px">✏️ Cambiar fondo inicial</button>`}
         </div>
         <div class="rejillaPV">
           <div class="hoja2">
@@ -198,6 +199,10 @@
     }
 
     modal.addEventListener("click", async (e) => {
+      if (e.target.id === "pvGuardarFondo") {
+        const f = num(modal.querySelector("#pvFondoM").value); if (!Number.isFinite(f) || f < 0) { toast("Escribe un monto válido"); return; }
+        const j = await api("POST", { accion: "abrir_caja", fondo: f }); cerrarM(); toast(j.ok ? `✅ Fondo inicial: ${plata(f)}` : j.error); cargar(); return;
+      }
       const m = e.target.closest("[data-metodoPV]"); if (m) { confirmarMesa(m.dataset.id, m.dataset.metodopv); return; }
       const t = e.target.closest("[data-terminarPV]");
       if (t) { t.disabled = true; const j = await api("POST", { accion: "cobrar", id: Number(t.dataset.terminarpv), metodo: t.dataset.metodo });
@@ -216,6 +221,13 @@
       if (b.id === "pvAbrir") {
         const f = num(raiz.querySelector("#pvFondo").value); if (!Number.isFinite(f) || f < 0) { toast("Escribe el monto con que abre la caja"); return; }
         const j = await api("POST", { accion: "abrir_caja", fondo: f }); toast(j.ok ? `✅ Caja abierta con ${plata(f)}` : j.error); cargar(); return;
+      }
+      if (b.id === "pvEditarFondo") {
+        abrirM(`<h3>✏️ Fondo inicial</h3><div>Efectivo con el que empezó la caja hoy. Si después pusiste más sueltos, escribe el total.</div>
+          <input type="text" id="pvFondoM" inputmode="decimal" autocomplete="off" value="${Number(datos.caja.fondo).toFixed(2)}">
+          <button class="bM verde" id="pvGuardarFondo">Guardar</button><button class="bM gris" data-x>Cancelar</button>`);
+        setTimeout(() => { const i = modal.querySelector("#pvFondoM"); i.focus(); i.select(); }, 50);
+        return;
       }
       if (b.id === "pvArqueo") {
         const c = num(raiz.querySelector("#pvContado").value); if (!Number.isFinite(c) || c < 0) { toast("Escribe cuánto efectivo contaste"); return; }

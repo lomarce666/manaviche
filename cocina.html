@@ -183,6 +183,7 @@ main{padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280
 .cuentaM li{display:flex;justify-content:space-between;gap:8px}
 .cuentaM li span:last-child{opacity:.8}
 .cuentaM .meta2{font-size:13px;opacity:.65;margin-top:6px}
+.listaCobro{border-color:#2ecc71;box-shadow:0 0 0 2px rgba(46,204,113,.25)}
 .b-cobrar{width:100%;margin-top:12px;padding:15px;border-radius:14px;background:#2ecc71;color:#08210f;font-size:17px;font-weight:900}
 .adic{display:inline-block;background:#4ea1ff;color:#06203d;font-size:12px;font-weight:900;padding:3px 8px;border-radius:8px;margin-left:6px;vertical-align:middle}
 .ctaMesa{margin-top:6px;font-size:14px;color:#9fd0ff;font-weight:700}
@@ -237,11 +238,11 @@ main{padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280
   <div id="avisoSonido">🔇 Toca cualquier parte de la pantalla para activar el sonido</div>
   <nav class="pestanas">
     <button id="tabDia">📅 Día</button>
-    <button id="tabPend">🔥 Platos por preparar<span class="cuenta" id="cPend">0</span></button>
-    <button id="tabMesas">🧾 Mesas por cobrar<span class="cuenta" id="cMesas">0</span></button>
+    <button id="tabPend">🔥 Pedidos<span class="cuenta" id="cPend">0</span></button>
     <button id="tabPrep">✅ Pedidos preparados<span class="cuenta" id="cPrep">0</span></button>
-    <button id="tabCarta">📋 Carta</button>
     <button id="tabStats">📊 Estadísticas</button>
+    <button id="tabCarta">✏️ Editar carta</button>
+    <span id="tabMesas" hidden></span><span id="cMesas" hidden></span>
   </nav>
   <main id="lista"><div class="vacio"><b>✅</b>Sin pedidos pendientes</div></main>
   <section id="preparados"></section>
@@ -526,8 +527,22 @@ function pintarPreparados(){
       </div>`).join("")}</div>`).join("") : `<div class="vacio"><b>🍽️</b>Todavía no hay pedidos preparados hoy</div>`}`;
 }
 
+function tarjetaCobro(c){
+  return `<div class="cuentaM listaCobro">
+    <div class="cab2"><span class="mesa">MESA ${c.mesa}</span><span class="tot">$${Number(c.total).toFixed(2)}</span></div>
+    <div style="margin-top:8px;font-size:17px;font-weight:900;color:#6ee7a0">✅ Todo servido · lista para cobrar</div>
+    <div class="meta2">${c.pedidos.length} pedido(s) · desde ${hora(c.abierta)}</div>
+    <ul>${c.platos.map(x => `<li><span><b>${x.cantidad} x</b> ${esc(x.nombre)}</span><span>$${Number(x.total).toFixed(2)}</span></li>`).join("")}</ul>
+    ${(c.personas || []).length > 1 ? `<div class="reparto2">👥 ${c.personas.map(x => `${esc(x.nombre)}: $${Number(x.total).toFixed(2)}`).join(" · ")}</div>` : ""}
+    ${(c.porPago || []).length ? `<div class="pagoC">${c.porPago.map(x => `${ICON_PAGO[x.metodo] || "💳"} ${esc(x.metodo)}: <b>$${Number(x.total).toFixed(2)}</b>`).join("<br>")}</div>` : ""}
+    <button class="b-cobrar" data-cobrar2="${c.id}" data-mesa="${c.mesa}" data-total="${Number(c.total).toFixed(2)}" data-pago="${esc(c.pago || "")}">💵 Cobrar mesa ${c.mesa}</button>
+  </div>`;
+}
 function pintar(){
-  $("#cPend").textContent = datos.pedidos.length;
+  // mesas cuyo pedido ya se sirvió completo: aparecen aquí mismo para cobrar
+  const porCobrar = (datos.mesas || []).filter(c => c.pedidos.length && c.pedidos.every(p => p.estado === "listo")
+    && !datos.pedidos.some(p => p.tipo === "pedido" && p.cuenta === c.id));
+  $("#cPend").textContent = datos.pedidos.length + porCobrar.length;
   $("#cPrep").textContent = (datos.listos || []).length;
   $("#cMesas").textContent = (datos.mesas || []).length;
   if (vista === "mesas") pintarMesas();
@@ -536,8 +551,8 @@ function pintar(){
   if (vista === "dia") pintarDia();
   $("#hoyN").textContent = datos.hoy?.pedidos ?? 0;
   const lista = datos.pedidos;
-  if (!lista.length){ $("#lista").innerHTML = `<div class="vacio"><b>✅</b>Sin pedidos pendientes</div>`; return; }
-  $("#lista").innerHTML = lista.map(p => {
+  if (!lista.length && !porCobrar.length){ $("#lista").innerHTML = `<div class="vacio"><b>✅</b>Sin pedidos pendientes</div>`; return; }
+  $("#lista").innerHTML = porCobrar.map(tarjetaCobro).join("") + lista.map(p => {
     const espera = (datos.ahora - p.creado) / 60000;
     const tarde = p.estado !== "nuevo" && espera > 20;
     if (p.tipo !== "pedido"){

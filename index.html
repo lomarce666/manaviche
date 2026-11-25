@@ -351,7 +351,6 @@ body.conCarta #cartaBtn,body.conCarta #promo,body.conCarta #ayudaBtn{visibility:
 <!-- Llamar mesero / pedir cuenta -->
 <button id="ayudaBtn" aria-label="Llamar al mesero">🙋</button>
 <button id="cartaBtn" aria-label="Ver carta completa">📋 Carta</button>
-<div id="promo"><span>⭐</span><div style="flex:1;min-width:0"><b>Plato del día</b><span id="promoTxt"></span></div><button class="pedir" id="promoPedir">Agregar +</button><button class="x" id="promoX" aria-label="Ocultar">×</button></div>
 <div id="carta" role="dialog" aria-label="Carta completa">
   <div class="cab">
     <h3>Carta completa <button class="x" id="cartaX" aria-label="Cerrar">×</button></h3>
@@ -951,17 +950,7 @@ $("#cartaX").onclick = () => { cartaBox.classList.remove("ver"); document.body.c
 buscar.addEventListener("input", pintarCarta);
 $("#cats").addEventListener("click", e => { const b = e.target.closest("[data-cat]"); if (!b) return; catSel = b.dataset.cat; [...$("#cats").children].forEach(x => x.classList.toggle("on", x === b)); pintarCarta(); });
 
-// Plato del día (lo pone el dueño desde la pantalla de cocina)
-(() => {
-  const pr = NEGOCIO.promo, p = pr && PLATOS.find(x => x.id === pr.id);
-  if (!p || p.agotado) return;
-  $("#promoTxt").textContent = `${p.nombre} · ${precioTxt(p.precio)}${pr.texto ? " — " + pr.texto : ""}`;
-  $("#promoPedir").dataset.i = p.i; $("#promoPedir").classList.add("pedir");
-  $("#promo").classList.add("ver");
-  $("#promoX").onclick = () => $("#promo").classList.remove("ver");
-  const ocultar = () => { if (scrollY > innerHeight * 0.5){ $("#promo").classList.remove("ver"); removeEventListener("scroll", ocultar); } };
-  addEventListener("scroll", ocultar, { passive: true });
-})();
+// (El plato del día ya no sale como franja al abrir el menú; solo se destaca con ⭐ en la carta completa)
 
 $("#dir").innerHTML = `${NEGOCIO.direccion ? "📍 " + NEGOCIO.direccion : ""}${NEGOCIO.mapa ? `<br><a class="clic" href="${NEGOCIO.mapa}" target="_blank" rel="noopener">Ver ubicación</a>` : ""}`;
 

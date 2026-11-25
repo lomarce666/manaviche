@@ -178,7 +178,7 @@ export async function cartaEfectiva(env, url) {
       if (!a) return p;
       return { ...p, agotado: typeof a.agotado === "boolean" ? a.agotado : p.agotado, precio: Number.isFinite(a.precio) && a.precio > 0 ? a.precio : p.precio };
     });
-    if (aj.promo && aj.promo.id) R.promo = aj.promo;
+    // (el plato del día ya no se usa)
   } catch (e) { console.log("Ajustes:", String(e)); }
   return R;
 }

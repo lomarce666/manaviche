@@ -145,6 +145,9 @@ main{padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280
 .pl.ago .nm{opacity:.5;text-decoration:line-through}
 .pl input{width:86px;font-size:18px;padding:8px;border-radius:10px;border:2px solid #333a44;background:#111418;color:#fff;text-align:right}
 .pl button{padding:10px 12px;border-radius:10px;font-weight:800;font-size:14px;background:#2a313b;color:#e6e9ee}
+.pl .agoB2{flex:1 0 100%;padding:13px;border-radius:12px;font-size:16px;font-weight:900;background:#4a1515;color:#ffb3b3}
+.pl .agoB2.ago{background:#16351f;color:#6ee7a0}
+.estAgo{display:inline-block;margin-top:4px;background:#a8242f;color:#fff;font-size:12px;font-weight:900;padding:3px 8px;border-radius:6px}
 .pl button.agoB{background:#4a1515;color:#ff8a8a}
 .pl button.agoB.si{background:#16351f;color:#6ee7a0}
 .pl button.estB.si{background:#ffd166;color:#111}
@@ -861,32 +864,21 @@ async function cargarCarta(){
   carta = j; pintarCarta();
 }
 function pintarCarta(){
-  const P = carta.platos, promo = carta.promo;
-  const pp = promo && P.find(p => p.id === promo.id);
+  const P = carta.platos;
   $("#carta").innerHTML = `
     <div class="hoja">
-      <h2>⭐ Plato del día</h2>
-      ${pp ? `<div class="fechaGrande">${esc(pp.nombre)}</div><div class="sub2">${esc(promo.texto || "Sin mensaje")}</div>
-        <button class="bGrande bGris" id="quitarPromo">Quitar plato del día</button>`
-        : `<div class="sub2">Elige un plato con el botón ⭐ de abajo. Aparece destacado arriba en el menú del cliente.</div>`}
-      <input class="campoTxt" id="promoTxt" maxlength="80" placeholder="Mensaje (opcional): ej. ¡Recién hecho!" value="${esc(promo?.texto || "")}">
-      ${pp ? `<button class="bGrande bAzul" id="guardarPromo">Guardar mensaje</button>` : ""}
-    </div>
-    <div class="hoja">
-      <h2>📋 Platos · cambios al instante en el menú</h2>
+      <h2>✏️ Editar carta · los cambios se ven al instante en el menú</h2>
       ${P.map(p => `<div class="pl${p.agotado ? " ago" : ""}" data-pl="${esc(p.id)}">
-        <div class="nm">${esc(p.nombre)}<small>${esc(p.categoria)}${p.precio !== p.original ? ` · precio original ${plata(p.original)}` : ""}</small></div>
+        <div class="nm">${esc(p.nombre)}<small>${esc(p.categoria)}${p.precio !== p.original ? ` · precio original ${plata(p.original)}` : ""}</small>
+          ${p.agotado ? `<span class="estAgo">🚫 AGOTADO</span>` : ""}</div>
         <input type="number" step="0.05" min="0.05" inputmode="decimal" value="${p.precio}" aria-label="Precio">
         <button data-precio>Guardar $</button>
-        <button class="agoB${p.agotado ? "" : " si"}" data-ago="${p.agotado ? 0 : 1}">${p.agotado ? "🚫 Agotado" : "✅ Hay"}</button>
-        <button class="estB${pp && pp.id === p.id ? " si" : ""}" data-estrella>⭐</button>
+        <button class="agoB2${p.agotado ? " ago" : ""}" data-ago="${p.agotado ? 0 : 1}">${p.agotado ? "✅ Indicar que está disponible" : "🚫 Indicar que está agotado"}</button>
       </div>`).join("")}
-      <div class="sub2" style="margin-top:10px">Toca "✅ Hay / 🚫 Agotado" para cambiarlo. Los precios nuevos se cobran desde el siguiente pedido.</div>
+      <div class="sub2" style="margin-top:10px">Los platos agotados se ven en el menú pero no se pueden pedir. Los precios nuevos se cobran desde el siguiente pedido.</div>
     </div>`;
 }
 $("#carta").addEventListener("click", async e=>{
-  if (e.target.id === "guardarPromo"){ await api("POST", { accion: "promo", id: carta.promo.id, texto: $("#promoTxt").value }); return cargarCarta(); }
-  if (e.target.id === "quitarPromo"){ await api("POST", { accion: "promo" }); return cargarCarta(); }
   const fila = e.target.closest("[data-pl]"); if (!fila) return;
   const id = fila.dataset.pl;
   if (e.target.closest("[data-ago]")){ await api("POST", { accion: "plato", id, agotado: e.target.dataset.ago === "1" }); return cargarCarta(); }
@@ -896,7 +888,6 @@ $("#carta").addEventListener("click", async e=>{
     if (!j.ok) alert(j.error || "No se pudo guardar"); else e.target.textContent = "✓ Guardado";
     return setTimeout(cargarCarta, 700);
   }
-  if (e.target.closest("[data-estrella]")){ await api("POST", { accion: "promo", id, texto: $("#promoTxt").value }); return cargarCarta(); }
 });
 
 /* ---------- Estadísticas ---------- */

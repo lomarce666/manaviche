@@ -49,6 +49,10 @@ export async function prepararTablas(DB) {
   try { await DB.prepare("ALTER TABLE pedidos ADD COLUMN para TEXT").run(); } catch {}        // caja: 'mostrador' / 'llevar'
   try { await DB.prepare("ALTER TABLE jornadas ADD COLUMN fondo REAL").run(); } catch {}      // efectivo con que se abre la caja
   try { await DB.prepare("ALTER TABLE jornadas ADD COLUMN arqueo TEXT").run(); } catch {}     // conteo al cerrar la caja
+  try { await DB.prepare("ALTER TABLE pedidos ADD COLUMN anulado TEXT").run(); } catch {}     // {motivo, hora} si se anuló
+  // Salidas de dinero de la caja (pago a proveedores, compras, adelantos…)
+  try { await DB.prepare("CREATE TABLE IF NOT EXISTS movimientos (id INTEGER PRIMARY KEY AUTOINCREMENT, jornada INTEGER NOT NULL, monto REAL NOT NULL, motivo TEXT NOT NULL, creado INTEGER NOT NULL)").run(); } catch {}
+  try { await DB.prepare("CREATE INDEX IF NOT EXISTS movimientos_jornada ON movimientos (jornada)").run(); } catch {}
   // Índices: la cocina pregunta cada 3 s; así cada consulta lee pocas filas aunque haya meses de pedidos
   // (el plan gratis de Cloudflare D1 permite 5 millones de filas leídas por día)
   for (const q of [
@@ -122,7 +126,7 @@ export async function detalleCuenta(DB, c) {
 // Resumen para hacer caja de un día de trabajo
 export async function resumenJornada(DB, j) {
   const { results } = await DB.prepare(
-    "SELECT numero, tipo, mesa, items, notas, total, estado, creado, para FROM pedidos WHERE jornada = ?1 ORDER BY id"
+    "SELECT numero, tipo, mesa, items, notas, total, estado, creado, para, anulado FROM pedidos WHERE jornada = ?1 ORDER BY id"
   ).bind(j.id).all();
   const pedidos = results.filter((p) => p.tipo === "pedido").map((p) => ({ ...p, items: p.items ? JSON.parse(p.items) : [] }));
   const platos = {}, mesas = {};
@@ -154,6 +158,7 @@ export async function resumenJornada(DB, j) {
   let caja = null; try { caja = await estadoCaja(DB, j); } catch {}
   return {
     pagos, caja,
+    anuladas: results.filter((p) => p.tipo === "anulado").map((p) => ({ numero: p.numero, total: p.total, para: p.para, mesa: p.mesa, ...(p.anulado ? JSON.parse(p.anulado) : {}) })),
     fecha: j.fecha, abierta: j.abierta, cerrada: j.cerrada || null,
     pedidos: pedidos.length, total: Math.round(total * 100) / 100,
     promedio: pedidos.length ? Math.round((total / pedidos.length) * 100) / 100 : 0,
@@ -300,5 +305,9 @@ export async function estadoCaja(DB, j) {
     "AND COALESCE(p.pago, CASE WHEN c.metodo != 'Mixto' THEN c.metodo END) = 'Efectivo'").bind(j.id).first();
   const efectivo = Math.round((r?.efectivo || 0) * 100) / 100;
   const fondo = j.fondo == null ? null : Number(j.fondo);
-  return { fondo, efectivo, esperado: Math.round(((fondo || 0) + efectivo) * 100) / 100, arqueo: j.arqueo ? JSON.parse(j.arqueo) : null };
+  let lista = [];
+  try { lista = (await DB.prepare("SELECT id, monto, motivo, creado FROM movimientos WHERE jornada = ?1 ORDER BY id").bind(j.id).all()).results; } catch {}
+  const salidas = Math.round(lista.reduce((t, m) => t + m.monto, 0) * 100) / 100;
+  return { fondo, efectivo, salidas, listaSalidas: lista,
+    esperado: Math.round(((fondo || 0) + efectivo - salidas) * 100) / 100, arqueo: j.arqueo ? JSON.parse(j.arqueo) : null };
 }

@@ -10,6 +10,9 @@
 //        para: "mesa" (con mesa N)       → se suma a la cuenta de la mesa (se cobra al final)
 //  POST {accion:"cobrar", id, metodo}    → cobrar la cuenta de una mesa
 //  POST {accion:"arqueo", contado, nota} → contar el efectivo al cerrar la caja
+//  POST {accion:"anular", id, motivo}    → anular una venta hecha en caja (por error)
+//  POST {accion:"salida", monto, motivo} → registrar dinero que sale del cajón
+//  POST {accion:"borrar_salida", id}     → quitar una salida registrada por error
 // =============================================================
 
 import {
@@ -44,9 +47,9 @@ export async function onRequestGet({ request, env }) {
   }
   // Ventas hechas en la caja hoy
   let ventas = [];
-  if (j) ventas = (await DB.prepare("SELECT id, numero, mesa, para, items, total, pago, creado, estado FROM pedidos " +
-    "WHERE jornada = ?1 AND tipo = 'pedido' AND para IS NOT NULL ORDER BY id DESC LIMIT 200").bind(j.id).all())
-    .results.map((p) => ({ ...p, items: p.items ? JSON.parse(p.items) : [] }));
+  if (j) ventas = (await DB.prepare("SELECT id, numero, tipo, mesa, para, items, total, pago, creado, estado, anulado FROM pedidos " +
+    "WHERE jornada = ?1 AND tipo IN ('pedido', 'anulado') AND para IS NOT NULL ORDER BY id DESC LIMIT 200").bind(j.id).all())
+    .results.map((p) => ({ ...p, items: p.items ? JSON.parse(p.items) : [], anulado: p.anulado ? JSON.parse(p.anulado) : null }));
   return responder(200, {
     ok: true, nombre: R.nombre, mesasTotal: Number(R.mesas || 0),
     jornada: j ? { id: j.id, fecha: j.fecha, abierta: j.abierta } : null,
@@ -85,6 +88,37 @@ export async function onRequestPost({ request, env }) {
       nota: String(d.nota ?? "").replace(/[<>]/g, "").trim().slice(0, 200) };
     await DB.prepare("UPDATE jornadas SET arqueo = ?2 WHERE id = ?1").bind(j.id, JSON.stringify(arqueo)).run();
     return responder(200, { ok: true, arqueo });
+  }
+
+  if (d.accion === "anular") {
+    const id = Number(d.id), motivo = String(d.motivo ?? "").replace(/[<>]/g, "").trim().slice(0, 200);
+    if (!Number.isInteger(id) || !motivo) return responder(400, { ok: false, error: "Escribe el motivo" });
+    const p = await DB.prepare("SELECT * FROM pedidos WHERE id = ?1 AND jornada = ?2 AND tipo = 'pedido' AND para IS NOT NULL").bind(id, j.id).first();
+    if (!p) return responder(404, { ok: false, error: "Esa venta no existe o ya fue anulada" });
+    if (p.cuenta != null) {
+      const c = await DB.prepare("SELECT cerrada FROM cuentas WHERE id = ?1").bind(p.cuenta).first();
+      if (c && c.cerrada != null) return responder(409, { ok: false, error: "Esa mesa ya fue cobrada; no se puede anular" });
+    }
+    const ahora = Date.now();
+    await DB.batch([
+      // sale de la cocina, de los totales y del efectivo esperado
+      DB.prepare("UPDATE pedidos SET tipo = 'anulado', estado = 'listo', actualizado = ?2, anulado = ?3 WHERE id = ?1").bind(id, ahora, JSON.stringify({ motivo, hora: ahora })),
+      DB.prepare("UPDATE jornadas SET total = total - ?2 WHERE id = ?1").bind(j.id, p.total),
+      ...(p.cuenta != null ? [DB.prepare("UPDATE cuentas SET total = total - ?2, pedidos = pedidos - 1 WHERE id = ?1").bind(p.cuenta, p.total)] : []),
+    ]);
+    return responder(200, { ok: true });
+  }
+
+  if (d.accion === "salida") {
+    const monto = r2(d.monto), motivo = String(d.motivo ?? "").replace(/[<>]/g, "").trim().slice(0, 120);
+    if (!(monto > 0 && monto <= 100000)) return responder(400, { ok: false, error: "Monto no válido" });
+    if (!motivo) return responder(400, { ok: false, error: "Escribe para qué fue la salida" });
+    await DB.prepare("INSERT INTO movimientos (jornada, monto, motivo, creado) VALUES (?1, ?2, ?3, ?4)").bind(j.id, monto, motivo, Date.now()).run();
+    return responder(200, { ok: true });
+  }
+  if (d.accion === "borrar_salida") {
+    await DB.prepare("DELETE FROM movimientos WHERE id = ?1 AND jornada = ?2").bind(Number(d.id), j.id).run();
+    return responder(200, { ok: true });
   }
 
   if (d.accion === "venta") {

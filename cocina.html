@@ -778,10 +778,12 @@ function htmlReporte(R, guardado){
     ${R.caja && (R.caja.fondo != null || R.caja.arqueo) ? `<h4>💵 Caja (efectivo)</h4><table>
       <tr><td>Fondo inicial</td><td class="r">${plata(R.caja.fondo || 0)}</td></tr>
       <tr><td>Cobrado en efectivo</td><td class="r">${plata(R.caja.efectivo)}</td></tr>
+      ${(R.caja.listaSalidas || []).map(m => `<tr><td>− ${esc(m.motivo)} (${hora(m.creado)})</td><td class="r">−${plata(m.monto)}</td></tr>`).join("")}
       <tr><td><b>Debería haber</b></td><td class="r"><b>${plata(R.caja.esperado)}</b></td></tr>
       ${R.caja.arqueo ? `<tr><td>Contado al cerrar (${hora(R.caja.arqueo.hora)})</td><td class="r">${plata(R.caja.arqueo.contado)}</td></tr>
       <tr><td><b>${R.caja.arqueo.diferencia === 0 ? "✅ Cuadra" : R.caja.arqueo.diferencia > 0 ? "Sobra" : "⚠️ Falta"}</b></td><td class="r"><b>${plata(Math.abs(R.caja.arqueo.diferencia))}</b></td></tr>
       ${R.caja.arqueo.nota ? `<tr><td colspan="2">📝 ${esc(R.caja.arqueo.nota)}</td></tr>` : ""}` : `<tr><td colspan="2">Sin arqueo todavía</td></tr>`}</table>` : ""}
+    ${(R.anuladas || []).length ? `<h4>🚫 Ventas anuladas</h4><table>${R.anuladas.map(a => `<tr><td>#${a.numero ?? "—"} · ${a.hora ? hora(a.hora) : ""} · ${esc(a.motivo || "")}</td><td class="r">${plata(a.total)}</td></tr>`).join("")}</table>` : ""}
     <div class="hrs" style="margin-top:12px">Avisos: 🙋 ${R.mesero} llamadas al mesero · 🧾 ${R.cuenta} cuentas pedidas</div>
     <div class="botones noImprimir" style="grid-template-columns:1fr 1fr">
       <button class="bGrande bAzul" data-imprimir style="margin:0">🖨️ Descargar PDF</button>
@@ -831,6 +833,7 @@ function descargarPDF(R){
   t(col("Total vendido", 56) + col(plata(R.total), 12, 1), true, 10, true); t("");
   if (R.caja && (R.caja.fondo != null || R.caja.arqueo)){ t("CAJA (EFECTIVO)", true, 11, true);
     t(col("Fondo inicial", 50) + col(plata(R.caja.fondo || 0), 18, 1)); t(col("Cobrado en efectivo", 50) + col(plata(R.caja.efectivo), 18, 1));
+    (R.caja.listaSalidas || []).forEach(m => t(col("- Salida: " + m.motivo, 50) + col("-" + plata(m.monto), 18, 1)));
     t(col("Deberia haber", 50) + col(plata(R.caja.esperado), 18, 1), true);
     if (R.caja.arqueo){ t(col("Contado al cerrar", 50) + col(plata(R.caja.arqueo.contado), 18, 1));
       t(col(R.caja.arqueo.diferencia === 0 ? "Cuadra" : R.caja.arqueo.diferencia > 0 ? "Sobra" : "FALTA", 50) + col(plata(Math.abs(R.caja.arqueo.diferencia)), 18, 1), true); }
@@ -841,6 +844,7 @@ function descargarPDF(R){
     R.mesas.forEach(m => t(col(typeof m.mesa === "string" ? m.mesa : "Mesa " + m.mesa, 40) + col(m.pedidos, 10, 1) + col(plata(m.total), 18, 1))); t(""); }
   if (R.lista.length){ t("PEDIDOS DEL DIA", true, 11, true); t(col("#", 8) + col("Hora", 14) + col("Mesa", 28) + col("Total", 18, 1), true);
     R.lista.forEach(p => t(col(p.numero ?? "-", 8) + col(hora(p.creado), 14) + col(p.para && p.para !== "mesa" ? (p.para === "llevar" ? "Para llevar" : "Mostrador") : p.mesa, 28) + col(plata(p.total), 18, 1))); t(""); }
+  if ((R.anuladas || []).length){ t("VENTAS ANULADAS", true, 11, true); R.anuladas.forEach(a => t(col("#" + (a.numero ?? "-") + " " + (a.motivo || ""), 50) + col(plata(a.total), 18, 1))); t(""); }
   t(`Avisos: ${R.mesero} llamadas al mesero - ${R.cuenta} cuentas pedidas`, false, 9);
   const blob = crearPDF(L), url = URL.createObjectURL(blob);
   const a = document.createElement("a"); a.href = url; a.download = `Cierre-${NOMBRE}-${R.fecha}.pdf`;
@@ -852,8 +856,9 @@ function textoReporte(R){
   let t = `🧾 *Cierre de caja · ${NOMBRE}*\n${fechaLarga(R.fecha)}\n\n`;
   t += `Pedidos: ${R.pedidos}\n*Vendido: ${plata(R.total)}*\nPromedio: ${plata(R.promedio)}\n`;
   if ((R.pagos || []).length) t += `\n*Formas de pago*\n` + R.pagos.map(x => `• ${x.metodo}: ${plata(x.total)} (${x.cuentas})`).join("\n") + "\n";
-  if (R.caja && (R.caja.fondo != null || R.caja.arqueo)) { t += `\n*Caja*\nFondo: ${plata(R.caja.fondo || 0)} · Efectivo: ${plata(R.caja.efectivo)}\nDebería haber: ${plata(R.caja.esperado)}\n`;
+  if (R.caja && (R.caja.fondo != null || R.caja.arqueo)) { t += `\n*Caja*\nFondo: ${plata(R.caja.fondo || 0)} · Efectivo: ${plata(R.caja.efectivo)}${R.caja.salidas ? ` · Salidas: −${plata(R.caja.salidas)}` : ""}\nDebería haber: ${plata(R.caja.esperado)}\n`;
     if (R.caja.arqueo) t += `Contado: ${plata(R.caja.arqueo.contado)} · ${R.caja.arqueo.diferencia === 0 ? "Cuadra ✅" : (R.caja.arqueo.diferencia > 0 ? "Sobra " : "Falta ") + plata(Math.abs(R.caja.arqueo.diferencia))}\n`; }
+  if ((R.anuladas || []).length) t += `\n*Anuladas*\n` + R.anuladas.map(a => `• #${a.numero ?? "-"} ${plata(a.total)} — ${a.motivo || ""}`).join("\n") + "\n";
   if (R.platos.length) t += `\n*Por plato*\n` + R.platos.map(x => `• ${x.cantidad} x ${x.nombre} — ${plata(x.total)}`).join("\n");
   return t;
 }

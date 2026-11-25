@@ -49,6 +49,11 @@
   .pv .mesaPV small{display:block;opacity:.75;margin-top:4px}
   .pv .ventaPV{display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid #2a313b;font-size:14px}
   .pv .ventaPV small{display:block;opacity:.65}
+  .pv .mini{background:#2a313b;color:#e6e9ee;border-radius:9px;padding:6px 10px;font-size:13px;font-weight:900}
+  .pv .anularB{margin-top:6px;background:#4a1515;color:#ffb3b3}
+  .pv .ventaPV.anul .mto{text-decoration:line-through;opacity:.5}
+  .pv .ventaPV .motivo{color:#ff8a8a;opacity:1;font-weight:700}
+  .pvModal textarea{font:inherit;font-size:17px;padding:12px;border-radius:12px;border:2px solid #d8cfbf;width:100%;margin-top:8px;min-height:70px}
   .pv .lineaA{display:flex;justify-content:space-between;padding:6px 0;font-size:16px}
   .pv .lineaA.tot{font-weight:900;font-size:19px;border-top:1px solid #2a313b;margin-top:4px;padding-top:10px}
   .pv .difA{margin-top:10px;padding:12px;border-radius:12px;font-weight:900;font-size:18px;text-align:center}
@@ -115,8 +120,12 @@
           : `<div class="estadoCaja">
             <div><span>Fondo inicial</span><b>${plata(C.fondo)}</b></div>
             <div><span>Cobrado en efectivo</span><b>${plata(C.efectivo)}</b></div>
+            <div><span>Salidas de dinero</span><b style="color:#ff8a8a">−${plata(C.salidas)}</b></div>
             <div><span>Debería haber en caja</span><b>${plata(C.esperado)}</b></div>
           </div>
+          ${(C.listaSalidas || []).length ? `<div style="margin-top:10px">${C.listaSalidas.map((m) => `<div class="ventaPV"><div><b>➖ ${esc(m.motivo)}</b><small>${hora(m.creado)}</small></div>
+            <div style="display:flex;gap:8px;align-items:center"><b style="color:#ff8a8a">−${plata(m.monto)}</b><button class="mini" data-borrarsal="${m.id}" aria-label="Quitar">🗑</button></div></div>`).join("")}</div>` : ""}
+          <button class="bPV" id="pvSalida" style="padding:11px;font-size:15px;background:#4a1515;color:#ffb3b3">➖ Registrar salida de dinero</button>
           <button class="bPV gris" id="pvEditarFondo" style="padding:11px;font-size:15px">✏️ Cambiar fondo inicial</button>`}
         </div>
         <div class="rejillaPV">
@@ -156,6 +165,7 @@
           ${C.fondo == null ? `<div class="vacioPV">Primero abre la caja</div>` : `
             <div class="lineaA"><span>Fondo inicial</span><span>${plata(C.fondo)}</span></div>
             <div class="lineaA"><span>+ Cobrado en efectivo</span><span>${plata(C.efectivo)}</span></div>
+            <div class="lineaA"><span>− Salidas de dinero</span><span>${plata(C.salidas)}</span></div>
             <div class="lineaA tot"><span>Debería haber</span><span>${plata(C.esperado)}</span></div>
             ${C.arqueo ? `<div class="difA ${C.arqueo.diferencia === 0 ? "ok" : C.arqueo.diferencia > 0 ? "mas" : "mal"}">Contado ${hora(C.arqueo.hora)}: ${plata(C.arqueo.contado)} · ${C.arqueo.diferencia === 0 ? "✅ Cuadra" : C.arqueo.diferencia > 0 ? `Sobra ${plata(C.arqueo.diferencia)}` : `⚠️ Falta ${plata(-C.arqueo.diferencia)}`}</div>` : ""}
             <div style="margin-top:12px;font-weight:900">Cuenta los billetes y monedas y escribe cuánto hay:</div>
@@ -166,9 +176,11 @@
         </div>
         <div class="hoja2">
           <h2>📋 Ventas de caja de hoy (${datos.ventas.length})</h2>
-          ${datos.ventas.length ? datos.ventas.map((v) => `<div class="ventaPV"><div><b>#${v.numero ?? "—"} · ${v.para === "llevar" ? "🥡 Para llevar" : v.para === "mostrador" ? "🧍 Mostrador" : `🍽️ Mesa ${v.mesa}`}</b>
-            <small>${hora(v.creado)} · ${v.items.map((it) => `${it.cantidad} x ${esc(it.nombre)}`).join(", ")}</small></div>
-            <div style="text-align:right"><b>${plata(v.total)}</b><small>${v.pago ? `${ICON[v.pago] || ""} ${esc(v.pago)}` : "Cuenta de mesa"}</small></div></div>`).join("")
+          ${datos.ventas.length ? datos.ventas.map((v) => `<div class="ventaPV${v.tipo === "anulado" ? " anul" : ""}"><div><b>#${v.numero ?? "—"} · ${v.para === "llevar" ? "🥡 Para llevar" : v.para === "mostrador" ? "🧍 Mostrador" : `🍽️ Mesa ${v.mesa}`}</b>
+            <small>${hora(v.creado)} · ${v.items.map((it) => `${it.cantidad} x ${esc(it.nombre)}`).join(", ")}</small>
+            ${v.tipo === "anulado" ? `<small class="motivo">🚫 ANULADA ${v.anulado ? hora(v.anulado.hora) + " · " + esc(v.anulado.motivo) : ""}</small>` : ""}</div>
+            <div style="text-align:right"><b class="mto">${plata(v.total)}</b><small>${v.pago ? `${ICON[v.pago] || ""} ${esc(v.pago)}` : "Cuenta de mesa"}</small>
+            ${v.tipo !== "anulado" ? `<button class="mini anularB" data-anular="${v.id}">Anular</button>` : ""}</div></div>`).join("")
           : `<div class="vacioPV">Todavía no hay ventas en caja</div>`}
         </div>
       </div>`;
@@ -199,6 +211,17 @@
     }
 
     modal.addEventListener("click", async (e) => {
+      if (e.target.id === "pvGuardarSal") {
+        const m = num(modal.querySelector("#pvSalMonto").value), mot = modal.querySelector("#pvSalMotivo").value.trim();
+        if (!Number.isFinite(m) || m <= 0) { toast("Escribe el monto"); return; }
+        if (!mot) { toast("Escribe para qué fue la salida"); return; }
+        const j = await api("POST", { accion: "salida", monto: m, motivo: mot }); cerrarM(); toast(j.ok ? `➖ Salida de ${plata(m)} registrada` : j.error); cargar(); return;
+      }
+      if (e.target.id === "pvConfAnular") {
+        const mot = modal.querySelector("#pvMotivo").value.trim(); if (!mot) { toast("Escribe el motivo"); return; }
+        e.target.disabled = true;
+        const j = await api("POST", { accion: "anular", id: Number(e.target.dataset.id), motivo: mot }); cerrarM(); toast(j.ok ? "🚫 Venta anulada" : j.error); cargar(); return;
+      }
       if (e.target.id === "pvGuardarFondo") {
         const f = num(modal.querySelector("#pvFondoM").value); if (!Number.isFinite(f) || f < 0) { toast("Escribe un monto válido"); return; }
         const j = await api("POST", { accion: "abrir_caja", fondo: f }); cerrarM(); toast(j.ok ? `✅ Fondo inicial: ${plata(f)}` : j.error); cargar(); return;
@@ -221,6 +244,26 @@
       if (b.id === "pvAbrir") {
         const f = num(raiz.querySelector("#pvFondo").value); if (!Number.isFinite(f) || f < 0) { toast("Escribe el monto con que abre la caja"); return; }
         const j = await api("POST", { accion: "abrir_caja", fondo: f }); toast(j.ok ? `✅ Caja abierta con ${plata(f)}` : j.error); cargar(); return;
+      }
+      if (b.id === "pvSalida") {
+        abrirM(`<h3>➖ Salida de dinero</h3><div>Plata que sacas del cajón: pago a proveedor, compras, adelanto…</div>
+          <input type="text" id="pvSalMonto" inputmode="decimal" autocomplete="off" placeholder="Monto, ej: 12,50">
+          <input type="text" id="pvSalMotivo" maxlength="120" placeholder="¿Para qué? Ej: pescado, hielo, gas" style="font-size:17px">
+          <button class="bM verde" id="pvGuardarSal">Guardar salida</button><button class="bM gris" data-x>Cancelar</button>`);
+        setTimeout(() => modal.querySelector("#pvSalMonto").focus(), 50); return;
+      }
+      if (b.dataset.borrarsal) {
+        if (!confirm("¿Quitar esta salida? (si la registraste por error)")) return;
+        await api("POST", { accion: "borrar_salida", id: Number(b.dataset.borrarsal) }); cargar(); return;
+      }
+      if (b.dataset.anular) {
+        const v = datos.ventas.find((x) => x.id === Number(b.dataset.anular)); if (!v) return;
+        abrirM(`<h3>🚫 Anular venta #${v.numero ?? ""}</h3><div class="grande" style="font-size:26px">${plata(v.total)}</div>
+          <div style="font-size:14px">${v.items.map((it) => `${it.cantidad} x ${esc(it.nombre)}`).join(", ")}</div>
+          <div style="margin-top:10px">Se quita de las ventas y del efectivo del día. Queda registrada como anulada en el cierre.</div>
+          <textarea id="pvMotivo" maxlength="200" placeholder="Motivo (obligatorio): ej. me equivoqué de plato, el cliente se arrepintió"></textarea>
+          <button class="bM" id="pvConfAnular" data-id="${v.id}" style="background:#a8242f">🚫 Anular venta</button><button class="bM gris" data-x>Cancelar</button>`);
+        setTimeout(() => modal.querySelector("#pvMotivo").focus(), 50); return;
       }
       if (b.id === "pvEditarFondo") {
         abrirM(`<h3>✏️ Fondo inicial</h3><div>Efectivo con el que empezó la caja hoy. Si después pusiste más sueltos, escribe el total.</div>

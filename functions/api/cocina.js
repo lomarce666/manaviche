@@ -100,6 +100,9 @@ export async function onRequestGet({ request, env }) {
       "WHERE jornada = ?1 AND tipo = 'pedido' AND estado = 'listo' ORDER BY actualizado DESC LIMIT 400").bind(j ? j.id : -1),
   ]);
   // con el índice lee solo los pedidos pendientes; si por algo no existiera, igual funciona sin él
+  // las ventas anuladas no cuentan como pedidos del día
+  let anuladasHoy = 0;
+  if (j) { try { anuladasHoy = (await DB.prepare("SELECT COUNT(*) AS n FROM pedidos WHERE jornada = ?1 AND tipo = 'anulado'").bind(j.id).first()).n || 0; } catch (e) {} }
   let pend, hechos;
   try { [pend, hechos] = await consultar("INDEXED BY pedidos_pendientes"); } catch (e) { [pend, hechos] = await consultar(""); }
   const conItems = (p) => ({ ...p, items: p.items ? JSON.parse(p.items) : [], servidos: p.servidos ? JSON.parse(p.servidos) : [], adicional: p.tipo === "pedido" && p.primero != null && p.primero !== p.id });
@@ -115,7 +118,7 @@ export async function onRequestGet({ request, env }) {
     pedidos: pend.results.map(conItems),
     listos: hechos.results.map(conItems),
     mesas,
-    hoy: { pedidos: j ? j.n : 0, total: j ? j.total : 0 },
+    hoy: { pedidos: j ? j.n - anuladasHoy : 0, total: j ? j.total : 0 },
   });
 }
 

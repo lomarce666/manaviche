@@ -46,6 +46,14 @@ export async function prepararTablas(DB) {
   try { await DB.prepare("ALTER TABLE cuentas ADD COLUMN metodo TEXT").run(); } catch {}
   try { await DB.prepare("ALTER TABLE cuentas ADD COLUMN pago_pref TEXT").run(); } catch {}
   try { await DB.prepare("ALTER TABLE pedidos ADD COLUMN pago TEXT").run(); } catch {}
+  // Índices: la cocina pregunta cada 3 s; así cada consulta lee pocas filas aunque haya meses de pedidos
+  // (el plan gratis de Cloudflare D1 permite 5 millones de filas leídas por día)
+  for (const q of [
+    "CREATE INDEX IF NOT EXISTS pedidos_pendientes ON pedidos (estado) WHERE estado != 'listo'",
+    "CREATE INDEX IF NOT EXISTS pedidos_cuenta ON pedidos (cuenta, tipo)",
+    "CREATE INDEX IF NOT EXISTS pedidos_creado ON pedidos (creado)",
+    "CREATE INDEX IF NOT EXISTS cuentas_jornada ON cuentas (jornada)",
+  ]) { try { await DB.prepare(q).run(); } catch {} }
   listo = true;
 }
 

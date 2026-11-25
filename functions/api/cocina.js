@@ -88,17 +88,20 @@ export async function onRequestGet({ request, env }) {
   }
 
   const j = await jornadaAbierta(DB, false);
-  const [pend, hechos] = await DB.batch([
+  const consultar = (indice) => DB.batch([
     DB.prepare("SELECT id, numero, tipo, mesa, items, notas, total, estado, creado, actualizado, por, cuenta, servidos, " +
       "(SELECT MIN(q.id) FROM pedidos q WHERE q.cuenta = pedidos.cuenta AND q.tipo = 'pedido') AS primero, " +
       "(SELECT c.total FROM cuentas c WHERE c.id = pedidos.cuenta) AS cuenta_total, " +
       "COALESCE(pago, (SELECT c.pago_pref FROM cuentas c WHERE c.id = pedidos.cuenta)) AS pago, " +
       "(SELECT c.id FROM cuentas c WHERE c.id = pedidos.cuenta AND c.cerrada IS NULL) AS cuenta_abierta " +
-      "FROM pedidos WHERE estado != 'listo' ORDER BY id LIMIT 200"),
+      `FROM pedidos ${indice} WHERE estado != 'listo' ORDER BY id LIMIT 200`),
     DB.prepare("SELECT id, numero, mesa, items, notas, total, creado, actualizado, cuenta, pago, " +
       "(SELECT c.cerrada FROM cuentas c WHERE c.id = pedidos.cuenta) AS cuenta_cerrada FROM pedidos " +
       "WHERE jornada = ?1 AND tipo = 'pedido' AND estado = 'listo' ORDER BY actualizado DESC LIMIT 400").bind(j ? j.id : -1),
   ]);
+  // con el índice lee solo los pedidos pendientes; si por algo no existiera, igual funciona sin él
+  let pend, hechos;
+  try { [pend, hechos] = await consultar("INDEXED BY pedidos_pendientes"); } catch (e) { [pend, hechos] = await consultar(""); }
   const conItems = (p) => ({ ...p, items: p.items ? JSON.parse(p.items) : [], servidos: p.servidos ? JSON.parse(p.servidos) : [], adicional: p.tipo === "pedido" && p.primero != null && p.primero !== p.id });
   // Cuentas de mesa abiertas (sin cobrar)
   const ahora = Date.now();

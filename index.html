@@ -35,12 +35,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 #marca{position:absolute;left:0;right:0;top:50%;text-align:center;transform-origin:center top;will-change:transform}
 #marca h1{font-size:clamp(46px,15vw,92px);font-weight:900;letter-spacing:-1px;line-height:1;color:var(--amarillo);text-transform:uppercase;display:inline-flex}
 #marca h1 span{display:inline-block;opacity:0;transform:translateY(-120px) rotate(-20deg);animation:caer .7s cubic-bezier(.2,1.6,.4,1) forwards}
-#marca .logo{display:block;width:min(62vw,280px);height:min(62vw,280px);margin:0 auto 14px;border-radius:50%;box-shadow:0 14px 34px rgba(0,0,0,.35);opacity:0;transform:scale(.4) rotate(-12deg);animation:logoEntra .9s .15s cubic-bezier(.2,1.5,.4,1) forwards}
-@keyframes logoEntra{to{opacity:1;transform:none}}
+#marca .logo{display:block;width:min(62vw,280px);height:min(62vw,280px);margin:0 auto 14px;border-radius:50%;box-shadow:0 14px 34px rgba(0,0,0,.35);opacity:0;animation:logoEntra 1.3s .1s cubic-bezier(.25,.8,.3,1) forwards, logoFlota 3.6s 1.5s ease-in-out infinite}
+/* Entrada del logo: sube desde abajo girando, como las manos con los platos, rebota y se queda flotando */
+@keyframes logoEntra{
+  0%{opacity:0;transform:translate3d(0,60vh,0) rotate(-28deg) scale(.55)}
+  55%{opacity:1;transform:translate3d(0,-22px,0) rotate(7deg) scale(1.07)}
+  75%{transform:translate3d(0,8px,0) rotate(-3deg) scale(.97)}
+  90%{transform:translate3d(0,-3px,0) rotate(1deg) scale(1.01)}
+  100%{opacity:1;transform:none}}
+@keyframes logoFlota{0%,100%{opacity:1;transform:none}50%{opacity:1;transform:translate3d(0,-7px,0) rotate(1.5deg)}}
 #marca.conLogo h1{display:none}
 #carta .cab .logoMini{width:34px;height:34px;border-radius:50%;vertical-align:middle;margin-right:8px}
-#marca .sub{margin-top:10px;font-size:16px;letter-spacing:4px;text-transform:uppercase;opacity:0;animation:aparecer .8s 1.2s forwards}
-#marca .ola{display:block;margin:12px auto 0;width:160px;opacity:0;animation:aparecer .8s 1.4s forwards}
+#marca .sub{margin-top:10px;font-size:16px;letter-spacing:4px;text-transform:uppercase;opacity:0;animation:aparecerDesde0 .8s 1.25s both}
+#marca .ola{display:block;margin:12px auto 0;width:160px;opacity:0;animation:aparecerDesde0 .8s 1.45s both}
+@keyframes aparecerDesde0{from{opacity:0;transform:translate3d(0,10px,0)}to{opacity:1;transform:none}}
 @keyframes caer{to{opacity:1;transform:none}}
 @keyframes aparecer{to{opacity:1}}
 

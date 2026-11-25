@@ -5,7 +5,7 @@
 //  ese QR es válido.
 // =============================================================
 
-import { cartaEfectiva, estadoHorario, mesaAutorizada, responder } from "../_db.js";
+import { cartaEfectiva, jornadaAbierta, prepararTablas, mesaAutorizada, responder } from "../_db.js";
 
 export async function onRequestGet({ request, env }) {
   const url = new URL(request.url);
@@ -16,5 +16,8 @@ export async function onRequestGet({ request, env }) {
   const mesaValida = Number.isInteger(mesa) && mesa >= 1 && mesa <= Number(R.mesas || 0)
     ? await mesaAutorizada(env, mesa, url.searchParams.get("k"))
     : false;
-  return responder(200, { ok: true, carta: R, horario: estadoHorario(R), exigeQR, mesaValida });
+  // Abierto = la cocina tiene un día laboral abierto ("Nuevo día laboral")
+  let abierto = true;
+  if (env.DB) { try { await prepararTablas(env.DB); abierto = !!(await jornadaAbierta(env.DB, false)); } catch (e) {} }
+  return responder(200, { ok: true, carta: R, horario: { abierto }, exigeQR, mesaValida });
 }

@@ -550,7 +550,15 @@ const mesaIn = $("#mesa"), enviar = $("#enviar");
 const MESA_QR = (()=>{ const n = Number(QS.get("mesa")); return Number.isInteger(n) && n >= 1 && n <= NEGOCIO.mesas && (!INFO.exigeQR || INFO.mesaValida) ? n : 0; })();
 // Si el restaurante exige QR, sin un QR válido solo se puede mirar la carta
 const SOLO_VER = INFO.exigeQR && !MESA_QR;
-const ABIERTO = !INFO.horario || INFO.horario.abierto !== false;
+let ABIERTO = !INFO.horario || INFO.horario.abierto !== false;
+// Se vuelve a revisar cada 20 s: si la cocina abre o cierra el día, el menú se habilita o bloquea solo
+setInterval(async () => {
+  try {
+    const j = await (await fetch(`/api/carta?mesa=${encodeURIComponent(QS.get("mesa") || "")}&k=${CLAVE_QR}`, { cache: "no-store" })).json();
+    const ab = !(j.horario && j.horario.abierto === false);
+    if (ab !== ABIERTO){ ABIERTO = ab; validar(); }
+  } catch (e) {}
+}, 20000);
 const kQR = MESA_QR ? `&k=${CLAVE_QR}` : "";
 if (MESA_QR){ mesaIn.value = MESA_QR; mesaIn.readOnly = true; mesaIn.classList.add("fija"); $("#mesaLabel").textContent = `🍽️ Estás en la mesa ${MESA_QR}`; }
 if (SOLO_VER){ mesaIn.readOnly = true; mesaIn.placeholder = "QR"; }
@@ -759,12 +767,12 @@ function validar(){
   enviar.disabled = !ok;
   const fr = $("#franja");
   fr.classList.toggle("ver", !ABIERTO || SOLO_VER);
-  fr.textContent = !ABIERTO ? `🕒 Estamos cerrados en este momento${INFO.horario.hoy ? ` · Hoy atendemos de ${INFO.horario.hoy[0]} a ${INFO.horario.hoy[1]}` : ""}. Puedes ver la carta.`
+  fr.textContent = !ABIERTO ? "🕒 Estamos cerrados en este momento. Puedes ver la carta; los pedidos se activan cuando abramos."
                  : SOLO_VER ? "📷 Para pedir, escanea el código QR de tu mesa." : "";
   mesaIn.classList.toggle("mal", v !== "" && !existe);
   const ayuda = $("#ayuda");
   ayuda.classList.toggle("error", v !== "" && !existe);
-  if (!ABIERTO) ayuda.textContent = "Los pedidos se reciben en el horario de atención";
+  if (!ABIERTO) ayuda.textContent = "Ahora estamos cerrados";
   else if (SOLO_VER) ayuda.textContent = "Escanea el QR que está en tu mesa";
   else if (v === "") ayuda.textContent = "Escribe tu número de mesa para enviar el pedido";
   else if (!existe) ayuda.textContent = `⚠️ Esa mesa no existe. Tenemos mesas del 1 al ${NEGOCIO.mesas}`;

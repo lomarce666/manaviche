@@ -604,14 +604,15 @@ function pintarDia(){
     <div class="hoja">
       <h2>📅 Día de trabajo abierto</h2>
       <div class="fechaGrande">${fechaLarga(J.fecha)}</div>
-      <div class="sub2">Abierto desde las ${hora(J.abierta)}</div>
+      <div class="sub2">Abierto desde las ${hora(J.abierta)} · 🟢 el menú recibe pedidos</div>
       <div class="cifras"><div><b>${datos.hoy.pedidos}</b><span>pedidos</span></div><div><b>${plata(datos.hoy.total)}</b><span>vendido</span></div></div>
       <button class="bGrande bAzul" data-ir="pend">🔥 Ir a los pedidos</button>
       <button class="bGrande bRojo" id="bCulminar">🏁 Culminar día de trabajo</button>
     </div>` : `
     <div class="hoja">
       <h2>☀️ No hay un día de trabajo abierto</h2>
-      <div class="sub2">Elige la fecha y empieza. Si llega un pedido antes, el día se abre solo con la fecha de hoy.</div>
+      <div class="alerta" style="background:#4a1515;color:#ffb3b3;margin-top:8px">🔒 El menú está cerrado: los clientes pueden ver la carta pero no pedir.</div>
+      <div class="sub2">Elige la fecha y toca "Nuevo día laboral" para abrir el menú a los pedidos.</div>
       <input type="date" class="campoFecha" id="fechaNueva" value="${datos.hoyFecha}">
       <button class="bGrande bVerde" id="bNuevo">☀️ Nuevo día laboral</button>
     </div>`;

@@ -96,8 +96,6 @@ export async function onRequestPost({ request, env }) {
   let texto, numero = null, totalDia = null, total = 0, items = null, notas = "";
 
   // Fuera de horario no se reciben pedidos (sí se puede llamar al mesero o pedir la cuenta)
-  if (tipo === "pedido" && !estadoHorario(R).abierto)
-    return responder(409, { ok: false, error: "El local está cerrado en este momento", codigo: "cerrado" });
 
   let reparto = null;
   if (tipo === "pedido") {
@@ -132,7 +130,10 @@ export async function onRequestPost({ request, env }) {
   if (env.DB) {
     try {
       await prepararTablas(env.DB);
-      jornada = (await jornadaAbierta(env.DB, true)).id;
+      // Solo se atiende con un día laboral abierto en la cocina
+      const jo = await jornadaAbierta(env.DB, false);
+      if (!jo) return responder(409, { ok: false, error: "El local está cerrado en este momento", codigo: "cerrado" });
+      jornada = jo.id;
       // La forma de pago es obligatoria en el primer pedido de la mesa; después se usa la que ya eligieron
       if (tipo === "pedido" && !pago) {
         const c0 = await cuentaAbierta(env.DB, mesa, jornada, false);

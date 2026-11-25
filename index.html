@@ -368,7 +368,6 @@ body.conCarta #cartaBtn,body.conCarta #promo,body.conCarta #ayudaBtn{visibility:
     <label for="ayudaMesa">Tu mesa</label>
     <input id="ayudaMesa" type="number" inputmode="numeric" min="1" placeholder="#">
     <button class="op" data-tipo="mesero">🙋 Llamar al mesero</button>
-    <div class="pagoEl"><p>💳 ¿Cómo vas a pagar?</p><div class="chips"><button data-pago="Efectivo">💵 Efectivo</button><button data-pago="Transferencia">📲 Transferencia</button><button data-pago="Tarjeta">💳 Tarjeta</button></div></div>
     <button class="op" data-tipo="cuenta">🧾 Pedir la cuenta</button>
     <p id="ayudaMsg"></p>
     <button class="btn-secundario" data-cerrar-ayuda>Cerrar</button>
@@ -911,7 +910,7 @@ ayudaPanel.addEventListener("click", async e=>{
   const tipo = b.dataset.tipo, txt = tipo === "cuenta" ? "la cuenta 🧾" : "al mesero 🙋";
   [...ayudaPanel.querySelectorAll("[data-tipo]")].forEach(x=>x.disabled = true);
   $("#ayudaMsg").textContent = "Enviando… ⏳";
-  const j = await enviarACocina({ tipo, mesa, k: CLAVE_QR, pago: tipo === "cuenta" ? miPago : "" });
+  const j = await enviarACocina({ tipo, mesa, k: CLAVE_QR });
   [...ayudaPanel.querySelectorAll("[data-tipo]")].forEach(x=>x.disabled = false);
   if (j.codigo === "sin_qr"){ $("#ayudaMsg").textContent = "📷 Escanea el QR de tu mesa, o llama al mesero con la mano."; }
   else if (j.ok){ ayudaPanel.classList.remove("ver"); avisar(tipo === "cuenta" ? `Ya te llevamos la cuenta a la mesa ${mesa} 🧾` : `El mesero va a la mesa ${mesa} 🙋`); }

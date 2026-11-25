@@ -611,7 +611,7 @@ function pintarDia(){
     </div>` : `
     <div class="hoja">
       <h2>☀️ No hay un día de trabajo abierto</h2>
-      <div class="alerta" style="background:#4a1515;color:#ffb3b3;margin-top:8px">🔒 El menú está cerrado: los clientes pueden ver la carta pero no pedir.</div>
+      <div class="alerta" style="background:#4a1515;color:#ffb3b3;margin:8px 0;padding:10px 12px;border-radius:12px;font-size:15px">🔒 El menú está cerrado: los clientes pueden ver la carta pero no pedir.</div>
       <div class="sub2">Elige la fecha y toca "Nuevo día laboral" para abrir el menú a los pedidos.</div>
       <input type="date" class="campoFecha" id="fechaNueva" value="${datos.hoyFecha}">
       <button class="bGrande bVerde" id="bNuevo">☀️ Nuevo día laboral</button>
@@ -744,9 +744,11 @@ $("#reporte").addEventListener("click", async e=>{
     e.target.disabled = true; e.target.textContent = "Guardando…";
     const j = await api("POST", { accion: "cerrar" });
     if (!j.ok){ alert(j.error || "No se pudo guardar"); e.target.disabled = false; e.target.textContent = "✅ Confirmar y guardar"; return; }
-    abrirReporte(htmlReporte(j.reporte, true) + `<div class="alerta" style="background:#e7f6ec;color:#1a7f37">✅ Día guardado en "Días guardados".</div>
-      <div class="botones"><button class="bGrande bVerde" data-cerrar>☀️ Listo, empezar un nuevo día</button></div>`, j.reporte);
+    // Día culminado: se cierra la ventana y se vuelve a la pestaña principal (Día), donde está "Nuevo día laboral"
+    cerrarReporte();
     await cargar(); cargarDias();
+    verVista("dia"); scrollTo({ top: 0, behavior: "smooth" });
+    mostrarListo("✅ Día guardado · el menú quedó cerrado");
   }
 });
 

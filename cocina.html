@@ -73,6 +73,7 @@ main{padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280
 .nota{margin-top:10px;background:#3a2f12;color:#ffe29a;border-radius:10px;padding:8px 10px;font-size:16px;font-weight:700}
 .total{margin-top:10px;font-size:15px;opacity:.8}
 .acciones{display:flex;gap:10px;margin-top:14px}
+.pideC{margin-top:8px;background:#e63946;color:#fff;border-radius:10px;padding:8px 10px;font-weight:900;font-size:16px;animation:latir 1s infinite}
 .b-anular{display:block;margin:12px auto 0;background:none;color:#ff8a8a;font-size:14px;font-weight:700;text-decoration:underline;padding:4px}
 .fila .volver.anularL{color:#ff8a8a}
 .motivosA{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
@@ -294,6 +295,11 @@ main{padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280
 <script>
 (function(){
 const $ = s => document.querySelector(s);
+// Dos pantallas con el mismo archivo: /cocina (cocineros) y /cobros (la persona de caja que cobra las mesas)
+const MODO_CAJA = location.pathname.startsWith("/cobros") || new URLSearchParams(location.search).get("modo") === "caja";
+const BASE = MODO_CAJA ? "/cobros" : "/cocina";
+const PANT = MODO_CAJA ? "Caja" : "Cocina";
+if (MODO_CAJA){ const m = document.querySelector('link[rel="manifest"]'); if (m) m.href = "/cobros.webmanifest"; }
 const guardar = (k,v) => { try { localStorage.setItem(k,v); } catch(e){} };
 const leer = k => { try { return localStorage.getItem(k); } catch(e){ return null; } };
 const leerSes = k => { try { return sessionStorage.getItem(k); } catch(e){ return null; } };
@@ -305,12 +311,12 @@ let NOMBRE = "";
 fetch("/restaurante.json").then(r=>r.json()).then(R=>{
   NOMBRE = R.nombre;
   $("#tabCaja").hidden = R.caja !== true;      // la caja es opcional: "caja": true en restaurante.json
-  document.title = "Cocina · " + R.nombre;
-  $("#nombre").textContent = "Cocina " + R.nombre;
-  $("#nombreEntrar").textContent = "Cocina " + R.nombre;
+  document.title = PANT + " · " + R.nombre;
+  $("#nombre").textContent = PANT + " " + R.nombre;
+  $("#nombreEntrar").textContent = PANT + " " + R.nombre;
   if (R.logo) {
     $("#iconoEntrar").outerHTML = `<img class="logoCocina" src="${R.logo}" alt="${R.nombre}">`;
-    $("#nombreEntrar").textContent = "Cocina"; $("#nombreEntrar").classList.add("rojo");
+    $("#nombreEntrar").textContent = PANT; $("#nombreEntrar").classList.add("rojo");
     const lh = $("#logoHeader"); lh.src = R.logo; lh.hidden = false;
   }
 }).catch(()=>{});
@@ -376,7 +382,7 @@ document.addEventListener("visibilitychange", ()=>{ if (!document.hidden){ carga
 
 // La alarma suena cada 2.5 s mientras haya algo sin recibir
 setInterval(()=>{
-  const pendientes = datos.pedidos.filter(p => p.estado === "nuevo" && p.tipo === "pedido").length;
+  const pendientes = MODO_CAJA ? 0 : datos.pedidos.filter(p => p.estado === "nuevo" && p.tipo === "pedido").length;
   if (pendientes){
     pitido();
     if (navigator.vibrate) navigator.vibrate([200,100,200]);
@@ -425,7 +431,7 @@ document.addEventListener("click", e => {
   if (e.target.closest("[data-volverdia]")){ verVista("dia"); return; }
   if (e.target.id !== "cerrarSesion") return;
   try { localStorage.removeItem("cocina_clave"); sessionStorage.removeItem("cocina_clave"); } catch(e){}
-  CLAVE = ""; location.replace("/cocina?v=" + Date.now());      // vuelve a pedir la clave
+  CLAVE = ""; location.replace(BASE + "?v=" + Date.now());      // vuelve a pedir la clave
 });
 
 /* ---------- Notificación de mesero / cuenta ---------- */
@@ -450,7 +456,7 @@ async function cargar(){
     const j = await r.json();
     if (!j.ok) throw new Error(j.error);
     // Avisos nuevos de mesero / cuenta: notificación de 10 s con timbre de 3 s
-    const nuevosAvisos = j.pedidos.filter(p => p.tipo !== "pedido" && !vistos.has(p.id));
+    const nuevosAvisos = j.pedidos.filter(p => p.tipo !== "pedido" && !vistos.has(p.id) && (MODO_CAJA || p.tipo !== "cuenta"));
     j.pedidos.forEach(p => vistos.add(p.id));
     if (!primeraCarga) nuevosAvisos.forEach(mostrarAviso);
     datos = j;
@@ -471,6 +477,8 @@ const hora = ms => new Date(ms).toLocaleTimeString("es-EC", { hour: "2-digit", m
 
 let vista = "dia";
 function verVista(v){
+  if (!MODO_CAJA && (v === "dia" || v === "mesas")) v = "pend";     // la cocina no abre/cierra el día ni cobra
+  if (MODO_CAJA && v === "pend") v = "mesas";
   vista = v;
   $("#tabDia").classList.toggle("on", v === "dia");
   $("#tabPend").classList.toggle("on", v === "pend"); $("#tabPrep").classList.toggle("on", v === "prep");
@@ -491,6 +499,8 @@ function verVista(v){
   $("#barraAjuste b").textContent = v === "carta" ? "✏️ Editar carta" : "📊 Estadísticas";
   pintar();
 }
+// Cocina: Pedidos y Preparados · Caja: Día, Mesas por cobrar y Preparados
+$("#tabDia").hidden = !MODO_CAJA; $("#tabPend").hidden = MODO_CAJA; $("#tabMesas").hidden = !MODO_CAJA;
 $("#tabDia").onclick = ()=>verVista("dia");
 $("#tabCaja").onclick = ()=>verVista("caja");
 $("#tabPend").onclick = ()=>verVista("pend");
@@ -509,11 +519,13 @@ function bloquePagos(c){
 function pintarMesas(){
   const L = porCobrarLista();
   $("#mesas").innerHTML = L.length ? `<div class="rejilla">${L.map(tarjetaCobro).join("")}</div>`
-    : `<div class="vacio"><b>🧾</b>No hay mesas por cobrar<small style="display:block;font-size:15px;margin-top:6px;opacity:.7">Cuando una mesa tenga todos sus platos servidos aparece aquí</small></div>`;
+    : `<div class="vacio"><b>🧾</b>No hay mesas por cobrar<small style="display:block;font-size:15px;margin-top:6px;opacity:.7">Aquí aparece cada mesa que pide por el menú. Cuando paguen, toca "Cobrar mesa".</small></div>`;
 }
+const todoServido = c => c.pedidos.every(p => p.estado === "listo") && !datos.pedidos.some(p => p.tipo === "pedido" && p.cuenta === c.id);
+const pideCuenta = c => datos.pedidos.find(p => p.tipo === "cuenta" && (p.cuenta_abierta === c.id || p.mesa === c.mesa));
 function porCobrarLista(){
-  return (datos.mesas || []).filter(c => c.pedidos.length && c.pedidos.every(p => p.estado === "listo")
-    && !datos.pedidos.some(p => p.tipo === "pedido" && p.cuenta === c.id));
+  return (datos.mesas || []).filter(c => c.pedidos.length)
+    .sort((a, b) => (!!pideCuenta(b) - !!pideCuenta(a)) || (todoServido(b) - todoServido(a)) || a.mesa - b.mesa);
 }
 // Cobrar: 1) cómo pagó (el que eligió el cliente sale primero)  2) "Mesa N terminada"
 const ICON_PAGO = { Efectivo: "💵", Transferencia: "📲", Tarjeta: "💳" };
@@ -561,16 +573,6 @@ async function cobrar(id, metodo, mesa){
   mostrarListo(`✅ Mesa ${mesa} terminada · lista para nuevos clientes`);
   cargar();
 }
-// Pantalla siempre prendida mientras la cocina está abierta (para no perder pedidos ni el sonido)
-let candado = null;
-async function pantallaPrendida(){
-  if (!("wakeLock" in navigator) || candado || document.visibilityState !== "visible") return;
-  try { candado = await navigator.wakeLock.request("screen"); candado.addEventListener("release", () => { candado = null; }); } catch(e){}
-}
-document.addEventListener("visibilitychange", pantallaPrendida);
-document.addEventListener("click", pantallaPrendida);
-pantallaPrendida();
-
 // Anular un pedido: pide el motivo y queda en el reporte del día
 function pedirAnular(id){
   const p = [...(datos.pedidos || []), ...(datos.listos || [])].find(x => x.id === id); if (!p) return;
@@ -636,9 +638,10 @@ function pintarPreparados(){
 }
 
 function tarjetaCobro(c){
-  return `<div class="cuentaM listaCobro">
+  return `<div class="cuentaM${todoServido(c) || pideCuenta(c) ? " listaCobro" : ""}">
     <div class="cab2"><span class="mesa">MESA ${c.mesa}</span><span class="tot">$${Number(c.total).toFixed(2)}</span></div>
-    <div style="margin-top:8px;font-size:17px;font-weight:900;color:#6ee7a0">✅ Todo servido · lista para cobrar</div>
+    ${pideCuenta(c) ? `<div class="pideC">🧾 Están pidiendo la cuenta · ${hace(pideCuenta(c).creado)}</div>` : ""}
+    ${todoServido(c) ? `<div style="margin-top:8px;font-size:17px;font-weight:900;color:#6ee7a0">✅ Todo servido</div>` : `<div style="margin-top:8px;font-size:17px;font-weight:900;color:#ffd166">⏳ Todavía comiendo · hay platos por servir</div>`}
     <div class="meta2">${c.pedidos.length} pedido(s) · desde ${hora(c.abierta)}</div>
     <ul>${c.platos.map(x => `<li><span><b>${x.cantidad} x</b> ${esc(x.nombre)}</span><span>$${Number(x.total).toFixed(2)}</span></li>`).join("")}</ul>
     ${(c.personas || []).length > 1 ? `<div class="reparto2">👥 ${c.personas.map(x => `${esc(x.nombre)}: $${Number(x.total).toFixed(2)}`).join(" · ")}</div>` : ""}
@@ -649,16 +652,18 @@ function tarjetaCobro(c){
 function pintar(){
   // mesas con todo servido: van a la pestaña "Mesas por cobrar"
   const porCobrar = porCobrarLista();
-  $("#cPend").textContent = datos.pedidos.length;
+  const lista = datos.pedidos.filter(p => MODO_CAJA || p.tipo !== "cuenta");
+  $("#cPend").textContent = lista.length;
+  $("#tabMesas").classList.toggle("alerta", datos.pedidos.some(p => p.tipo === "cuenta"));
   $("#cPrep").textContent = (datos.listos || []).length;
   $("#cMesas").textContent = porCobrar.length;
   if (vista === "mesas") pintarMesas();
-  $("#tabPend").classList.toggle("alerta", datos.pedidos.some(p => p.estado === "nuevo"));
+  $("#tabPend").classList.toggle("alerta", lista.some(p => p.estado === "nuevo"));
   if (vista === "prep") pintarPreparados();
   if (vista === "dia") pintarDia();
   $("#hoyN").textContent = datos.hoy?.pedidos ?? 0;
-  const lista = datos.pedidos;
-  if (!lista.length){ $("#lista").innerHTML = `<div class="vacio"><b>✅</b>Sin pedidos pendientes${porCobrar.length ? `<small style="display:block;font-size:15px;margin-top:6px;opacity:.8">🧾 ${porCobrar.length} mesa${porCobrar.length === 1 ? "" : "s"} por cobrar</small>` : ""}</div>`; return; }
+  if (!MODO_CAJA && !datos.jornada){ $("#lista").innerHTML = `<div class="vacio"><b>⏸️</b>El día de trabajo no está abierto<small style="display:block;font-size:15px;margin-top:6px;opacity:.8">Se abre desde la pantalla de Caja. Mientras tanto el menú no recibe pedidos.</small></div>`; return; }
+  if (!lista.length){ $("#lista").innerHTML = `<div class="vacio"><b>✅</b>Sin pedidos pendientes</div>`; return; }
   $("#lista").innerHTML = lista.map(p => {
     const espera = (datos.ahora - p.creado) / 60000;
     const tarde = p.estado !== "nuevo" && espera > 20;
@@ -764,7 +769,7 @@ function pintarDia(){
       <div class="fechaGrande">${fechaLarga(J.fecha)}</div>
       <div class="sub2">Abierto desde las ${hora(J.abierta)} · 🟢 el menú recibe pedidos</div>
       <div class="cifras"><div><b>${datos.hoy.pedidos}</b><span>pedidos</span></div><div><b>${plata(datos.hoy.total)}</b><span>vendido</span></div></div>
-      <button class="bGrande bAzul" data-ir="pend">🔥 Ir a los pedidos</button>
+      <button class="bGrande bAzul" data-ir="mesas">🧾 Ir a las mesas</button>
       <button class="bGrande bRojo" id="bCulminar">🏁 Culminar día de trabajo</button>
     </div>` : `
     <div class="hoja">

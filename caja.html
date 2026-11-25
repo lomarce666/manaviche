@@ -56,7 +56,7 @@ let CLAVE = leer("caja_clave") || "";
 let caja = null;
 fetch("/restaurante.json").then((r) => r.json()).then((R) => {
   document.title = "Caja · " + R.nombre; $("#nombre").textContent = "Caja " + R.nombre;
-  if (R.caja !== true) document.body.innerHTML = `<div style="font:700 18px system-ui;color:#fff;background:#111418;min-height:100vh;display:grid;place-items:center;text-align:center;padding:24px">💵 La caja no está activada para ${R.nombre}.</div>`;
+  if (R.caja !== true) location.replace("/cobros");      // sin el sistema de caja: la pantalla de cobro de mesas
   if (R.logo) { for (const id of ["#logo", "#logoH"]) { $(id).src = R.logo; $(id).hidden = false; } }
 }).catch(() => {});
 async function entrar() {

@@ -148,6 +148,8 @@ main{padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280
 .pl .agoB2{flex:1 0 100%;padding:13px;border-radius:12px;font-size:16px;font-weight:900;background:#4a1515;color:#ffb3b3}
 .pl .agoB2.ago{background:#16351f;color:#6ee7a0}
 .estAgo{display:inline-block;margin-top:4px;background:#a8242f;color:#fff;font-size:12px;font-weight:900;padding:3px 8px;border-radius:6px}
+.estAgo.disp{background:#1f7a43}
+.pl.ago .nm .estAgo{opacity:1}
 .pl button.agoB{background:#4a1515;color:#ff8a8a}
 .pl button.agoB.si{background:#16351f;color:#6ee7a0}
 .pl button.estB.si{background:#ffd166;color:#111}
@@ -870,7 +872,7 @@ function pintarCarta(){
       <h2>✏️ Editar carta · los cambios se ven al instante en el menú</h2>
       ${P.map(p => `<div class="pl${p.agotado ? " ago" : ""}" data-pl="${esc(p.id)}">
         <div class="nm">${esc(p.nombre)}<small>${esc(p.categoria)}${p.precio !== p.original ? ` · precio original ${plata(p.original)}` : ""}</small>
-          ${p.agotado ? `<span class="estAgo">🚫 AGOTADO</span>` : ""}</div>
+          ${p.agotado ? `<span class="estAgo">🚫 AGOTADO</span>` : `<span class="estAgo disp">✅ DISPONIBLE</span>`}</div>
         <input type="number" step="0.05" min="0.05" inputmode="decimal" value="${p.precio}" aria-label="Precio">
         <button data-precio>Guardar $</button>
         <button class="agoB2${p.agotado ? " ago" : ""}" data-ago="${p.agotado ? 0 : 1}">${p.agotado ? "✅ Indicar que está disponible" : "🚫 Indicar que está agotado"}</button>

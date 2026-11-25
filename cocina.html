@@ -36,6 +36,9 @@ header{position:sticky;top:0;z-index:5;background:#111418;border-bottom:1px soli
 header h1{font-size:20px;font-weight:900;text-transform:uppercase;flex:1;min-width:140px}
 .dato{background:#1b2027;border-radius:12px;padding:6px 12px;font-size:14px;opacity:.95}
 .dato b{font-size:18px;color:#ffd166}
+.mantener{display:flex;align-items:center;gap:10px;margin-top:14px;font-size:15px;font-weight:700;text-align:left;cursor:pointer}
+.mantener input{width:22px;height:22px;accent-color:#ffd166;flex:none}
+#btnAjustes{width:40px;height:40px;border-radius:50%;background:#1b2027;font-size:20px;flex:none}
 #estado{font-size:13px;font-weight:700;padding:6px 10px;border-radius:99px;background:#16351f;color:#6ee7a0}
 #estado.mal{background:#4a1515;color:#ff8a8a}
 #avisoSonido{display:none;margin:12px 16px 0;padding:14px;border-radius:14px;background:#e63946;color:#fff;font-weight:900;text-align:center;font-size:17px}
@@ -237,6 +240,7 @@ main{padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280
     <h1 id="nombreEntrar">Cocina</h1>
     <p>Escribe la clave de la cocina</p>
     <input id="clave" type="password" autocomplete="current-password" placeholder="Clave">
+    <label class="mantener"><input type="checkbox" id="mantener" checked> Mantener sesión abierta en este celular</label>
     <button id="btnEntrar">Entrar y activar sonido 🔔</button>
     <div id="errEntrar"></div>
   </div>
@@ -248,6 +252,7 @@ main{padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280
     <h1 id="nombre">Cocina</h1>
     <span class="dato">Día: <b id="hoyN">0</b> pedidos</span>
     <span id="estado">● En línea</span>
+    <button id="btnAjustes" aria-label="Configuración">⚙️</button>
   </header>
   <div id="avisoSonido">🔇 Toca cualquier parte de la pantalla para activar el sonido</div>
   <nav class="pestanas">
@@ -274,7 +279,9 @@ main{padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280
 const $ = s => document.querySelector(s);
 const guardar = (k,v) => { try { localStorage.setItem(k,v); } catch(e){} };
 const leer = k => { try { return localStorage.getItem(k); } catch(e){ return null; } };
-let CLAVE = leer("cocina_clave") || "";
+const leerSes = k => { try { return sessionStorage.getItem(k); } catch(e){ return null; } };
+// "Mantener sesión abierta": la clave queda guardada solo en este celular; si no, se pide al volver a abrir
+let CLAVE = leer("cocina_clave") || leerSes("cocina_clave") || "";
 let datos = { pedidos: [] }, vistos = new Set(), primeraCarga = true;
 
 let NOMBRE = "";
@@ -374,13 +381,25 @@ async function entrar(){
   const ok = await cargar();
   if (ok === "clave"){ $("#errEntrar").textContent = "Clave incorrecta"; return; }
   if (ok === false){ $("#errEntrar").textContent = "No hay conexión. Intenta de nuevo."; return; }
-  guardar("cocina_clave", CLAVE);
+  if ($("#mantener").checked) guardar("cocina_clave", CLAVE);
+  else { try { localStorage.removeItem("cocina_clave"); sessionStorage.setItem("cocina_clave", CLAVE); } catch(e){} }
   $("#entrar").style.display = "none"; $("#panel").style.display = "block";
   pedirPantallaEncendida(); revisarSonido(); verVista("dia");
 }
 $("#btnEntrar").onclick = entrar;
 $("#clave").addEventListener("keydown", e=>{ if (e.key === "Enter") entrar(); });
 if (CLAVE) $("#clave").value = CLAVE;
+
+/* ---------- ⚙️ Configuración: cerrar sesión ---------- */
+$("#btnAjustes").onclick = () => abrirReporte(`<h3>⚙️ Configuración</h3>
+  <div class="hrs" style="margin-top:6px">${leer("cocina_clave") ? "La sesión está abierta en este celular: entra sin pedir la clave." : "La clave se pedirá la próxima vez que abras la cocina."}</div>
+  <div class="botones"><button class="bGrande bRojo" id="cerrarSesion">🚪 Cerrar sesión</button>
+  <button class="bGrande bGris" data-cerrar>Volver</button></div>`);
+document.addEventListener("click", e => {
+  if (e.target.id !== "cerrarSesion") return;
+  try { localStorage.removeItem("cocina_clave"); sessionStorage.removeItem("cocina_clave"); } catch(e){}
+  CLAVE = ""; location.replace("/cocina?v=" + Date.now());      // vuelve a pedir la clave
+});
 
 /* ---------- Notificación de mesero / cuenta ---------- */
 function mostrarAviso(p){

@@ -998,6 +998,9 @@ const suave = e => 1 - Math.pow(1 - e, 3);               // frena al final (se s
 const marca = $("#marca"), desliza = $("#desliza"), escena = $("#escena"), final = $("#final");
 const sub = marca.querySelector(".sub"), ola = marca.querySelector(".ola"), waFinal = $("#waFinal");
 const pts = [...puntos.children];
+// Al terminar su animación de entrada, el eslogan y la ola quedan libres para ocultarse al deslizar
+// (si no, la animación los deja siempre visibles y se ven borrosos debajo del logo pequeño)
+[sub, ola].forEach(el => el.addEventListener("animationend", () => { el.style.animation = "none"; marcaK = -1; pintar(); }, { once: true }));
 
 // Medidas: se leen solo al cargar o al girar el celular (leerlas en cada cuadro hace lento al iPhone)
 let alto = innerHeight, vw = innerWidth, vh = innerHeight, marcaAlto = 0, achicar = 0.55;
@@ -1023,6 +1026,7 @@ function pintar(){
     const yIni = -marcaAlto / 2, yFin = -vh / 2 + 22;
     marca.style.transform = `translate3d(0, ${(yIni + (yFin - yIni) * k).toFixed(1)}px, 0) scale(${(1 - achicar * k).toFixed(3)})`;
     sub.style.opacity = ola.style.opacity = String(clamp(1 - k * 1.4));
+    sub.style.visibility = ola.style.visibility = k > 0.7 ? "hidden" : "visible";
     desliza.style.visibility = k > 0.3 ? "hidden" : "visible";
   }
 

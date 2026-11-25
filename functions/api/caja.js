@@ -17,7 +17,7 @@
 
 import {
   hoyEcuador, prepararTablas, jornadaAbierta, cuentaAbierta, detalleCuenta, cartaEfectiva, cobrarCuenta,
-  estadoCaja, METODOS_PAGO, CUENTA_VENCE, responder, limpiar, sinBasura, contar, enviarTelegram,
+  estadoCaja, anularPedido, METODOS_PAGO, CUENTA_VENCE, responder, limpiar, sinBasura, contar, enviarTelegram,
 } from "../_db.js";
 
 const r2 = (x) => Math.round(Number(x) * 100) / 100;
@@ -97,22 +97,8 @@ export async function onRequestPost({ request, env }) {
   }
 
   if (d.accion === "anular") {
-    const id = Number(d.id), motivo = String(d.motivo ?? "").replace(/[<>]/g, "").trim().slice(0, 200);
-    if (!Number.isInteger(id) || !motivo) return responder(400, { ok: false, error: "Escribe el motivo" });
-    const p = await DB.prepare("SELECT * FROM pedidos WHERE id = ?1 AND jornada = ?2 AND tipo = 'pedido' AND para IS NOT NULL").bind(id, j.id).first();
-    if (!p) return responder(404, { ok: false, error: "Esa venta no existe o ya fue anulada" });
-    if (p.cuenta != null) {
-      const c = await DB.prepare("SELECT cerrada FROM cuentas WHERE id = ?1").bind(p.cuenta).first();
-      if (c && c.cerrada != null) return responder(409, { ok: false, error: "Esa mesa ya fue cobrada; no se puede anular" });
-    }
-    const ahora = Date.now();
-    await DB.batch([
-      // sale de la cocina, de los totales y del efectivo esperado
-      DB.prepare("UPDATE pedidos SET tipo = 'anulado', estado = 'listo', actualizado = ?2, anulado = ?3 WHERE id = ?1").bind(id, ahora, JSON.stringify({ motivo, hora: ahora })),
-      DB.prepare("UPDATE jornadas SET total = total - ?2 WHERE id = ?1").bind(j.id, p.total),
-      ...(p.cuenta != null ? [DB.prepare("UPDATE cuentas SET total = total - ?2, pedidos = pedidos - 1 WHERE id = ?1").bind(p.cuenta, p.total)] : []),
-    ]);
-    return responder(200, { ok: true });
+    const r = await anularPedido(DB, j, Number(d.id), d.motivo, true);
+    return r.status === 200 ? responder(200, { ok: true }) : responder(r.status, { ok: false, error: r.error });
   }
 
   if (d.accion === "salida") {

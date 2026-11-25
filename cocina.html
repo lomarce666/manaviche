@@ -73,6 +73,11 @@ main{padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280
 .nota{margin-top:10px;background:#3a2f12;color:#ffe29a;border-radius:10px;padding:8px 10px;font-size:16px;font-weight:700}
 .total{margin-top:10px;font-size:15px;opacity:.8}
 .acciones{display:flex;gap:10px;margin-top:14px}
+.b-anular{display:block;margin:12px auto 0;background:none;color:#ff8a8a;font-size:14px;font-weight:700;text-decoration:underline;padding:4px}
+.fila .volver.anularL{color:#ff8a8a}
+.motivosA{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.motivosA button{padding:8px 10px;border-radius:99px;background:#efe6d6;color:#3a332a;font-size:14px;font-weight:700}
+.motivosA button.on{background:#c0392b;color:#fff}
 .acciones button{flex:1;padding:16px;border-radius:14px;font-size:18px;font-weight:900}
 .b-recibido{background:#e63946;color:#fff}
 .b-listo{background:#2a313b;color:#9aa3ad}
@@ -556,6 +561,41 @@ async function cobrar(id, metodo, mesa){
   mostrarListo(`✅ Mesa ${mesa} terminada · lista para nuevos clientes`);
   cargar();
 }
+// Pantalla siempre prendida mientras la cocina está abierta (para no perder pedidos ni el sonido)
+let candado = null;
+async function pantallaPrendida(){
+  if (!("wakeLock" in navigator) || candado || document.visibilityState !== "visible") return;
+  try { candado = await navigator.wakeLock.request("screen"); candado.addEventListener("release", () => { candado = null; }); } catch(e){}
+}
+document.addEventListener("visibilitychange", pantallaPrendida);
+document.addEventListener("click", pantallaPrendida);
+pantallaPrendida();
+
+// Anular un pedido: pide el motivo y queda en el reporte del día
+function pedirAnular(id){
+  const p = [...(datos.pedidos || []), ...(datos.listos || [])].find(x => x.id === id); if (!p) return;
+  abrirReporte(`<h3>🚫 Anular pedido #${p.numero ?? "—"}</h3>
+    <div class="hrs" style="font-size:15px">${esc(dondeTxt(p))} · $${Number(p.total).toFixed(2)}</div>
+    <div style="margin-top:8px;font-size:15px">${p.items.map(it => `${it.cantidad} x ${esc(it.nombre)}`).join("<br>")}</div>
+    <div class="alerta" style="background:#fff4e0;color:#7a4b00">Se quita de la cocina, de la cuenta de la mesa y del total del día. Queda anotado en el reporte con el motivo.</div>
+    <h4>¿Por qué se anula?</h4>
+    <div class="motivosA">${["Pedido por error", "El cliente ya no lo quiere", "El cliente se fue", "Pedido de broma", "Se repitió el pedido"].map(m => `<button data-motivoA="${m}">${m}</button>`).join("")}</div>
+    <textarea id="motivoA" placeholder="O escribe el motivo…" style="font:inherit;font-size:16px;width:100%;margin-top:8px;padding:10px;border-radius:10px;border:2px solid #d8cfbf;min-height:60px"></textarea>
+    <div class="botones"><button class="bGrande" data-anularOk="${id}" style="background:#c0392b;color:#fff">🚫 Anular pedido</button>
+      <button class="bGrande bGris" data-cerrar>Cancelar</button></div>`);
+}
+$("#reporte").addEventListener("click", async e=>{
+  const m = e.target.closest("[data-motivoA]");
+  if (m){ $("#motivoA").value = m.dataset.motivoa; document.querySelectorAll("[data-motivoA]").forEach(x => x.classList.toggle("on", x === m)); return; }
+  const ok = e.target.closest("[data-anularOk]"); if (!ok) return;
+  const motivo = $("#motivoA").value.trim();
+  if (!motivo){ $("#motivoA").focus(); $("#motivoA").style.borderColor = "#c0392b"; return; }
+  ok.disabled = true;
+  let j = {};
+  try { j = await (await fetch("/api/cocina", { method: "POST", headers: { "Content-Type": "application/json", "x-clave": CLAVE }, body: JSON.stringify({ accion: "anular", id: Number(ok.dataset.anularok), motivo }) })).json(); } catch(err){}
+  if (!j.ok){ ok.disabled = false; alert(j.error || "No se pudo anular. Revisa el internet."); return; }
+  cerrarReporte(); mostrarListo("🚫 Pedido anulado"); cargar();
+});
 function mostrarListo(txt){
   const t = document.createElement("div"); t.className = "toastOk"; t.textContent = txt;
   document.body.appendChild(t); setTimeout(() => t.remove(), 3500);
@@ -591,7 +631,7 @@ function pintarPreparados(){
         <div class="det" data-detalle="${p.id}">${p.items.map(it => `${it.cantidad} x ${esc(it.nombre)}`).join(", ")}
           <small>Pedido ${hora(p.creado)} · entregado ${hora(p.actualizado)}${p.pago ? ` · ${ICON_PAGO[p.pago] || ""} ${esc(p.pago)}` : ""}</small>
           <span class="ver">🧾 Ver detalle</span></div>
-        <div class="monto">$${Number(p.total).toFixed(2)}<button class="volver" data-id="${p.id}" data-estado="preparando">↩ Volver a pendientes</button></div>
+        <div class="monto">$${Number(p.total).toFixed(2)}<button class="volver" data-id="${p.id}" data-estado="preparando">↩ Volver a pendientes</button>${p.cuenta_cerrada ? "" : `<button class="volver anularL" data-anular="${p.id}">🚫 Anular</button>`}</div>
       </div>`).join("")}</div>`).join("") : `<div class="vacio"><b>🍽️</b>Todavía no hay pedidos preparados hoy</div>`}`;
 }
 
@@ -646,12 +686,14 @@ function pintar(){
       ${p.pago ? `<div class="pagoC">💳 ${p.para && p.para !== "mesa" ? "Pagado en caja con" : "Pagará con"}: <b>${esc(p.pago)}</b></div>` : ""}
       ${p.adicional && p.cuenta_total != null ? `<div class="ctaMesa">🧾 Cuenta de la mesa: $${Number(p.cuenta_total).toFixed(2)}</div>` : ""}
       ${p.estado !== "nuevo" ? `<div class="faltan">${faltan ? `Marca ✓ cada plato al servirlo · faltan ${faltan}` : "✅ Todo servido · toca Pedido servido"}</div>` : ""}
-      <div class="acciones">${boton}</div></div>`;
+      <div class="acciones">${boton}</div>
+      <button class="b-anular" data-anular="${p.id}">🚫 Anular pedido</button></div>`;
   }).join("");
 }
 
 /* ---------- Botones Recibido / vistos / Pedido servido ---------- */
 async function alTocar(e){
+  const an = e.target.closest("[data-anular]"); if (an){ pedirAnular(Number(an.dataset.anular)); return; }
   const cb = e.target.closest("[data-cobrar2]");
   if (cb){ abrirCobro(cb.dataset.cobrar2, cb.dataset.mesa, cb.dataset.total, cb.dataset.pago); return; }
   // Visto de un plato servido
@@ -680,6 +722,7 @@ async function alTocar(e){
 }
 $("#lista").addEventListener("click", alTocar);
 $("#preparados").addEventListener("click", e=>{
+  const an = e.target.closest("[data-anular]"); if (an){ pedirAnular(Number(an.dataset.anular)); return; }
   if (e.target.closest(".volver")){ if (confirm("¿Volver este pedido a pendientes?")) alTocar(e); return; }
   const f = e.target.closest(".fila"); if (!f) return;
   const id = Number(f.querySelector("[data-detalle]").dataset.detalle);
@@ -789,7 +832,7 @@ function htmlReporte(R, guardado){
       ${R.caja.arqueo ? `<tr><td>Contado al cerrar (${hora(R.caja.arqueo.hora)})</td><td class="r">${plata(R.caja.arqueo.contado)}</td></tr>
       <tr><td><b>${R.caja.arqueo.diferencia === 0 ? "✅ Cuadra" : R.caja.arqueo.diferencia > 0 ? "Sobra" : "⚠️ Falta"}</b></td><td class="r"><b>${plata(Math.abs(R.caja.arqueo.diferencia))}</b></td></tr>
       ${R.caja.arqueo.nota ? `<tr><td colspan="2">📝 ${esc(R.caja.arqueo.nota)}</td></tr>` : ""}` : `<tr><td colspan="2">Sin arqueo todavía</td></tr>`}</table>` : ""}
-    ${(R.anuladas || []).length ? `<h4>🚫 Ventas anuladas</h4><table>${R.anuladas.map(a => `<tr><td>#${a.numero ?? "—"} · ${a.hora ? hora(a.hora) : ""} · ${esc(a.motivo || "")}</td><td class="r">${plata(a.total)}</td></tr>`).join("")}</table>` : ""}
+    ${(R.anuladas || []).length ? `<h4>🚫 Pedidos anulados</h4><table>${R.anuladas.map(a => `<tr><td>#${a.numero ?? "—"} · ${a.para === "llevar" ? "Para llevar" : a.para === "mostrador" ? "Mostrador" : "Mesa " + a.mesa} · ${a.hora ? hora(a.hora) : ""} · ${esc(a.motivo || "")}</td><td class="r">${plata(a.total)}</td></tr>`).join("")}</table>` : ""}
     <div class="hrs" style="margin-top:12px">Avisos: 🙋 ${R.mesero} llamadas al mesero · 🧾 ${R.cuenta} cuentas pedidas</div>
     <div class="botones noImprimir" style="grid-template-columns:1fr 1fr">
       <button class="bGrande bAzul" data-imprimir style="margin:0">🖨️ Descargar PDF</button>
@@ -850,7 +893,7 @@ function descargarPDF(R){
     R.mesas.forEach(m => t(col(typeof m.mesa === "string" ? m.mesa : "Mesa " + m.mesa, 40) + col(m.pedidos, 10, 1) + col(plata(m.total), 18, 1))); t(""); }
   if (R.lista.length){ t("PEDIDOS DEL DIA", true, 11, true); t(col("#", 8) + col("Hora", 14) + col("Mesa", 28) + col("Total", 18, 1), true);
     R.lista.forEach(p => t(col(p.numero ?? "-", 8) + col(hora(p.creado), 14) + col(p.para && p.para !== "mesa" ? (p.para === "llevar" ? "Para llevar" : "Mostrador") : p.mesa, 28) + col(plata(p.total), 18, 1))); t(""); }
-  if ((R.anuladas || []).length){ t("VENTAS ANULADAS", true, 11, true); R.anuladas.forEach(a => t(col("#" + (a.numero ?? "-") + " " + (a.motivo || ""), 50) + col(plata(a.total), 18, 1))); t(""); }
+  if ((R.anuladas || []).length){ t("PEDIDOS ANULADOS", true, 11, true); R.anuladas.forEach(a => t(col("#" + (a.numero ?? "-") + " " + (a.motivo || ""), 50) + col(plata(a.total), 18, 1))); t(""); }
   t(`Avisos: ${R.mesero} llamadas al mesero - ${R.cuenta} cuentas pedidas`, false, 9);
   const blob = crearPDF(L), url = URL.createObjectURL(blob);
   const a = document.createElement("a"); a.href = url; a.download = `Cierre-${NOMBRE}-${R.fecha}.pdf`;
@@ -864,7 +907,7 @@ function textoReporte(R){
   if ((R.pagos || []).length) t += `\n*Formas de pago*\n` + R.pagos.map(x => `• ${x.metodo}: ${plata(x.total)} (${x.cuentas})`).join("\n") + "\n";
   if (R.caja && (R.caja.fondo != null || R.caja.arqueo)) { t += `\n*Caja*\nFondo: ${plata(R.caja.fondo || 0)} · Efectivo: ${plata(R.caja.efectivo)}${R.caja.salidas ? ` · Salidas: −${plata(R.caja.salidas)}` : ""}\nDebería haber: ${plata(R.caja.esperado)}\n`;
     if (R.caja.arqueo) t += `Contado: ${plata(R.caja.arqueo.contado)} · ${R.caja.arqueo.diferencia === 0 ? "Cuadra ✅" : (R.caja.arqueo.diferencia > 0 ? "Sobra " : "Falta ") + plata(Math.abs(R.caja.arqueo.diferencia))}\n`; }
-  if ((R.anuladas || []).length) t += `\n*Anuladas*\n` + R.anuladas.map(a => `• #${a.numero ?? "-"} ${plata(a.total)} — ${a.motivo || ""}`).join("\n") + "\n";
+  if ((R.anuladas || []).length) t += `\n*Pedidos anulados*\n` + R.anuladas.map(a => `• #${a.numero ?? "-"} ${plata(a.total)} — ${a.motivo || ""}`).join("\n") + "\n";
   if (R.platos.length) t += `\n*Por plato*\n` + R.platos.map(x => `• ${x.cantidad} x ${x.nombre} — ${plata(x.total)}`).join("\n");
   return t;
 }

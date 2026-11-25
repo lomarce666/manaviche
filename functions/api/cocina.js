@@ -17,7 +17,7 @@
 //  POST {accion:"promo", id, texto} / {accion:"promo"} → plato del día / quitarlo
 // =============================================================
 
-import { hoyEcuador, prepararTablas, jornadaAbierta, resumenJornada, detalleCuenta, cartaEfectiva, cobrarCuenta, CUENTA_VENCE, responder } from "../_db.js";
+import { hoyEcuador, prepararTablas, jornadaAbierta, resumenJornada, detalleCuenta, cartaEfectiva, cobrarCuenta, anularPedido, CUENTA_VENCE, responder } from "../_db.js";
 
 const METODOS = ["Efectivo", "Transferencia", "Tarjeta"];
 
@@ -149,6 +149,14 @@ export async function onRequestPost({ request, env }) {
       DB.prepare("UPDATE cuentas SET cerrada = ?1 WHERE cerrada IS NULL").bind(ahora),
     ]);
     return responder(200, { ok: true, reporte: rep });
+  }
+
+  // ---- Anular un pedido (por error, cliente se fue, broma) ----
+  if (d.accion === "anular") {
+    const j = await jornadaAbierta(DB, false);
+    if (!j) return responder(409, { ok: false, error: "No hay un día de trabajo abierto" });
+    const r = await anularPedido(DB, j, Number(d.id), d.motivo);
+    return r.status === 200 ? responder(200, { ok: true }) : responder(r.status, { ok: false, error: r.error });
   }
 
   // ---- Cobrar: cerrar la cuenta de una mesa ----

@@ -320,3 +320,23 @@ export async function estadoCaja(DB, j) {
   return { fondo, efectivo, salidas, listaSalidas: lista,
     esperado: Math.round(((fondo || 0) + efectivo - salidas) * 100) / 100, arqueo: j.arqueo ? JSON.parse(j.arqueo) : null };
 }
+
+// Anular un pedido (por error, cliente se fue, pedido de broma): sale de la cocina, del total del día y de la cuenta de la mesa.
+// soloCaja = true → solo ventas hechas en la caja.
+export async function anularPedido(DB, j, id, motivoTxt, soloCaja = false) {
+  const motivo = String(motivoTxt ?? "").replace(/[<>]/g, "").trim().slice(0, 200);
+  if (!Number.isInteger(id) || !motivo) return { status: 400, error: "Escribe el motivo" };
+  const p = await DB.prepare(`SELECT * FROM pedidos WHERE id = ?1 AND jornada = ?2 AND tipo = 'pedido'${soloCaja ? " AND para IS NOT NULL" : ""}`).bind(id, j.id).first();
+  if (!p) return { status: 404, error: "Ese pedido no existe o ya fue anulado" };
+  if (p.cuenta != null) {
+    const c = await DB.prepare("SELECT cerrada FROM cuentas WHERE id = ?1").bind(p.cuenta).first();
+    if (c && c.cerrada != null) return { status: 409, error: "Esa mesa ya fue cobrada; no se puede anular" };
+  }
+  const ahora = Date.now();
+  await DB.batch([
+    DB.prepare("UPDATE pedidos SET tipo = 'anulado', estado = 'listo', actualizado = ?2, anulado = ?3 WHERE id = ?1").bind(id, ahora, JSON.stringify({ motivo, hora: ahora })),
+    DB.prepare("UPDATE jornadas SET total = total - ?2 WHERE id = ?1").bind(j.id, p.total),
+    ...(p.cuenta != null ? [DB.prepare("UPDATE cuentas SET total = total - ?2, pedidos = pedidos - 1 WHERE id = ?1").bind(p.cuenta, p.total)] : []),
+  ]);
+  return { status: 200 };
+}

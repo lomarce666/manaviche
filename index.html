@@ -215,7 +215,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 #ayudaMsg a{color:#179c4a;font-weight:800}
 
 /* Carta completa */
-#cartaBtn{position:fixed;right:14px;top:calc(14px + env(safe-area-inset-top));z-index:58;border:none;border-radius:99px;background:rgba(255,255,255,.92);color:#0d3b4f;font:inherit;font-weight:900;font-size:14px;padding:10px 14px;box-shadow:0 6px 18px rgba(0,0,0,.25);cursor:pointer}
+#cartaBtn{position:fixed;right:10px;top:calc(12px + env(safe-area-inset-top));z-index:58;border:none;border-radius:99px;background:rgba(255,255,255,.92);color:#0d3b4f;font:inherit;font-weight:900;font-size:14px;padding:10px 14px;box-shadow:0 6px 18px rgba(0,0,0,.25);cursor:pointer}
 #carta{position:fixed;inset:0;z-index:90;background:#fffaf0;color:#1d1d1f;transform:translate3d(0,100%,0);transition:transform .35s cubic-bezier(.2,.9,.3,1);display:flex;flex-direction:column}
 #carta.ver{transform:translate3d(0,0,0)}
 #carta .cab{padding:calc(14px + env(safe-area-inset-top)) 16px 10px;border-bottom:1px solid #eadfcb;background:#fffaf0}
@@ -349,7 +349,7 @@ body.conCarta #cartaBtn,body.conCarta #promo,body.conCarta #ayudaBtn{visibility:
 
 <!-- Llamar mesero / pedir cuenta -->
 <button id="ayudaBtn" aria-label="Llamar al mesero">🙋</button>
-<button id="cartaBtn" aria-label="Ver carta completa">📋 Carta completa</button>
+<button id="cartaBtn" aria-label="Ver carta completa">📋 Carta</button>
 <div id="promo"><span>⭐</span><div style="flex:1;min-width:0"><b>Plato del día</b><span id="promoTxt"></span></div><button class="pedir" id="promoPedir">Agregar +</button><button class="x" id="promoX" aria-label="Ocultar">×</button></div>
 <div id="carta" role="dialog" aria-label="Carta completa">
   <div class="cab">

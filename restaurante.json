@@ -21,11 +21,11 @@
   "platos": [
     {"id": "ceviche-jipijapa", "mano_foto": "/fotos/mano7-ceviche.webp", "nombre": "Ceviche Jipijapa", "precio": 8, "desc": "Camarón fresco al estilo manabita, con su toque de maní. Con chifles y limón.", "dibujo": "ceviche", "foto": "", "fondo": "#c8553d", "agotado": false, "categoria": "Mariscos"},
 
-    {"id": "encebollado", "mano_foto": "/fotos/mano7-encebollado.webp", "nombre": "Encebollado", "precio": 4.5, "desc": "Albacora, yuca y cebolla curtida. El que levanta a cualquiera.", "dibujo": "encebollado", "foto": "", "fondo": "#1f6f78", "agotado": false, "categoria": "Sopas"},
+    {"id": "encebollado", "mano_foto": "/fotos/mano8-encebollado.webp", "nombre": "Encebollado", "precio": 4.5, "desc": "Albacora, yuca y cebolla curtida. El que levanta a cualquiera.", "dibujo": "encebollado", "foto": "", "fondo": "#1f6f78", "agotado": false, "categoria": "Sopas"},
 
     {"id": "viche-pescado", "mano_foto": "/fotos/mano7-viche.webp", "nombre": "Viche de pescado", "precio": 8, "desc": "Sopa manabita de maní con verde, choclo, pescado y mariscos.", "dibujo": "viche", "foto": "", "fondo": "#4f7f35", "agotado": false, "categoria": "Sopas"},
 
-    {"id": "corviche", "mano_foto": "/fotos/mano7-corviche.webp", "nombre": "Corviche", "precio": 4.5, "desc": "Masa de verde rellena de pescado, frita y crocante. 3 unidades con curtido.", "dibujo": "corviche", "foto": "", "fondo": "#d07a1e", "agotado": false, "categoria": "Entradas"},
+    {"id": "corviche", "mano_foto": "/fotos/mano8-corviche.webp", "nombre": "Corviche", "precio": 4.5, "desc": "Masa de verde rellena de pescado, frita y crocante. 3 unidades con curtido.", "dibujo": "corviche", "foto": "", "fondo": "#d07a1e", "agotado": false, "categoria": "Entradas"},
 
     {"id": "cazuela-mariscos", "mano_foto": "/fotos/mano7-cazuela.webp", "nombre": "Cazuela de mariscos", "precio": 9, "desc": "En olla de barro, con maní, verde y mariscos frescos.", "dibujo": "cazuela", "foto": "", "fondo": "#7a3b2e", "agotado": false, "categoria": "Mariscos"},
 

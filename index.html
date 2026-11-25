@@ -215,7 +215,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 .btnSeguir{display:block;width:100%;margin-top:12px;padding:15px;border:none;border-radius:14px;background:var(--amarillo);color:#1d1d1f;font:inherit;font-size:18px;font-weight:900;cursor:pointer}
 #resultado .btnSeguir{font-size:17px;box-shadow:0 4px 0 #c9a13e}
 .item .de{display:block;font-size:12px;color:#0d6e6e;font-weight:700;margin-top:2px}
-#ayudaBtn{position:fixed;left:18px;bottom:calc(20px + env(safe-area-inset-bottom));width:56px;height:56px;border-radius:50%;border:none;background:rgba(255,255,255,.92);font-size:26px;box-shadow:0 8px 22px rgba(0,0,0,.3);z-index:60;cursor:pointer}
+#ayudaBtn{position:fixed;left:14px;bottom:calc(20px + env(safe-area-inset-bottom));height:auto;padding:8px 14px;line-height:1.1;text-align:left;border-radius:99px;border:none;background:rgba(255,255,255,.95);color:#0d3b4f;font:inherit;font-size:14px;font-weight:900;white-space:nowrap;box-shadow:0 8px 22px rgba(0,0,0,.3);z-index:60;cursor:pointer}
 #ayudaPanel{position:fixed;inset:0;z-index:97;background:rgba(0,0,0,.55);display:grid;place-items:center;padding:24px;opacity:0;pointer-events:none;transition:opacity .25s}
 #ayudaPanel.ver{opacity:1;pointer-events:auto}
 #ayudaPanel .caja{background:#fffaf0;color:#1d1d1f;border-radius:24px;padding:24px 22px 18px;width:100%;max-width:340px;text-align:center}
@@ -363,7 +363,7 @@ body.conCarta #cartaBtn,body.conCarta #promo,body.conCarta #ayudaBtn{visibility:
 <div id="resultado" role="alertdialog"><div class="caja"></div></div>
 
 <!-- Llamar mesero / pedir cuenta -->
-<button id="ayudaBtn" aria-label="Llamar al mesero">🙋</button>
+<button id="ayudaBtn" aria-label="Llamar al mesero"><span style="font-size:22px;vertical-align:middle">🙋</span><span style="display:inline-block;vertical-align:middle;margin-left:6px">Llamar<br>al mesero</span></button>
 <button id="cartaBtn" aria-label="Ver carta completa">📋 Carta</button>
 <div id="carta" role="dialog" aria-label="Carta completa">
   <div class="cab">

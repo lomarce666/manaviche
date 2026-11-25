@@ -16,55 +16,9 @@
 //    el pedido quede guardado para la pantalla; Telegram es extra.
 // =============================================================
 
-import { hoyEcuador, prepararTablas, jornadaAbierta, cuentaAbierta, cartaEfectiva, estadoHorario, mesaAutorizada, responder } from "../_db.js";
+import { hoyEcuador, prepararTablas, jornadaAbierta, cuentaAbierta, cartaEfectiva, mesaAutorizada, responder, limpiar, sinBasura, contar, deshacer, enviarTelegram } from "../_db.js";
 
 // Evita que alguien meta código raro en el mensaje
-const limpiar = (t, max) =>
-  String(t ?? "").slice(0, max).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-
-// Quita espacios, saltos de línea y comillas que se cuelan al copiar y pegar
-const sinBasura = (v) => String(v ?? "").trim().replace(/^["'\s]+|["'\s]+$/g, "");
-
-async function contar(DB, jornada, monto) {
-  // Suma 1 de forma segura aunque lleguen varios pedidos al mismo tiempo
-  const fila = await DB.prepare("UPDATE jornadas SET n = n + 1, total = total + ?2 WHERE id = ?1 RETURNING n, total")
-    .bind(jornada, monto).first();
-  return { numero: fila.n, totalDia: fila.total };
-}
-
-async function deshacer(DB, jornada, monto, numero, id) {
-  try {
-    // Devuelve el monto; y si nadie pidió después, también el número (así no quedan saltos)
-    if (numero && jornada) await DB.prepare("UPDATE jornadas SET total = total - ?2, n = CASE WHEN n = ?3 THEN n - 1 ELSE n END WHERE id = ?1")
-      .bind(jornada, monto, numero).run();
-    if (id) await DB.prepare("DELETE FROM pedidos WHERE id = ?1").bind(id).run();
-  } catch {}
-}
-
-async function enviarTelegram(TOKEN, CHAT, texto) {
-  if (!TOKEN || !CHAT) return { ok: false, description: "Falta configurar Telegram" };
-  // Telegram deja unos 20 mensajes por minuto por grupo. Si en hora pico pide esperar
-  // (error 429), esperamos y reintentamos solos.
-  const enviar = () => fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ chat_id: CHAT, text: texto, parse_mode: "HTML" }),
-  }).then((r) => r.json());
-  try {
-    let j = await enviar(), espera = 0;
-    for (let intento = 0; !j.ok && j.error_code === 429 && intento < 3; intento++) {
-      const seg = Math.min(Number(j.parameters?.retry_after) || 3, 20);
-      if (espera + seg > 40) break;
-      espera += seg;
-      await new Promise((ok) => setTimeout(ok, seg * 1000));
-      j = await enviar();
-    }
-    return j;
-  } catch (e) {
-    return { ok: false, description: "No se pudo conectar con Telegram" };
-  }
-}
-
 export async function onRequestPost({ request, env }) {
   let TOKEN = sinBasura(env.TELEGRAM_TOKEN);
   if (TOKEN.toLowerCase().startsWith("bot")) TOKEN = TOKEN.slice(3);

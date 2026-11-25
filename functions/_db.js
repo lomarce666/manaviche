@@ -46,6 +46,9 @@ export async function prepararTablas(DB) {
   try { await DB.prepare("ALTER TABLE cuentas ADD COLUMN metodo TEXT").run(); } catch {}
   try { await DB.prepare("ALTER TABLE cuentas ADD COLUMN pago_pref TEXT").run(); } catch {}
   try { await DB.prepare("ALTER TABLE pedidos ADD COLUMN pago TEXT").run(); } catch {}
+  try { await DB.prepare("ALTER TABLE pedidos ADD COLUMN para TEXT").run(); } catch {}        // caja: 'mostrador' / 'llevar'
+  try { await DB.prepare("ALTER TABLE jornadas ADD COLUMN fondo REAL").run(); } catch {}      // efectivo con que se abre la caja
+  try { await DB.prepare("ALTER TABLE jornadas ADD COLUMN arqueo TEXT").run(); } catch {}     // conteo al cerrar la caja
   // Índices: la cocina pregunta cada 3 s; así cada consulta lee pocas filas aunque haya meses de pedidos
   // (el plan gratis de Cloudflare D1 permite 5 millones de filas leídas por día)
   for (const q of [
@@ -119,7 +122,7 @@ export async function detalleCuenta(DB, c) {
 // Resumen para hacer caja de un día de trabajo
 export async function resumenJornada(DB, j) {
   const { results } = await DB.prepare(
-    "SELECT numero, tipo, mesa, items, notas, total, estado, creado FROM pedidos WHERE jornada = ?1 ORDER BY id"
+    "SELECT numero, tipo, mesa, items, notas, total, estado, creado, para FROM pedidos WHERE jornada = ?1 ORDER BY id"
   ).bind(j.id).all();
   const pedidos = results.filter((p) => p.tipo === "pedido").map((p) => ({ ...p, items: p.items ? JSON.parse(p.items) : [] }));
   const platos = {}, mesas = {};
@@ -129,8 +132,9 @@ export async function resumenJornada(DB, j) {
       platos[k] = platos[k] || { nombre: k, cantidad: 0, precio: it.precio, total: 0 };
       platos[k].cantidad += it.cantidad; platos[k].total += it.cantidad * it.precio;
     }
-    mesas[p.mesa] = mesas[p.mesa] || { mesa: p.mesa, pedidos: 0, total: 0 };
-    mesas[p.mesa].pedidos++; mesas[p.mesa].total += p.total;
+    const km = p.para && p.para !== "mesa" ? (p.para === "llevar" ? "Para llevar" : "Mostrador") : p.mesa;     // ventas de caja sin mesa
+    mesas[km] = mesas[km] || { mesa: km, pedidos: 0, total: 0 };
+    mesas[km].pedidos++; mesas[km].total += p.total;
   }
   const total = pedidos.reduce((t, p) => t + p.total, 0);
   // Cobros por forma de pago (cuentas de mesa cerradas en este día)
@@ -147,8 +151,9 @@ export async function resumenJornada(DB, j) {
     }
     pagos = Object.values(m).map((x) => ({ metodo: x.metodo, cuentas: x.cuentas.size, total: x.total }));
   } catch {}
+  let caja = null; try { caja = await estadoCaja(DB, j); } catch {}
   return {
-    pagos,
+    pagos, caja,
     fecha: j.fecha, abierta: j.abierta, cerrada: j.cerrada || null,
     pedidos: pedidos.length, total: Math.round(total * 100) / 100,
     promedio: pedidos.length ? Math.round((total / pedidos.length) * 100) / 100 : 0,
@@ -157,8 +162,8 @@ export async function resumenJornada(DB, j) {
     mesero: results.filter((p) => p.tipo === "mesero").length,
     cuenta: results.filter((p) => p.tipo === "cuenta").length,
     platos: Object.values(platos).sort((a, b) => b.cantidad - a.cantidad),
-    mesas: Object.values(mesas).sort((a, b) => a.mesa - b.mesa),
-    lista: pedidos.map((p) => ({ numero: p.numero, mesa: p.mesa, total: p.total, creado: p.creado, items: p.items, notas: p.notas })),
+    mesas: Object.values(mesas).sort((a, b) => (typeof a.mesa === "string") - (typeof b.mesa === "string") || (a.mesa > b.mesa ? 1 : -1)),
+    lista: pedidos.map((p) => ({ numero: p.numero, mesa: p.mesa, para: p.para || null, total: p.total, creado: p.creado, items: p.items, notas: p.notas })),
   };
 }
 
@@ -217,4 +222,83 @@ export async function mesaAutorizada(env, mesa, k) {
   const secreto = String(env.MESA_SECRETO ?? "").trim();
   if (!secreto) return true;
   return String(k ?? "") === (await codigoMesa(secreto, mesa));
+}
+
+
+// =============================================================
+//  Ayudas compartidas por pedido.js y caja.js
+// =============================================================
+export const limpiar = (t, max) =>
+  String(t ?? "").slice(0, max).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+// Quita espacios, saltos de línea y comillas que se cuelan al copiar y pegar
+export const sinBasura = (v) => String(v ?? "").trim().replace(/^["'\s]+|["'\s]+$/g, "");
+
+export async function contar(DB, jornada, monto) {
+  // Suma 1 de forma segura aunque lleguen varios pedidos al mismo tiempo
+  const fila = await DB.prepare("UPDATE jornadas SET n = n + 1, total = total + ?2 WHERE id = ?1 RETURNING n, total")
+    .bind(jornada, monto).first();
+  return { numero: fila.n, totalDia: fila.total };
+}
+
+export async function deshacer(DB, jornada, monto, numero, id) {
+  try {
+    // Devuelve el monto; y si nadie pidió después, también el número (así no quedan saltos)
+    if (numero && jornada) await DB.prepare("UPDATE jornadas SET total = total - ?2, n = CASE WHEN n = ?3 THEN n - 1 ELSE n END WHERE id = ?1")
+      .bind(jornada, monto, numero).run();
+    if (id) await DB.prepare("DELETE FROM pedidos WHERE id = ?1").bind(id).run();
+  } catch {}
+}
+
+export async function enviarTelegram(TOKEN, CHAT, texto) {
+  if (!TOKEN || !CHAT) return { ok: false, description: "Falta configurar Telegram" };
+  // Telegram deja unos 20 mensajes por minuto por grupo. Si en hora pico pide esperar
+  // (error 429), esperamos y reintentamos solos.
+  const enviar = () => fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ chat_id: CHAT, text: texto, parse_mode: "HTML" }),
+  }).then((r) => r.json());
+  try {
+    let j = await enviar(), espera = 0;
+    for (let intento = 0; !j.ok && j.error_code === 429 && intento < 3; intento++) {
+      const seg = Math.min(Number(j.parameters?.retry_after) || 3, 20);
+      if (espera + seg > 40) break;
+      espera += seg;
+      await new Promise((ok) => setTimeout(ok, seg * 1000));
+      j = await enviar();
+    }
+    return j;
+  } catch (e) {
+    return { ok: false, description: "No se pudo conectar con Telegram" };
+  }
+}
+
+
+// Cobrar una cuenta de mesa. metodo: "Efectivo"/"Transferencia"/"Tarjeta" = todo con esa forma;
+// "Mixto" = cada pedido con la que eligió el cliente
+export const METODOS_PAGO = ["Efectivo", "Transferencia", "Tarjeta"];
+export async function cobrarCuenta(DB, id, metodoPedido) {
+  const metodo = METODOS_PAGO.includes(metodoPedido) ? metodoPedido : metodoPedido === "Mixto" ? "Mixto" : null;
+  if (METODOS_PAGO.includes(metodo)) await DB.prepare("UPDATE pedidos SET pago = ?2 WHERE cuenta = ?1 AND tipo = 'pedido'").bind(id, metodo).run();
+  await DB.prepare("UPDATE cuentas SET cerrada = ?2, metodo = ?3 WHERE id = ?1 AND cerrada IS NULL").bind(id, Date.now(), metodo).run();
+  // La próxima gente que use esa mesa empieza con el carrito vacío
+  const c = await DB.prepare("SELECT mesa FROM cuentas WHERE id = ?1").bind(id).first();
+  if (c) await DB.batch([
+    DB.prepare("UPDATE carritos SET lineas = '[]', version = version + 1, actualizado = ?2, ultimo = NULL WHERE mesa = ?1").bind(c.mesa, Date.now()),
+    // Los avisos de esa mesa (mesero / cuenta) ya quedan atendidos
+    DB.prepare("UPDATE pedidos SET estado = 'listo', actualizado = ?2 WHERE mesa = ?1 AND tipo != 'pedido' AND estado != 'listo'").bind(c.mesa, Date.now()),
+    DB.prepare("DELETE FROM presencia WHERE mesa = ?1").bind(c.mesa),
+  ]);
+}
+
+// Caja del día: fondo inicial + efectivo cobrado = lo que debería haber en el cajón
+export async function estadoCaja(DB, j) {
+  if (!j) return null;
+  const r = await DB.prepare("SELECT COALESCE(SUM(p.total), 0) AS efectivo FROM pedidos p LEFT JOIN cuentas c ON c.id = p.cuenta " +
+    "WHERE p.jornada = ?1 AND p.tipo = 'pedido' AND (p.cuenta IS NULL OR c.cerrada IS NOT NULL) " +
+    "AND COALESCE(p.pago, CASE WHEN c.metodo != 'Mixto' THEN c.metodo END) = 'Efectivo'").bind(j.id).first();
+  const efectivo = Math.round((r?.efectivo || 0) * 100) / 100;
+  const fondo = j.fondo == null ? null : Number(j.fondo);
+  return { fondo, efectivo, esperado: Math.round(((fondo || 0) + efectivo) * 100) / 100, arqueo: j.arqueo ? JSON.parse(j.arqueo) : null };
 }

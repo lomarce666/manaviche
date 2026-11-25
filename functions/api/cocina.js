@@ -17,7 +17,7 @@
 //  POST {accion:"promo", id, texto} / {accion:"promo"} → plato del día / quitarlo
 // =============================================================
 
-import { hoyEcuador, prepararTablas, jornadaAbierta, resumenJornada, detalleCuenta, cartaEfectiva, CUENTA_VENCE, responder } from "../_db.js";
+import { hoyEcuador, prepararTablas, jornadaAbierta, resumenJornada, detalleCuenta, cartaEfectiva, cobrarCuenta, CUENTA_VENCE, responder } from "../_db.js";
 
 const METODOS = ["Efectivo", "Transferencia", "Tarjeta"];
 
@@ -89,13 +89,13 @@ export async function onRequestGet({ request, env }) {
 
   const j = await jornadaAbierta(DB, false);
   const consultar = (indice) => DB.batch([
-    DB.prepare("SELECT id, numero, tipo, mesa, items, notas, total, estado, creado, actualizado, por, cuenta, servidos, " +
+    DB.prepare("SELECT id, numero, tipo, mesa, items, notas, total, estado, creado, actualizado, por, cuenta, servidos, para, " +
       "(SELECT MIN(q.id) FROM pedidos q WHERE q.cuenta = pedidos.cuenta AND q.tipo = 'pedido') AS primero, " +
       "(SELECT c.total FROM cuentas c WHERE c.id = pedidos.cuenta) AS cuenta_total, " +
       "COALESCE(pago, (SELECT c.pago_pref FROM cuentas c WHERE c.id = pedidos.cuenta)) AS pago, " +
       "(SELECT c.id FROM cuentas c WHERE c.id = pedidos.cuenta AND c.cerrada IS NULL) AS cuenta_abierta " +
       `FROM pedidos ${indice} WHERE estado != 'listo' ORDER BY id LIMIT 200`),
-    DB.prepare("SELECT id, numero, mesa, items, notas, total, creado, actualizado, cuenta, pago, " +
+    DB.prepare("SELECT id, numero, mesa, items, notas, total, creado, actualizado, cuenta, pago, para, " +
       "(SELECT c.cerrada FROM cuentas c WHERE c.id = pedidos.cuenta) AS cuenta_cerrada FROM pedidos " +
       "WHERE jornada = ?1 AND tipo = 'pedido' AND estado = 'listo' ORDER BY actualizado DESC LIMIT 400").bind(j ? j.id : -1),
   ]);
@@ -152,18 +152,7 @@ export async function onRequestPost({ request, env }) {
   if (d.accion === "cobrar") {
     const id = Number(d.id);
     if (!Number.isInteger(id)) return responder(400, { ok: false, error: "Datos inválidos" });
-    // d.metodo: "Efectivo"/"Transferencia"/"Tarjeta" = todo con esa forma; "Mixto" = cada pedido con la que eligió
-    const metodo = METODOS.includes(d.metodo) ? d.metodo : d.metodo === "Mixto" ? "Mixto" : null;
-    if (METODOS.includes(metodo)) await DB.prepare("UPDATE pedidos SET pago = ?2 WHERE cuenta = ?1 AND tipo = 'pedido'").bind(id, metodo).run();
-    await DB.prepare("UPDATE cuentas SET cerrada = ?2, metodo = ?3 WHERE id = ?1 AND cerrada IS NULL").bind(id, Date.now(), metodo).run();
-    // La próxima gente que use esa mesa empieza con el carrito vacío
-    const c = await DB.prepare("SELECT mesa FROM cuentas WHERE id = ?1").bind(id).first();
-    if (c) await DB.batch([
-      DB.prepare("UPDATE carritos SET lineas = '[]', version = version + 1, actualizado = ?2, ultimo = NULL WHERE mesa = ?1").bind(c.mesa, Date.now()),
-      // Los avisos de esa mesa (mesero / cuenta) ya quedan atendidos
-      DB.prepare("UPDATE pedidos SET estado = 'listo', actualizado = ?2 WHERE mesa = ?1 AND tipo != 'pedido' AND estado != 'listo'").bind(c.mesa, Date.now()),
-      DB.prepare("DELETE FROM presencia WHERE mesa = ?1").bind(c.mesa),
-    ]);
+    await cobrarCuenta(DB, id, d.metodo);
     return responder(200, { ok: true });
   }
 

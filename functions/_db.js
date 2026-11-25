@@ -116,9 +116,18 @@ export async function detalleCuenta(DB, c) {
     platos[it.nombre].cantidad += it.cantidad; platos[it.nombre].total += it.cantidad * it.precio;
   }
   // Cuánto se paga con cada forma de pago (cada pedido guarda la suya)
+  // y qué platos van con cada forma (ej. 3 platos por transferencia y 1 en efectivo)
   const pp = {};
-  for (const p of pedidos) { const k = p.pago || c.pago_pref || "Sin elegir"; pp[k] = Math.round(((pp[k] || 0) + p.total) * 100) / 100; }
-  const porPago = Object.entries(pp).map(([metodo, total]) => ({ metodo, total }));
+  for (const p of pedidos) {
+    const k = p.pago || c.pago_pref || "Sin elegir";
+    const g = (pp[k] = pp[k] || { metodo: k, total: 0, platos: {} });
+    g.total = Math.round((g.total + p.total) * 100) / 100;
+    for (const it of p.items) {
+      const x = (g.platos[it.nombre] = g.platos[it.nombre] || { nombre: it.nombre, cantidad: 0, total: 0 });
+      x.cantidad += it.cantidad; x.total = Math.round((x.total + it.cantidad * it.precio) * 100) / 100;
+    }
+  }
+  const porPago = Object.values(pp).map((g) => ({ ...g, platos: Object.values(g.platos) }));
   return { id: c.id, mesa: c.mesa, abierta: c.abierta, pago: c.pago_pref || null, porPago, total: Math.round(c.total * 100) / 100, pedidos, platos: Object.values(platos),
     personas: Object.values(personas).map((x) => ({ ...x, total: Math.round(x.total * 100) / 100 })) };
 }

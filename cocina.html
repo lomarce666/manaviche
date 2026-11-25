@@ -37,6 +37,9 @@ header h1{font-size:20px;font-weight:900;text-transform:uppercase;flex:1;min-wid
 .dato{background:#1b2027;border-radius:12px;padding:6px 12px;font-size:14px;opacity:.95}
 .dato b{font-size:18px;color:#ffd166}
 .pestanas [hidden]{display:none!important}
+.grupoPago{margin-top:6px;padding-top:6px;border-top:1px dashed rgba(255,255,255,.2)}
+.grupoPago:first-of-type{border-top:0;padding-top:0}
+.lpago{display:flex;justify-content:space-between;gap:8px;font-size:14px;opacity:.85;padding-left:22px}
 #barraAjuste{align-items:center;gap:12px;max-width:760px;margin:14px auto 0;padding:0 16px}
 #barraAjuste button{padding:10px 14px;border-radius:12px;background:#2a313b;color:#e6e9ee;font-weight:900}
 #barraAjuste b{flex:1;font-size:18px}
@@ -263,11 +266,11 @@ main{padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280
   <nav class="pestanas">
     <button id="tabDia">📅 Día</button>
     <button id="tabPend">🔥 Pedidos<span class="cuenta" id="cPend">0</span></button>
+    <button id="tabMesas">🧾 Mesas por cobrar<span class="cuenta" id="cMesas">0</span></button>
     <button id="tabPrep">✅ Pedidos preparados<span class="cuenta" id="cPrep">0</span></button>
     <button id="tabCaja">💵 Caja</button>
     <button id="tabStats" hidden>📊 Estadísticas</button>
     <button id="tabCarta" hidden>✏️ Editar carta</button>
-    <span id="tabMesas" hidden></span><span id="cMesas" hidden></span>
   </nav>
   <main id="lista"><div class="vacio"><b>✅</b>Sin pedidos pendientes</div></main>
   <section id="preparados"></section>
@@ -490,19 +493,21 @@ $("#tabMesas").onclick = ()=>verVista("mesas");
 $("#tabCarta").onclick = ()=>verVista("carta");
 $("#tabStats").onclick = ()=>verVista("stats");
 
+// Qué platos se pagan con cada forma (ej. 3 por transferencia y 1 en efectivo)
+function bloquePagos(c){
+  const P = c.porPago || []; if (!P.length) return "";
+  if (P.length === 1) return `<div class="pagoC">${ICON_PAGO[P[0].metodo] || "💳"} ${esc(P[0].metodo)}: <b>$${Number(P[0].total).toFixed(2)}</b></div>`;
+  return `<div class="pagoC"><div style="font-weight:900;margin-bottom:4px">Pagan por separado:</div>${P.map(x => `<div class="grupoPago"><b>${ICON_PAGO[x.metodo] || "💳"} ${esc(x.metodo)}: $${Number(x.total).toFixed(2)}</b>
+    ${(x.platos || []).map(it => `<div class="lpago"><span>${it.cantidad} x ${esc(it.nombre)}</span><span>$${Number(it.total).toFixed(2)}</span></div>`).join("")}</div>`).join("")}</div>`;
+}
 function pintarMesas(){
-  const M = datos.mesas || [];
-  $("#mesas").innerHTML = M.length ? `<div class="rejilla">${M.map(c => `
-    <div class="cuentaM">
-      <div class="cab2"><span class="mesa">MESA ${c.mesa}</span><span class="tot">$${Number(c.total).toFixed(2)}</span></div>
-      <div class="meta2">${c.pedidos.length} pedido(s) · desde ${hora(c.abierta)}</div>
-      <ul>${c.platos.map(x => `<li><span><b>${x.cantidad} x</b> ${esc(x.nombre)}</span><span>$${Number(x.total).toFixed(2)}</span></li>`).join("")}</ul>
-      ${(c.personas || []).length > 1 ? `<div class="reparto2">👥 ${c.personas.map(x => `${esc(x.nombre)}: $${Number(x.total).toFixed(2)}`).join(" · ")}</div>` : ""}
-      ${(c.porPago || []).length ? `<div class="pagoC">${c.porPago.map(x => `${ICON_PAGO[x.metodo] || "💳"} ${esc(x.metodo)}: <b>$${Number(x.total).toFixed(2)}</b>`).join("<br>")}</div>` : ""}
-      ${c.pedidos.some(p => p.estado !== "listo") ? `<div class="reparto2">⏳ Todavía hay platos por servir</div>` : `<div class="reparto2">✅ Todo servido</div>`}
-      <button class="b-cobrar" data-cobrar="${c.id}" data-mesa="${c.mesa}" data-total="${Number(c.total).toFixed(2)}" data-pago="${esc(c.pago || "")}">💵 Cobrar mesa ${c.mesa} · $${Number(c.total).toFixed(2)}</button>
-    </div>`).join("")}</div>`
-    : `<div class="vacio"><b>🧾</b>No hay mesas con cuenta abierta</div>`;
+  const L = porCobrarLista();
+  $("#mesas").innerHTML = L.length ? `<div class="rejilla">${L.map(tarjetaCobro).join("")}</div>`
+    : `<div class="vacio"><b>🧾</b>No hay mesas por cobrar<small style="display:block;font-size:15px;margin-top:6px;opacity:.7">Cuando una mesa tenga todos sus platos servidos aparece aquí</small></div>`;
+}
+function porCobrarLista(){
+  return (datos.mesas || []).filter(c => c.pedidos.length && c.pedidos.every(p => p.estado === "listo")
+    && !datos.pedidos.some(p => p.tipo === "pedido" && p.cuenta === c.id));
 }
 // Cobrar: 1) cómo pagó (el que eligió el cliente sale primero)  2) "Mesa N terminada"
 const ICON_PAGO = { Efectivo: "💵", Transferencia: "📲", Tarjeta: "💳" };
@@ -513,7 +518,8 @@ function abrirCobro(id, mesa, total, pago){
     abrirReporte(`<h3>💵 Cobrar mesa ${mesa}</h3>
       <div class="fechaR" style="font-size:30px;margin-top:6px">$${total}</div>
       <div class="hrs">Esta mesa paga con varias formas:</div>
-      <table>${partes.map(x => `<tr><td>${ICON_PAGO[x.metodo] || ""} ${esc(x.metodo)}</td><td class="r"><b>$${Number(x.total).toFixed(2)}</b></td></tr>`).join("")}</table>
+      <table>${partes.map(x => `<tr><td><b>${ICON_PAGO[x.metodo] || ""} ${esc(x.metodo)}</b></td><td class="r"><b>$${Number(x.total).toFixed(2)}</b></td></tr>
+        ${(x.platos || []).map(it => `<tr><td style="padding-left:22px;font-size:14px;opacity:.8">${it.cantidad} x ${esc(it.nombre)}</td><td class="r" style="font-size:14px;opacity:.8">$${Number(it.total).toFixed(2)}</td></tr>`).join("")}`).join("")}</table>
       <div class="metodos"><button data-metodo="Mixto" data-id="${id}" data-mesa="${mesa}" style="background:#2ecc71;color:#08210f">✅ Cobrar así</button></div>
       <div class="hrs" style="margin-top:14px">¿Al final pagaron todo de una sola forma?</div>
       <div class="metodos">${["Efectivo", "Transferencia", "Tarjeta"].map(m => `<button data-metodo="${m}" data-id="${id}" data-mesa="${mesa}" style="padding:12px;font-size:16px">${ICON_PAGO[m]} Todo por ${m}</button>`).join("")}</div>
@@ -539,8 +545,8 @@ function confirmarTerminar(id, mesa, metodo){
       <button class="bGrande bGris" data-cerrar>Volver</button></div>`);
 }
 $("#mesas").addEventListener("click", e=>{
-  const b = e.target.closest("[data-cobrar]"); if (!b) return;
-  abrirCobro(b.dataset.cobrar, b.dataset.mesa, b.dataset.total, b.dataset.pago);
+  const b = e.target.closest("[data-cobrar2]"); if (!b) return;
+  abrirCobro(b.dataset.cobrar2, b.dataset.mesa, b.dataset.total, b.dataset.pago);
 });
 async function cobrar(id, metodo, mesa){
   cerrarReporte();
@@ -595,25 +601,24 @@ function tarjetaCobro(c){
     <div class="meta2">${c.pedidos.length} pedido(s) · desde ${hora(c.abierta)}</div>
     <ul>${c.platos.map(x => `<li><span><b>${x.cantidad} x</b> ${esc(x.nombre)}</span><span>$${Number(x.total).toFixed(2)}</span></li>`).join("")}</ul>
     ${(c.personas || []).length > 1 ? `<div class="reparto2">👥 ${c.personas.map(x => `${esc(x.nombre)}: $${Number(x.total).toFixed(2)}`).join(" · ")}</div>` : ""}
-    ${(c.porPago || []).length ? `<div class="pagoC">${c.porPago.map(x => `${ICON_PAGO[x.metodo] || "💳"} ${esc(x.metodo)}: <b>$${Number(x.total).toFixed(2)}</b>`).join("<br>")}</div>` : ""}
+    ${bloquePagos(c)}
     <button class="b-cobrar" data-cobrar2="${c.id}" data-mesa="${c.mesa}" data-total="${Number(c.total).toFixed(2)}" data-pago="${esc(c.pago || "")}">💵 Cobrar mesa ${c.mesa}</button>
   </div>`;
 }
 function pintar(){
-  // mesas cuyo pedido ya se sirvió completo: aparecen aquí mismo para cobrar
-  const porCobrar = (datos.mesas || []).filter(c => c.pedidos.length && c.pedidos.every(p => p.estado === "listo")
-    && !datos.pedidos.some(p => p.tipo === "pedido" && p.cuenta === c.id));
-  $("#cPend").textContent = datos.pedidos.length + porCobrar.length;
+  // mesas con todo servido: van a la pestaña "Mesas por cobrar"
+  const porCobrar = porCobrarLista();
+  $("#cPend").textContent = datos.pedidos.length;
   $("#cPrep").textContent = (datos.listos || []).length;
-  $("#cMesas").textContent = (datos.mesas || []).length;
+  $("#cMesas").textContent = porCobrar.length;
   if (vista === "mesas") pintarMesas();
   $("#tabPend").classList.toggle("alerta", datos.pedidos.some(p => p.estado === "nuevo"));
   if (vista === "prep") pintarPreparados();
   if (vista === "dia") pintarDia();
   $("#hoyN").textContent = datos.hoy?.pedidos ?? 0;
   const lista = datos.pedidos;
-  if (!lista.length && !porCobrar.length){ $("#lista").innerHTML = `<div class="vacio"><b>✅</b>Sin pedidos pendientes</div>`; return; }
-  $("#lista").innerHTML = porCobrar.map(tarjetaCobro).join("") + lista.map(p => {
+  if (!lista.length){ $("#lista").innerHTML = `<div class="vacio"><b>✅</b>Sin pedidos pendientes${porCobrar.length ? `<small style="display:block;font-size:15px;margin-top:6px;opacity:.8">🧾 ${porCobrar.length} mesa${porCobrar.length === 1 ? "" : "s"} por cobrar</small>` : ""}</div>`; return; }
+  $("#lista").innerHTML = lista.map(p => {
     const espera = (datos.ahora - p.creado) / 60000;
     const tarde = p.estado !== "nuevo" && espera > 20;
     if (p.tipo !== "pedido"){

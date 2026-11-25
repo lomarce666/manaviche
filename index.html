@@ -756,11 +756,12 @@ function refrescar(){
   if (hayCuenta){
     ya.innerHTML = `<h5>🧾 Ya pidió la mesa ${MESA_QR} <span>$${cuentaMesa.total.toFixed(2)}</span></h5>
       ${cuentaMesa.pedidos.map(p => { const e = ESTADO_TXT[p.estado] || ESTADO_TXT.nuevo;
-        return `<div class="ped ${p.estado === "listo" ? "completo" : ""}"><div class="pcab"><span>Pedido #${p.numero} · $${p.total.toFixed(2)}</span><b class="${e[1]}">${e[0]}</b></div>
+        return `<div class="ped ${p.estado === "listo" ? "completo" : ""}"><div class="pcab"><span>Pedido #${p.numero} · $${p.total.toFixed(2)}${p.pago ? ` · ${p.pago}` : ""}</span><b class="${e[1]}">${e[0]}</b></div>
           <ul>${p.items.map((it, i) => { const n = p.estado === "listo" ? it.cantidad : Math.min(Number((p.servidos || [])[i]) || 0, it.cantidad);
             return `<li class="${n >= it.cantidad ? "ok" : ""}"><span><b>${it.cantidad} x</b> ${it.nombre}</span><span class="chk">${Array.from({ length: Math.min(it.cantidad, 12) }, (_, k) => k < n ? "✅" : "⬜").join("")}</span></li>`; }).join("")}</ul>
           ${p.estado === "listo" ? `<div class="fin">🎉 ¡Tu pedido está completo! Buen provecho.</div>` : ""}</div>`; }).join("")}
       ${(cuentaMesa.personas || []).length > 1 ? `<details class="reparto"><summary>👥 ¿Cuánto le toca a cada uno?</summary><ul>${cuentaMesa.personas.map(x => `<li><span>${x.nombre}</span><span>$${x.total.toFixed(2)}</span></li>`).join("")}</ul><div class="nota2">Según quién agregó cada plato al carrito.</div></details>` : ""}
+      ${(cuentaMesa.porPago || []).filter(x => x.metodo !== "Sin elegir").length > 1 ? `<details class="reparto" open><summary>💳 ¿Qué se paga con qué?</summary>${cuentaMesa.porPago.map(g => `<div class="nota2" style="margin-top:6px"><b>${{ Efectivo: "💵", Transferencia: "📲", Tarjeta: "💳" }[g.metodo] || "💳"} ${g.metodo}: $${g.total.toFixed(2)}</b></div><ul>${(g.platos || []).map(x => `<li><span>${x.cantidad} x ${x.nombre}</span><span>$${x.total.toFixed(2)}</span></li>`).join("")}</ul>`).join("")}</details>` : ""}
       <div class="nota2">Cada ✅ es un plato que ya te sirvieron.</div>`;
   }
   // Ya pidieron: guía para seguir pidiendo, y lo nuevo se ve claramente como "se suma a tu cuenta"

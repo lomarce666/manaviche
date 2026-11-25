@@ -44,6 +44,9 @@
   .pv .bPV:disabled{opacity:.4}
   .pv .bPV.gris{background:#2a313b;color:#e6e9ee}
   .pv .bPV.azul{background:#4ea1ff;color:#06203d}
+  .pv .mesasPV{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .pv .mesasPV button{padding:14px 6px;border-radius:12px;background:#2a313b;color:#fff;font-weight:900;font-size:16px}
+  .pv .mesaElegida{display:flex;justify-content:space-between;align-items:center;gap:8px;background:#16351f;color:#6ee7a0;border-radius:12px;padding:10px 12px;font-size:18px}
   .pv .mesaPV{background:#111418;border-radius:14px;padding:12px;margin-bottom:10px}
   .pv .mesaPV .cab3{display:flex;justify-content:space-between;font-size:18px;font-weight:900}
   .pv .mesaPV small{display:block;opacity:.75;margin-top:4px}
@@ -136,7 +139,9 @@
               <button data-para="llevar" class="${para === "llevar" ? "on" : ""}">🥡 Para llevar</button>
               <button data-para="mesa" class="${para === "mesa" ? "on" : ""}">🍽️ Mesa</button>
             </div>
-            ${para === "mesa" ? `<select id="pvMesa"><option value="">Elige la mesa…</option>${Array.from({ length: datos.mesasTotal }, (_, i) => `<option value="${i + 1}" ${String(i + 1) === mesaSel ? "selected" : ""}>Mesa ${i + 1}</option>`).join("")}</select>
+            ${para === "mesa" ? `${mesaSel
+                ? `<div class="mesaElegida"><b>🍽️ Mesa ${mesaSel}</b><button class="mini" id="pvCambiarMesa">Cambiar mesa</button></div>`
+                : `<div style="font-weight:900;margin:2px 2px 8px">Elige la mesa:</div><div class="mesasPV">${Array.from({ length: datos.mesasTotal }, (_, i) => `<button data-mesapv="${i + 1}">Mesa ${i + 1}</button>`).join("")}</div>`}
               <div style="font-size:13px;opacity:.7;margin:6px 2px 10px">Se suma a la cuenta de la mesa. Se cobra al final en 🔥 Pedidos ("Cobrar mesa").</div>` : ""}
             <input type="text" id="pvBuscar" class="buscarPV" placeholder="🔎 Buscar plato…" value="${esc(buscar)}">
             ${cats.map((c) => { const ps = datos.carta.filter((p) => p.categoria === c && (!q || p.nombre.toLowerCase().includes(q))); if (!ps.length) return "";
@@ -235,6 +240,8 @@
     raiz.addEventListener("click", async (e) => {
       const b = e.target.closest("button"); if (!b || !datos) return;
       if (b.dataset.para) { para = b.dataset.para; if (para !== "mesa") mesaSel = ""; pintar(); return; }
+      if (b.dataset.mesapv) { mesaSel = b.dataset.mesapv; pintar(); return; }
+      if (b.id === "pvCambiarMesa") { mesaSel = ""; pintar(); return; }
       if (b.dataset.add) { ticket[b.dataset.add] = (ticket[b.dataset.add] || 0) + 1; pintar(); return; }
       if (b.dataset.menos) { const k = b.dataset.menos; ticket[k]--; if (ticket[k] <= 0) delete ticket[k]; pintar(); return; }
       if (b.dataset.pagopv) { pago = pago === b.dataset.pagopv && para === "mesa" ? "" : b.dataset.pagopv; if (pago !== "Efectivo") recibido = ""; pintar(); return; }
@@ -292,7 +299,6 @@
       if (e.target.id === "pvNotas") { notas = e.target.value; }
       if (e.target.id === "pvRecibido") { recibido = e.target.value; pintar(); }
     });
-    raiz.addEventListener("change", (e) => { if (e.target.id === "pvMesa") { mesaSel = e.target.value; pintar(); } });
 
     // Se actualiza solo (mesas por cobrar y efectivo), sin borrar lo que se está escribiendo
     setInterval(() => { if (raiz.offsetParent && !raiz.contains(document.activeElement) && !modal.classList.contains("ver")) cargar(); }, 8000);

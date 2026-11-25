@@ -268,7 +268,7 @@ main{padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280
     <button id="tabPend">🔥 Pedidos<span class="cuenta" id="cPend">0</span></button>
     <button id="tabMesas">🧾 Mesas por cobrar<span class="cuenta" id="cMesas">0</span></button>
     <button id="tabPrep">✅ Pedidos preparados<span class="cuenta" id="cPrep">0</span></button>
-    <button id="tabCaja">💵 Caja</button>
+    <button id="tabCaja" hidden>💵 Caja</button>
     <button id="tabStats" hidden>📊 Estadísticas</button>
     <button id="tabCarta" hidden>✏️ Editar carta</button>
   </nav>
@@ -299,6 +299,7 @@ let datos = { pedidos: [] }, vistos = new Set(), primeraCarga = true;
 let NOMBRE = "";
 fetch("/restaurante.json").then(r=>r.json()).then(R=>{
   NOMBRE = R.nombre;
+  $("#tabCaja").hidden = R.caja !== true;      // la caja es opcional: "caja": true en restaurante.json
   document.title = "Cocina · " + R.nombre;
   $("#nombre").textContent = "Cocina " + R.nombre;
   $("#nombreEntrar").textContent = "Cocina " + R.nombre;
@@ -580,7 +581,7 @@ function pintarPreparados(){
   $("#preparados").innerHTML = `
     <div class="resumen">
       <div><b>${L.length}</b><span>pedidos preparados hoy</span></div>
-      <div><b>$${Number(datos.hoy?.total ?? suma).toFixed(2)}</b><span>Venta del día</span></div>
+      <div><b>$${Number(datos.hoy?.total ?? suma).toFixed(2)}</b><span>Vendido por el menú</span></div>
     </div>
     ${top ? `<p style="opacity:.75;margin:0 2px 14px;font-size:14px">Más pedidos: ${top}</p>` : ""}
     ${L.length ? gruposPorMesa(L).map(g => `<div class="grupoMesa">
@@ -773,7 +774,7 @@ function htmlReporte(R, guardado){
     <h4>Ventas por plato</h4>
     <table><tr><th>Cant.</th><th>Plato</th><th class="r">P. unit.</th><th class="r">Total</th></tr>
       ${R.platos.map(x => `<tr><td>${x.cantidad}</td><td>${esc(x.nombre)}</td><td class="r">${plata(x.precio)}</td><td class="r">${plata(x.total)}</td></tr>`).join("") || `<tr><td colspan="4">Sin ventas</td></tr>`}
-      <tr class="totF"><td colspan="3">Total vendido</td><td class="r">${plata(R.total)}</td></tr></table>
+      <tr class="totF"><td colspan="3">Total vendido por el menú</td><td class="r">${plata(R.total)}</td></tr></table>
     ${R.mesas.length ? `<h4>Por mesa</h4><table><tr><th>Mesa</th><th class="r">Pedidos</th><th class="r">Total</th></tr>
       ${R.mesas.map(m => `<tr><td>${typeof m.mesa === "string" ? m.mesa : "Mesa " + m.mesa}</td><td class="r">${m.pedidos}</td><td class="r">${plata(m.total)}</td></tr>`).join("")}</table>` : ""}
     ${R.lista.length ? `<h4>Pedidos del día</h4><table><tr><th>#</th><th>Hora</th><th>Mesa</th><th class="r">Total</th></tr>
@@ -835,7 +836,7 @@ function descargarPDF(R){
   t("VENTAS POR PLATO", true, 11, true);
   t(col("Cant.", 6) + col("Plato", 40) + col("P. unit.", 10, 1) + col("Total", 12, 1), true);
   R.platos.forEach(x => t(col(x.cantidad, 6) + col(x.nombre, 40) + col(plata(x.precio), 10, 1) + col(plata(x.total), 12, 1)));
-  t(col("Total vendido", 56) + col(plata(R.total), 12, 1), true, 10, true); t("");
+  t(col("Total vendido por el menu", 56) + col(plata(R.total), 12, 1), true, 10, true); t("");
   if (R.caja && (R.caja.fondo != null || R.caja.arqueo)){ t("CAJA (EFECTIVO)", true, 11, true);
     t(col("Fondo inicial", 50) + col(plata(R.caja.fondo || 0), 18, 1)); t(col("Cobrado en efectivo", 50) + col(plata(R.caja.efectivo), 18, 1));
     (R.caja.listaSalidas || []).forEach(m => t(col("- Salida: " + m.motivo, 50) + col("-" + plata(m.monto), 18, 1)));
@@ -859,7 +860,7 @@ function descargarPDF(R){
 let reporteActual = null;
 function textoReporte(R){
   let t = `🧾 *Cierre de caja · ${NOMBRE}*\n${fechaLarga(R.fecha)}\n\n`;
-  t += `Pedidos: ${R.pedidos}\n*Vendido: ${plata(R.total)}*\nPromedio: ${plata(R.promedio)}\n`;
+  t += `Pedidos: ${R.pedidos}\n*Vendido por el menú: ${plata(R.total)}*\nPromedio: ${plata(R.promedio)}\n`;
   if ((R.pagos || []).length) t += `\n*Formas de pago*\n` + R.pagos.map(x => `• ${x.metodo}: ${plata(x.total)} (${x.cuentas})`).join("\n") + "\n";
   if (R.caja && (R.caja.fondo != null || R.caja.arqueo)) { t += `\n*Caja*\nFondo: ${plata(R.caja.fondo || 0)} · Efectivo: ${plata(R.caja.efectivo)}${R.caja.salidas ? ` · Salidas: −${plata(R.caja.salidas)}` : ""}\nDebería haber: ${plata(R.caja.esperado)}\n`;
     if (R.caja.arqueo) t += `Contado: ${plata(R.caja.arqueo.contado)} · ${R.caja.arqueo.diferencia === 0 ? "Cuadra ✅" : (R.caja.arqueo.diferencia > 0 ? "Sobra " : "Falta ") + plata(Math.abs(R.caja.arqueo.diferencia))}\n`; }

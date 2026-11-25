@@ -22,6 +22,10 @@ import {
 
 const r2 = (x) => Math.round(Number(x) * 100) / 100;
 
+// La caja es opcional: solo funciona si restaurante.json tiene "caja": true
+async function cajaActiva(request, env) {
+  try { const R = await (await env.ASSETS.fetch(new URL("/restaurante.json", request.url))).json(); return R.caja === true; } catch { return false; }
+}
 function autorizado(request, env) {
   const dada = String(request.headers.get("x-clave") ?? "").trim();
   const claves = [env.CAJA_CLAVE, env.COCINA_CLAVE].map((c) => String(c ?? "").trim()).filter(Boolean);
@@ -32,6 +36,7 @@ function autorizado(request, env) {
 }
 
 export async function onRequestGet({ request, env }) {
+  if (!(await cajaActiva(request, env))) return responder(403, { ok: false, error: "La caja no está activada" });
   const no = autorizado(request, env); if (no) return no;
   const DB = env.DB; await prepararTablas(DB);
   const j = await jornadaAbierta(DB, false);
@@ -59,6 +64,7 @@ export async function onRequestGet({ request, env }) {
 }
 
 export async function onRequestPost({ request, env }) {
+  if (!(await cajaActiva(request, env))) return responder(403, { ok: false, error: "La caja no está activada" });
   const no = autorizado(request, env); if (no) return no;
   const DB = env.DB; await prepararTablas(DB);
   let d; try { d = await request.json(); } catch { return responder(400, { ok: false, error: "Datos inválidos" }); }

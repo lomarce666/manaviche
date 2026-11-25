@@ -3,6 +3,7 @@
   "eslogan": "Sabor manabita",
   "logo": "/iconos/logo.webp",
   "mesas": 6,
+  "caja": false,
   "pantalla_cocina": true,
   "whatsapp": "593998083141",
   "telegram_chat_id": "-5274191814",

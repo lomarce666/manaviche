@@ -343,7 +343,7 @@ body.conCarta #cartaBtn,body.conCarta #promo,body.conCarta #ayudaBtn{visibility:
     <small id="confDetalle"></small>
     <div class="pagoEl"><p>💳 ¿Cómo vas a pagar?</p><div class="chips"><button data-pago="Efectivo">💵 Efectivo</button><button data-pago="Transferencia">📲 Transferencia</button><button data-pago="Tarjeta">💳 Tarjeta</button></div></div>
     <button id="confSi">✅ Sí, enviar a la cocina</button>
-    <button id="confNo">Cambiar número</button>
+    <button id="confNo">✏️ Modificar pedido</button>
   </div>
 </div>
 
@@ -589,7 +589,7 @@ function aplicarMesa(e, desdeServidor){
   cuentaMesa = e.cuenta || null;
   // Si alguien de la mesa ya eligió cómo pagar, a todos les aparece marcado
   const pc = cuentaMesa && cuentaMesa.pago || "";
-  if (pc !== pagoServidor){ pagoServidor = pc; if (pc) miPago = pc; pintarPago(); }
+  if (pc !== pagoServidor){ pagoServidor = pc; if (pc && !miPago) miPago = pc; pintarPago(); }   // sugerencia; cada uno puede elegir la suya
   // Avisar lo que agregó otra persona
   e.lineas.forEach(l => {
     if (l.por === YO) return;
@@ -922,7 +922,7 @@ function pintarPago(){
   document.querySelectorAll("[data-pago]").forEach(b => b.classList.toggle("on", b.dataset.pago === miPago));
   const t = $("#confirma .pagoEl p");
   if (t){
-    t.innerHTML = pagoServidor ? `💳 Tu mesa pagará con: <b>${pagoServidor}</b> <small>(puedes cambiarlo)</small>` : "💳 ¿Cómo vas a pagar? <b>(obligatorio)</b>";
+    t.innerHTML = pagoServidor ? `💳 ¿Cómo vas a pagar este pedido? <small>(cada uno puede elegir la suya)</small>` : "💳 ¿Cómo vas a pagar? <b>(obligatorio)</b>";
     t.classList.remove("falta");
   }
   $("#confSi").classList.toggle("apagado", !miPago);

@@ -45,6 +45,7 @@ export async function prepararTablas(DB) {
   try { await DB.prepare("ALTER TABLE pedidos ADD COLUMN servidos TEXT").run(); } catch {}
   try { await DB.prepare("ALTER TABLE cuentas ADD COLUMN metodo TEXT").run(); } catch {}
   try { await DB.prepare("ALTER TABLE cuentas ADD COLUMN pago_pref TEXT").run(); } catch {}
+  try { await DB.prepare("ALTER TABLE pedidos ADD COLUMN pago TEXT").run(); } catch {}
   listo = true;
 }
 
@@ -79,7 +80,7 @@ export async function cuentaAbierta(DB, mesa, jornada, crear = false) {
 // Detalle de una cuenta: cada pedido y los platos sumados
 export async function detalleCuenta(DB, c) {
   const { results } = await DB.prepare(
-    "SELECT numero, items, total, creado, por, estado, reparto, servidos FROM pedidos WHERE cuenta = ?1 AND tipo = 'pedido' ORDER BY id"
+    "SELECT numero, items, total, creado, por, estado, reparto, servidos, pago FROM pedidos WHERE cuenta = ?1 AND tipo = 'pedido' ORDER BY id"
   ).bind(c.id).all();
   const pedidos = results.map((p) => ({ ...p, items: p.items ? JSON.parse(p.items) : [], reparto: p.reparto ? JSON.parse(p.reparto) : null, servidos: p.servidos ? JSON.parse(p.servidos) : [] }));
   // Cuánto le toca a cada persona (según quién agregó cada plato)
@@ -99,7 +100,11 @@ export async function detalleCuenta(DB, c) {
     platos[it.nombre] = platos[it.nombre] || { nombre: it.nombre, cantidad: 0, precio: it.precio, total: 0 };
     platos[it.nombre].cantidad += it.cantidad; platos[it.nombre].total += it.cantidad * it.precio;
   }
-  return { id: c.id, mesa: c.mesa, abierta: c.abierta, pago: c.pago_pref || null, total: Math.round(c.total * 100) / 100, pedidos, platos: Object.values(platos),
+  // Cuánto se paga con cada forma de pago (cada pedido guarda la suya)
+  const pp = {};
+  for (const p of pedidos) { const k = p.pago || c.pago_pref || "Sin elegir"; pp[k] = Math.round(((pp[k] || 0) + p.total) * 100) / 100; }
+  const porPago = Object.entries(pp).map(([metodo, total]) => ({ metodo, total }));
+  return { id: c.id, mesa: c.mesa, abierta: c.abierta, pago: c.pago_pref || null, porPago, total: Math.round(c.total * 100) / 100, pedidos, platos: Object.values(platos),
     personas: Object.values(personas).map((x) => ({ ...x, total: Math.round(x.total * 100) / 100 })) };
 }
 
@@ -123,14 +128,16 @@ export async function resumenJornada(DB, j) {
   // Cobros por forma de pago (cuentas de mesa cerradas en este día)
   let pagos = [];
   try {
-    const cs = (await DB.prepare("SELECT metodo, total, cerrada FROM cuentas WHERE jornada = ?1").bind(j.id).all()).results;
+    // cada pedido cuenta con su propia forma de pago (una mesa puede pagar parte en efectivo y parte por transferencia)
+    const ps = (await DB.prepare("SELECT p.total, p.pago, p.cuenta, c.metodo, c.cerrada FROM pedidos p LEFT JOIN cuentas c ON c.id = p.cuenta " +
+      "WHERE p.jornada = ?1 AND p.tipo = 'pedido'").bind(j.id).all()).results;
     const m = {};
-    for (const c of cs) {
-      const k = c.cerrada == null ? "Sin cobrar" : (c.metodo || "Sin registrar");
-      m[k] = m[k] || { metodo: k, cuentas: 0, total: 0 };
-      m[k].cuentas++; m[k].total = Math.round((m[k].total + c.total) * 100) / 100;
+    for (const p of ps) {
+      const k = p.cuenta != null && p.cerrada == null ? "Sin cobrar" : (p.pago || (p.metodo && p.metodo !== "Mixto" ? p.metodo : "") || "Sin registrar");
+      m[k] = m[k] || { metodo: k, cuentas: new Set(), total: 0 };
+      m[k].cuentas.add(p.cuenta ?? "x" + Math.random()); m[k].total = Math.round((m[k].total + p.total) * 100) / 100;
     }
-    pagos = Object.values(m);
+    pagos = Object.values(m).map((x) => ({ metodo: x.metodo, cuentas: x.cuentas.size, total: x.total }));
   } catch {}
   return {
     pagos,

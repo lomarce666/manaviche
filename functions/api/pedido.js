@@ -153,9 +153,9 @@ export async function onRequestPost({ request, env }) {
         if (pago) await env.DB.prepare("UPDATE cuentas SET pago_pref = ?2 WHERE id = ?1").bind(c.id, pago).run();
       }
       const fila = await env.DB.prepare(
-        "INSERT INTO pedidos (dia, numero, tipo, mesa, items, notas, total, estado, creado, actualizado, jornada, cuenta, por, reparto) " +
-        "VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 'nuevo', ?8, ?8, ?9, ?10, ?11, ?12) RETURNING id"
-      ).bind(hoy, numero, tipo, mesa, items ? JSON.stringify(items) : null, notas, total, ahora.getTime(), jornada, cuenta ? cuenta.id : null, por, reparto ? JSON.stringify(reparto) : null).first();
+        "INSERT INTO pedidos (dia, numero, tipo, mesa, items, notas, total, estado, creado, actualizado, jornada, cuenta, por, reparto, pago) " +
+        "VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 'nuevo', ?8, ?8, ?9, ?10, ?11, ?12, ?13) RETURNING id"
+      ).bind(hoy, numero, tipo, mesa, items ? JSON.stringify(items) : null, notas, total, ahora.getTime(), jornada, cuenta ? cuenta.id : null, por, reparto ? JSON.stringify(reparto) : null, tipo === "pedido" ? pago || null : null).first();
       id = fila.id;
     } catch (e) {
       console.log("Base de datos:", String(e));

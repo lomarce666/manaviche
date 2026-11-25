@@ -160,6 +160,10 @@ main{padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280
 .metodos{display:grid;gap:10px;margin-top:14px}
 .metodos button{padding:18px;border-radius:14px;font-size:19px;font-weight:900;background:#0d3b4f;color:#fff}
 .reparto2{margin-top:8px;font-size:14px;opacity:.85}
+.grupoMesa{background:#161b21;border:1px solid #2a313b;border-radius:16px;padding:10px 12px;margin-bottom:14px}
+.gmCab{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;padding:4px 2px 8px;border-bottom:1px solid #2a313b;margin-bottom:4px}
+.gmCab b:first-child{font-size:19px}
+.gmCab span{font-size:14px;opacity:.85}
 .pagoC{margin-top:8px;background:#16351f;color:#6ee7a0;border-radius:10px;padding:8px 10px;font-size:15px}
 .toastOk{position:fixed;left:50%;bottom:30px;transform:translateX(-50%);background:#2ecc71;color:#08210f;font-weight:900;font-size:18px;padding:14px 22px;border-radius:99px;z-index:50;box-shadow:0 10px 30px rgba(0,0,0,.5)}
 @media print{
@@ -233,8 +237,8 @@ main{padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280
   <div id="avisoSonido">🔇 Toca cualquier parte de la pantalla para activar el sonido</div>
   <nav class="pestanas">
     <button id="tabDia">📅 Día</button>
-    <button id="tabPend">🔥 Pendientes<span class="cuenta" id="cPend">0</span></button>
-    <button id="tabMesas">🧾 Mesas<span class="cuenta" id="cMesas">0</span></button>
+    <button id="tabPend">🔥 Platos por preparar<span class="cuenta" id="cPend">0</span></button>
+    <button id="tabMesas">🧾 Mesas por cobrar<span class="cuenta" id="cMesas">0</span></button>
     <button id="tabPrep">✅ Pedidos preparados<span class="cuenta" id="cPrep">0</span></button>
     <button id="tabCarta">📋 Carta</button>
     <button id="tabStats">📊 Estadísticas</button>
@@ -432,7 +436,7 @@ function pintarMesas(){
       <div class="meta2">${c.pedidos.length} pedido(s) · desde ${hora(c.abierta)}</div>
       <ul>${c.platos.map(x => `<li><span><b>${x.cantidad} x</b> ${esc(x.nombre)}</span><span>$${Number(x.total).toFixed(2)}</span></li>`).join("")}</ul>
       ${(c.personas || []).length > 1 ? `<div class="reparto2">👥 ${c.personas.map(x => `${esc(x.nombre)}: $${Number(x.total).toFixed(2)}`).join(" · ")}</div>` : ""}
-      ${c.pago ? `<div class="pagoC">💳 El cliente pagará con: <b>${esc(c.pago)}</b></div>` : ""}
+      ${(c.porPago || []).length ? `<div class="pagoC">${c.porPago.map(x => `${ICON_PAGO[x.metodo] || "💳"} ${esc(x.metodo)}: <b>$${Number(x.total).toFixed(2)}</b>`).join("<br>")}</div>` : ""}
       ${c.pedidos.some(p => p.estado !== "listo") ? `<div class="reparto2">⏳ Todavía hay platos por servir</div>` : `<div class="reparto2">✅ Todo servido</div>`}
       <button class="b-cobrar" data-cobrar="${c.id}" data-mesa="${c.mesa}" data-total="${Number(c.total).toFixed(2)}" data-pago="${esc(c.pago || "")}">💵 Cobrar mesa ${c.mesa} · $${Number(c.total).toFixed(2)}</button>
     </div>`).join("")}</div>`
@@ -441,6 +445,20 @@ function pintarMesas(){
 // Cobrar: 1) cómo pagó (el que eligió el cliente sale primero)  2) "Mesa N terminada"
 const ICON_PAGO = { Efectivo: "💵", Transferencia: "📲", Tarjeta: "💳" };
 function abrirCobro(id, mesa, total, pago){
+  const cta = (datos.mesas || []).find(c => c.id === Number(id));
+  const partes = (cta && cta.porPago || []).filter(x => x.total > 0);
+  if (partes.length > 1){                       // parte en efectivo, parte por transferencia, etc.
+    abrirReporte(`<h3>💵 Cobrar mesa ${mesa}</h3>
+      <div class="fechaR" style="font-size:30px;margin-top:6px">$${total}</div>
+      <div class="hrs">Esta mesa paga con varias formas:</div>
+      <table>${partes.map(x => `<tr><td>${ICON_PAGO[x.metodo] || ""} ${esc(x.metodo)}</td><td class="r"><b>$${Number(x.total).toFixed(2)}</b></td></tr>`).join("")}</table>
+      <div class="metodos"><button data-metodo="Mixto" data-id="${id}" data-mesa="${mesa}" style="background:#2ecc71;color:#08210f">✅ Cobrar así</button></div>
+      <div class="hrs" style="margin-top:14px">¿Al final pagaron todo de una sola forma?</div>
+      <div class="metodos">${["Efectivo", "Transferencia", "Tarjeta"].map(m => `<button data-metodo="${m}" data-id="${id}" data-mesa="${mesa}" style="padding:12px;font-size:16px">${ICON_PAGO[m]} Todo por ${m}</button>`).join("")}</div>
+      <div class="botones"><button class="bGrande bGris" data-cerrar>Cancelar</button></div>`);
+    return;
+  }
+  if (partes.length === 1 && partes[0].metodo !== "Sin elegir") pago = partes[0].metodo;
   const orden = ["Efectivo", "Transferencia", "Tarjeta"].sort((a, b) => (b === pago) - (a === pago));
   abrirReporte(`<h3>💵 Cobrar mesa ${mesa}</h3>
     <div class="fechaR" style="font-size:30px;margin-top:6px">$${total}</div>
@@ -449,8 +467,10 @@ function abrirCobro(id, mesa, total, pago){
     <div class="botones"><button class="bGrande bGris" data-cerrar>Cancelar</button></div>`);
 }
 function confirmarTerminar(id, mesa, metodo){
+  const cta = (datos.mesas || []).find(c => c.id === Number(id));
+  const como = metodo === "Mixto" && cta ? cta.porPago.map(x => `${esc(x.metodo)} $${Number(x.total).toFixed(2)}`).join(" + ") : esc(metodo);
   abrirReporte(`<h3>🏁 Mesa ${mesa} terminada</h3>
-    <div class="hrs" style="font-size:16px;margin-top:8px">Cobrado por <b>${esc(metodo)}</b>. La mesa ${mesa} ya acabó de comer.</div>
+    <div class="hrs" style="font-size:16px;margin-top:8px">Cobrado: <b>${como}</b>. La mesa ${mesa} ya acabó de comer.</div>
     <div class="alerta" style="background:#eef6f6;color:#0d3b4f">Al terminar se borra todo lo de esta mesa en el celular: el próximo cliente que escanee el QR de la mesa ${mesa} empieza desde cero.</div>
     <div class="botones">
       <button class="bGrande bVerde" data-terminar="${id}" data-mesa="${mesa}" data-metodo2="${esc(metodo)}">✅ Terminar mesa ${mesa}</button>
@@ -472,6 +492,17 @@ function mostrarListo(txt){
   document.body.appendChild(t); setTimeout(() => t.remove(), 3500);
 }
 
+// Agrupa los pedidos preparados por cuenta de mesa: los clientes que vienen después a la misma mesa van en otro grupo
+function gruposPorMesa(L){
+  const g = new Map();
+  for (const p of L){
+    const k = p.cuenta != null ? "c" + p.cuenta : "m" + p.mesa + "-" + p.id;
+    if (!g.has(k)) g.set(k, { mesa: p.mesa, cerrada: p.cuenta_cerrada || null, pedidos: [], total: 0, ultimo: 0 });
+    const x = g.get(k); x.pedidos.push(p); x.total += Number(p.total); x.ultimo = Math.max(x.ultimo, p.actualizado || 0);
+  }
+  const lista = [...g.values()]; lista.forEach(x => x.pedidos.sort((a, b) => (a.numero || 0) - (b.numero || 0)));
+  return lista.sort((a, b) => (!!a.cerrada - !!b.cerrada) || b.ultimo - a.ultimo);   // primero las que aún no pagan
+}
 function pintarPreparados(){
   const L = datos.listos || [];
   const suma = L.reduce((t,p)=>t + Number(p.total), 0);
@@ -484,13 +515,15 @@ function pintarPreparados(){
       <div><b>$${Number(datos.hoy?.total ?? suma).toFixed(2)}</b><span>Venta del día</span></div>
     </div>
     ${top ? `<p style="opacity:.75;margin:0 2px 14px;font-size:14px">Más pedidos: ${top}</p>` : ""}
-    ${L.length ? L.map(p => `<div class="fila">
+    ${L.length ? gruposPorMesa(L).map(g => `<div class="grupoMesa">
+      <div class="gmCab"><b>🍽️ Mesa ${g.mesa}</b><span>${g.cerrada ? `✅ Cobrada ${hora(g.cerrada)}` : "🧾 Por cobrar"} · ${g.pedidos.length} pedido${g.pedidos.length === 1 ? "" : "s"} · <b>$${g.total.toFixed(2)}</b></span></div>
+      ${g.pedidos.map(p => `<div class="fila">
         <div class="n">#${p.numero ?? "—"}</div>
-        <div class="det" data-detalle="${p.id}"><b>Mesa ${p.mesa}</b> · ${p.items.map(it => `${it.cantidad} x ${esc(it.nombre)}`).join(", ")}
-          <small>Pedido ${hora(p.creado)} · entregado ${hora(p.actualizado)}</small>
+        <div class="det" data-detalle="${p.id}">${p.items.map(it => `${it.cantidad} x ${esc(it.nombre)}`).join(", ")}
+          <small>Pedido ${hora(p.creado)} · entregado ${hora(p.actualizado)}${p.pago ? ` · ${ICON_PAGO[p.pago] || ""} ${esc(p.pago)}` : ""}</small>
           <span class="ver">🧾 Ver detalle</span></div>
         <div class="monto">$${Number(p.total).toFixed(2)}<button class="volver" data-id="${p.id}" data-estado="preparando">↩ Volver a pendientes</button></div>
-      </div>`).join("") : `<div class="vacio"><b>🍽️</b>Todavía no hay pedidos preparados hoy</div>`}`;
+      </div>`).join("")}</div>`).join("") : `<div class="vacio"><b>🍽️</b>Todavía no hay pedidos preparados hoy</div>`}`;
 }
 
 function pintar(){
@@ -672,6 +705,59 @@ function htmlReporte(R, guardado){
       <button class="bGrande bVerde" data-wa style="margin:0">💬 Enviar por WhatsApp</button>
     </div>`;
 }
+/* ---------- PDF del cierre de caja (archivo de verdad, sin imprimir) ---------- */
+function pdfTexto(t){ // a WinAnsi: quita emojis y escapa
+  return String(t).normalize("NFC").replace(/[^\x20-\x7E -ÿ]/g, "").replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
+}
+function crearPDF(lineas){            // lineas: [{t, b (negrita), s (tamaño)}]
+  const W = 595, H = 842, M = 50; const paginas = []; let cur = [], y = H - M;
+  for (const l of lineas){
+    const s = l.s || 10, alto = s * 1.45;
+    if (y - alto < M){ paginas.push(cur); cur = []; y = H - M; }
+    y -= alto; if (l.t !== "") cur.push(`BT /${l.b ? "F2" : "F1"} ${s} Tf ${M} ${y.toFixed(1)} Td (${pdfTexto(l.t)}) Tj ET`);
+    if (l.linea) cur.push(`0.6 w ${M} ${(y - 4).toFixed(1)} m ${W - M} ${(y - 4).toFixed(1)} l S`);
+  }
+  paginas.push(cur);
+  const obj = []; const add = (s) => { obj.push(s); return obj.length; };
+  const f1 = add("<< /Type /Font /Subtype /Type1 /BaseFont /Courier /Encoding /WinAnsiEncoding >>");
+  const f2 = add("<< /Type /Font /Subtype /Type1 /BaseFont /Courier-Bold /Encoding /WinAnsiEncoding >>");
+  const pagesId = obj.length + 1 + paginas.length * 2; const kids = [];
+  for (const p of paginas){
+    const cont = p.join("\n"); const c = add(`<< /Length ${cont.length} >>\nstream\n${cont}\nendstream`);
+    kids.push(add(`<< /Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 ${W} ${H}] /Contents ${c} 0 R /Resources << /Font << /F1 ${f1} 0 R /F2 ${f2} 0 R >> >> >>`));
+  }
+  add(`<< /Type /Pages /Kids [${kids.map(k => k + " 0 R").join(" ")}] /Count ${kids.length} >>`);
+  const cat = add(`<< /Type /Catalog /Pages ${pagesId} 0 R >>`);
+  let out = "%PDF-1.4\n"; const offs = [];
+  obj.forEach((o, i) => { offs.push(out.length); out += `${i + 1} 0 obj\n${o}\nendobj\n`; });
+  const xref = out.length;
+  out += `xref\n0 ${obj.length + 1}\n0000000000 65535 f \n` + offs.map(o => String(o).padStart(10, "0") + " 00000 n \n").join("");
+  out += `trailer\n<< /Size ${obj.length + 1} /Root ${cat} 0 R >>\nstartxref\n${xref}\n%%EOF`;
+  const bytes = new Uint8Array(out.length); for (let i = 0; i < out.length; i++) bytes[i] = out.charCodeAt(i) & 255;
+  return new Blob([bytes], { type: "application/pdf" });
+}
+function descargarPDF(R){
+  const col = (a, n, der) => { a = String(a); return der ? a.slice(0, n).padStart(n) : a.slice(0, n).padEnd(n); };
+  const L = [], t = (x, b, s, linea) => L.push({ t: x, b, s, linea });
+  t(`CIERRE DE CAJA - ${NOMBRE.toUpperCase()}`, true, 16); t(fechaLarga(R.fecha), false, 12);
+  t(`Abierto ${hora(R.abierta)}${R.cerrada ? "  -  cerrado " + hora(R.cerrada) : ""}`, false, 10, true); t("");
+  t(`Pedidos: ${R.pedidos}     Vendido: ${plata(R.total)}     Promedio: ${plata(R.promedio)}`, true, 11); t("");
+  t("VENTAS POR PLATO", true, 11, true);
+  t(col("Cant.", 6) + col("Plato", 40) + col("P. unit.", 10, 1) + col("Total", 12, 1), true);
+  R.platos.forEach(x => t(col(x.cantidad, 6) + col(x.nombre, 40) + col(plata(x.precio), 10, 1) + col(plata(x.total), 12, 1)));
+  t(col("Total vendido", 56) + col(plata(R.total), 12, 1), true, 10, true); t("");
+  if ((R.pagos || []).length){ t("COBROS POR FORMA DE PAGO", true, 11, true); t(col("Forma de pago", 40) + col("Mesas", 10, 1) + col("Total", 18, 1), true);
+    R.pagos.forEach(x => t(col(x.metodo, 40) + col(x.cuentas, 10, 1) + col(plata(x.total), 18, 1))); t(""); }
+  if (R.mesas.length){ t("POR MESA", true, 11, true); t(col("Mesa", 40) + col("Pedidos", 10, 1) + col("Total", 18, 1), true);
+    R.mesas.forEach(m => t(col("Mesa " + m.mesa, 40) + col(m.pedidos, 10, 1) + col(plata(m.total), 18, 1))); t(""); }
+  if (R.lista.length){ t("PEDIDOS DEL DIA", true, 11, true); t(col("#", 8) + col("Hora", 14) + col("Mesa", 28) + col("Total", 18, 1), true);
+    R.lista.forEach(p => t(col(p.numero ?? "-", 8) + col(hora(p.creado), 14) + col(p.mesa, 28) + col(plata(p.total), 18, 1))); t(""); }
+  t(`Avisos: ${R.mesero} llamadas al mesero - ${R.cuenta} cuentas pedidas`, false, 9);
+  const blob = crearPDF(L), url = URL.createObjectURL(blob);
+  const a = document.createElement("a"); a.href = url; a.download = `Cierre-${NOMBRE}-${R.fecha}.pdf`;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 30000);
+}
+
 let reporteActual = null;
 function textoReporte(R){
   let t = `🧾 *Cierre de caja · ${NOMBRE}*\n${fechaLarga(R.fecha)}\n\n`;
@@ -738,7 +824,7 @@ $("#reporte").addEventListener("click", async e=>{
   if (e.target.id === "reporte" || e.target.closest("[data-cerrar]")){ cerrarReporte(); return; }
   const m = e.target.closest("[data-metodo]"); if (m){ confirmarTerminar(Number(m.dataset.id), m.dataset.mesa, m.dataset.metodo); return; }
   const t = e.target.closest("[data-terminar]"); if (t){ cobrar(Number(t.dataset.terminar), t.dataset.metodo2, t.dataset.mesa); return; }
-  if (e.target.closest("[data-imprimir]")){ window.print(); return; }
+  if (e.target.closest("[data-imprimir]")){ if (reporteActual) descargarPDF(reporteActual); return; }
   if (e.target.closest("[data-wa]") && reporteActual){ window.open("https://wa.me/?text=" + encodeURIComponent(textoReporte(reporteActual)), "_blank"); return; }
   if (e.target.id === "bConfirmar"){
     e.target.disabled = true; e.target.textContent = "Guardando…";

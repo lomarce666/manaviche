@@ -92,10 +92,11 @@ export async function onRequestGet({ request, env }) {
     DB.prepare("SELECT id, numero, tipo, mesa, items, notas, total, estado, creado, actualizado, por, cuenta, servidos, " +
       "(SELECT MIN(q.id) FROM pedidos q WHERE q.cuenta = pedidos.cuenta AND q.tipo = 'pedido') AS primero, " +
       "(SELECT c.total FROM cuentas c WHERE c.id = pedidos.cuenta) AS cuenta_total, " +
-      "(SELECT c.pago_pref FROM cuentas c WHERE c.id = pedidos.cuenta) AS pago, " +
+      "COALESCE(pago, (SELECT c.pago_pref FROM cuentas c WHERE c.id = pedidos.cuenta)) AS pago, " +
       "(SELECT c.id FROM cuentas c WHERE c.id = pedidos.cuenta AND c.cerrada IS NULL) AS cuenta_abierta " +
       "FROM pedidos WHERE estado != 'listo' ORDER BY id LIMIT 200"),
-    DB.prepare("SELECT id, numero, mesa, items, notas, total, creado, actualizado FROM pedidos " +
+    DB.prepare("SELECT id, numero, mesa, items, notas, total, creado, actualizado, cuenta, pago, " +
+      "(SELECT c.cerrada FROM cuentas c WHERE c.id = pedidos.cuenta) AS cuenta_cerrada FROM pedidos " +
       "WHERE jornada = ?1 AND tipo = 'pedido' AND estado = 'listo' ORDER BY actualizado DESC LIMIT 400").bind(j ? j.id : -1),
   ]);
   const conItems = (p) => ({ ...p, items: p.items ? JSON.parse(p.items) : [], servidos: p.servidos ? JSON.parse(p.servidos) : [], adicional: p.tipo === "pedido" && p.primero != null && p.primero !== p.id });
@@ -148,7 +149,9 @@ export async function onRequestPost({ request, env }) {
   if (d.accion === "cobrar") {
     const id = Number(d.id);
     if (!Number.isInteger(id)) return responder(400, { ok: false, error: "Datos inválidos" });
-    const metodo = METODOS.includes(d.metodo) ? d.metodo : null;
+    // d.metodo: "Efectivo"/"Transferencia"/"Tarjeta" = todo con esa forma; "Mixto" = cada pedido con la que eligió
+    const metodo = METODOS.includes(d.metodo) ? d.metodo : d.metodo === "Mixto" ? "Mixto" : null;
+    if (METODOS.includes(metodo)) await DB.prepare("UPDATE pedidos SET pago = ?2 WHERE cuenta = ?1 AND tipo = 'pedido'").bind(id, metodo).run();
     await DB.prepare("UPDATE cuentas SET cerrada = ?2, metodo = ?3 WHERE id = ?1 AND cerrada IS NULL").bind(id, Date.now(), metodo).run();
     // La próxima gente que use esa mesa empieza con el carrito vacío
     const c = await DB.prepare("SELECT mesa FROM cuentas WHERE id = ?1").bind(id).first();

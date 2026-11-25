@@ -301,7 +301,11 @@ const $ = s => document.querySelector(s);
 const MODO_CAJA = /^\/(caja|cobros)/.test(location.pathname) || new URLSearchParams(location.search).get("modo") === "caja";
 const BASE = MODO_CAJA ? "/caja" : "/cocina";
 const PANT = MODO_CAJA ? "Caja" : "Cocina";
-if (MODO_CAJA){ const m = document.querySelector('link[rel="manifest"]'); if (m) m.href = "/caja.webmanifest"; }
+if (MODO_CAJA){      // ícono y app propios de Caja al "Agregar a pantalla de inicio"
+  const m = document.querySelector('link[rel="manifest"]'); if (m) m.href = "/caja.webmanifest";
+  document.querySelectorAll('link[rel="icon"], link[rel="apple-touch-icon"]').forEach(l => { l.href = l.href.replace("/iconos/cocina-", "/iconos/caja-"); });
+  const t = document.querySelector('meta[name="apple-mobile-web-app-title"]'); if (t) t.content = "Caja";
+}
 const guardar = (k,v) => { try { localStorage.setItem(k,v); } catch(e){} };
 const leer = k => { try { return localStorage.getItem(k); } catch(e){ return null; } };
 const leerSes = k => { try { return sessionStorage.getItem(k); } catch(e){ return null; } };

@@ -295,11 +295,13 @@ main{padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280
 <script>
 (function(){
 const $ = s => document.querySelector(s);
-// Dos pantallas con el mismo archivo: /cocina (cocineros) y /cobros (la persona de caja que cobra las mesas)
-const MODO_CAJA = location.pathname.startsWith("/cobros") || new URLSearchParams(location.search).get("modo") === "caja";
-const BASE = MODO_CAJA ? "/cobros" : "/cocina";
+// Dos pantallas con el mismo archivo:
+//  /cocina → los cocineros: solo los pedidos que llegan (marcar ✓ y "Pedido servido") y los platos agotados
+//  /caja   → quien está en caja: iniciar/culminar el día, mesas por cobrar, avisos de mesero y cuenta, reportes
+const MODO_CAJA = /^\/(caja|cobros)/.test(location.pathname) || new URLSearchParams(location.search).get("modo") === "caja";
+const BASE = MODO_CAJA ? "/caja" : "/cocina";
 const PANT = MODO_CAJA ? "Caja" : "Cocina";
-if (MODO_CAJA){ const m = document.querySelector('link[rel="manifest"]'); if (m) m.href = "/cobros.webmanifest"; }
+if (MODO_CAJA){ const m = document.querySelector('link[rel="manifest"]'); if (m) m.href = "/caja.webmanifest"; }
 const guardar = (k,v) => { try { localStorage.setItem(k,v); } catch(e){} };
 const leer = k => { try { return localStorage.getItem(k); } catch(e){ return null; } };
 const leerSes = k => { try { return sessionStorage.getItem(k); } catch(e){ return null; } };
@@ -419,9 +421,9 @@ if (CLAVE) $("#clave").value = CLAVE;
 
 /* ---------- ⚙️ Configuración: cerrar sesión ---------- */
 $("#btnAjustes").onclick = () => abrirReporte(`<h3>⚙️ Configuración</h3>
-  <div class="botones">
+  ${MODO_CAJA ? `<div class="botones">
   <button class="bGrande bAzul" data-ajuste="stats">📊 Estadísticas</button>
-  <button class="bGrande bAzul" data-ajuste="carta">✏️ Editar carta</button></div>
+  <button class="bGrande bAzul" data-ajuste="carta">✏️ Editar carta</button></div>` : ""}
   <div class="hrs" style="margin-top:14px">${leer("cocina_clave") ? "La sesión está abierta en este celular: entra sin pedir la clave." : "La clave se pedirá la próxima vez que abras la cocina."}</div>
   <div class="botones"><button class="bGrande bRojo" id="cerrarSesion">🚪 Cerrar sesión</button>
   <button class="bGrande bGris" data-cerrar>Volver</button></div>`);
@@ -456,7 +458,7 @@ async function cargar(){
     const j = await r.json();
     if (!j.ok) throw new Error(j.error);
     // Avisos nuevos de mesero / cuenta: notificación de 10 s con timbre de 3 s
-    const nuevosAvisos = j.pedidos.filter(p => p.tipo !== "pedido" && !vistos.has(p.id) && (MODO_CAJA || p.tipo !== "cuenta"));
+    const nuevosAvisos = j.pedidos.filter(p => p.tipo !== "pedido" && !vistos.has(p.id) && MODO_CAJA);
     j.pedidos.forEach(p => vistos.add(p.id));
     if (!primeraCarga) nuevosAvisos.forEach(mostrarAviso);
     datos = j;
@@ -477,7 +479,7 @@ const hora = ms => new Date(ms).toLocaleTimeString("es-EC", { hour: "2-digit", m
 
 let vista = "dia";
 function verVista(v){
-  if (!MODO_CAJA && (v === "dia" || v === "mesas")) v = "pend";     // la cocina no abre/cierra el día ni cobra
+  if (!MODO_CAJA && v !== "pend" && v !== "carta") v = "pend";     // la cocina solo ve pedidos y agotados
   if (MODO_CAJA && v === "pend") v = "mesas";
   vista = v;
   $("#tabDia").classList.toggle("on", v === "dia");
@@ -495,12 +497,13 @@ function verVista(v){
   if (v === "dia") cargarDias();
   if (v === "carta") cargarCarta();
   if (v === "stats") cargarStats();
-  $("#barraAjuste").style.display = v === "carta" || v === "stats" ? "flex" : "none";
+  $("#barraAjuste").style.display = MODO_CAJA && (v === "carta" || v === "stats") ? "flex" : "none";
   $("#barraAjuste b").textContent = v === "carta" ? "✏️ Editar carta" : "📊 Estadísticas";
   pintar();
 }
 // Cocina: Pedidos y Preparados · Caja: Día, Mesas por cobrar y Preparados
-$("#tabDia").hidden = !MODO_CAJA; $("#tabPend").hidden = MODO_CAJA; $("#tabMesas").hidden = !MODO_CAJA;
+$("#tabDia").hidden = !MODO_CAJA; $("#tabPend").hidden = MODO_CAJA; $("#tabMesas").hidden = !MODO_CAJA; $("#tabPrep").hidden = !MODO_CAJA;
+if (!MODO_CAJA){ $("#tabCarta").hidden = false; $("#tabCarta").textContent = "🚫 Platos agotados"; }
 $("#tabDia").onclick = ()=>verVista("dia");
 $("#tabCaja").onclick = ()=>verVista("caja");
 $("#tabPend").onclick = ()=>verVista("pend");
@@ -518,8 +521,13 @@ function bloquePagos(c){
 }
 function pintarMesas(){
   const L = porCobrarLista();
-  $("#mesas").innerHTML = L.length ? `<div class="rejilla">${L.map(tarjetaCobro).join("")}</div>`
-    : `<div class="vacio"><b>🧾</b>No hay mesas por cobrar<small style="display:block;font-size:15px;margin-top:6px;opacity:.7">Aquí aparece cada mesa que pide por el menú. Cuando paguen, toca "Cobrar mesa".</small></div>`;
+  const llaman = datos.pedidos.filter(p => p.tipo === "mesero");
+  const avisos = llaman.map(p => `<div class="tarjeta aviso ${p.estado === "nuevo" ? "nuevo" : ""}" style="margin-bottom:12px">
+    <div class="cab"><span class="mesa">MESA ${p.mesa}</span><span class="meta">${hora(p.creado)} · ${hace(p.creado)}</span></div>
+    <div class="titulo-aviso">🙋 Llaman al mesero</div>
+    <div class="acciones"><button class="b-ok" data-id="${p.id}" data-estado="listo">OK, voy</button></div></div>`).join("");
+  $("#mesas").innerHTML = avisos + (L.length ? `<div class="rejilla">${L.map(tarjetaCobro).join("")}</div>`
+    : `<div class="vacio"><b>🧾</b>No hay mesas por cobrar<small style="display:block;font-size:15px;margin-top:6px;opacity:.7">Aquí aparece cada mesa que pide por el menú. Cuando paguen, toca "Cobrar mesa".</small></div>`);
 }
 const todoServido = c => c.pedidos.every(p => p.estado === "listo") && !datos.pedidos.some(p => p.tipo === "pedido" && p.cuenta === c.id);
 const pideCuenta = c => datos.pedidos.find(p => p.tipo === "cuenta" && (p.cuenta_abierta === c.id || p.mesa === c.mesa));
@@ -563,9 +571,19 @@ function confirmarTerminar(id, mesa, metodo){
       <button class="bGrande bGris" data-cerrar>Volver</button></div>`);
 }
 $("#mesas").addEventListener("click", e=>{
-  const b = e.target.closest("[data-cobrar2]"); if (!b) return;
-  abrirCobro(b.dataset.cobrar2, b.dataset.mesa, b.dataset.total, b.dataset.pago);
+  const am = e.target.closest("[data-anularmesa]"); if (am){ elegirAnular(Number(am.dataset.anularmesa)); return; }
+  const b = e.target.closest("[data-cobrar2]"); if (b){ abrirCobro(b.dataset.cobrar2, b.dataset.mesa, b.dataset.total, b.dataset.pago); return; }
+  if (e.target.closest("[data-id]")) alTocar(e);
 });
+// Elegir cuál pedido de la mesa se anula
+function elegirAnular(idCuenta){
+  const c = (datos.mesas || []).find(x => x.id === idCuenta); if (!c) return;
+  if (c.pedidos.length === 1) return pedirAnular(c.pedidos[0].id);
+  abrirReporte(`<h3>🚫 Mesa ${c.mesa}: ¿qué pedido anulas?</h3>
+    <div class="botones">${c.pedidos.map(p => `<button class="bGrande bGris" data-anularuno="${p.id}" style="text-align:left;font-size:15px">#${p.numero} · $${Number(p.total).toFixed(2)}<br><small style="opacity:.8;font-weight:600">${p.items.map(it => `${it.cantidad} x ${esc(it.nombre)}`).join(", ")}</small></button>`).join("")}
+    <button class="bGrande bGris" data-cerrar>Cancelar</button></div>`);
+}
+$("#reporte").addEventListener("click", e=>{ const u = e.target.closest("[data-anularuno]"); if (u) pedirAnular(Number(u.dataset.anularuno)); });
 async function cobrar(id, metodo, mesa){
   cerrarReporte();
   datos.mesas = (datos.mesas || []).filter(c => c.id !== id); pintar();
@@ -575,7 +593,9 @@ async function cobrar(id, metodo, mesa){
 }
 // Anular un pedido: pide el motivo y queda en el reporte del día
 function pedirAnular(id){
-  const p = [...(datos.pedidos || []), ...(datos.listos || [])].find(x => x.id === id); if (!p) return;
+  let p = [...(datos.pedidos || []), ...(datos.listos || [])].find(x => x.id === id);
+  if (!p) for (const c of datos.mesas || []){ const q = c.pedidos.find(x => x.id === id); if (q){ p = { ...q, mesa: c.mesa }; break; } }
+  if (!p) return;
   abrirReporte(`<h3>🚫 Anular pedido #${p.numero ?? "—"}</h3>
     <div class="hrs" style="font-size:15px">${esc(dondeTxt(p))} · $${Number(p.total).toFixed(2)}</div>
     <div style="margin-top:8px;font-size:15px">${p.items.map(it => `${it.cantidad} x ${esc(it.nombre)}`).join("<br>")}</div>
@@ -646,13 +666,14 @@ function tarjetaCobro(c){
     <ul>${c.platos.map(x => `<li><span><b>${x.cantidad} x</b> ${esc(x.nombre)}</span><span>$${Number(x.total).toFixed(2)}</span></li>`).join("")}</ul>
     ${(c.personas || []).length > 1 ? `<div class="reparto2">👥 ${c.personas.map(x => `${esc(x.nombre)}: $${Number(x.total).toFixed(2)}`).join(" · ")}</div>` : ""}
     ${bloquePagos(c)}
+    <button class="b-anular" data-anularmesa="${c.id}">🚫 Anular un pedido de esta mesa</button>
     <button class="b-cobrar" data-cobrar2="${c.id}" data-mesa="${c.mesa}" data-total="${Number(c.total).toFixed(2)}" data-pago="${esc(c.pago || "")}">💵 Cobrar mesa ${c.mesa}</button>
   </div>`;
 }
 function pintar(){
   // mesas con todo servido: van a la pestaña "Mesas por cobrar"
   const porCobrar = porCobrarLista();
-  const lista = datos.pedidos.filter(p => MODO_CAJA || p.tipo !== "cuenta");
+  const lista = datos.pedidos.filter(p => p.tipo === "pedido");     // la cocina solo ve comida
   $("#cPend").textContent = lista.length;
   $("#tabMesas").classList.toggle("alerta", datos.pedidos.some(p => p.tipo === "cuenta"));
   $("#cPrep").textContent = (datos.listos || []).length;
@@ -662,7 +683,7 @@ function pintar(){
   if (vista === "prep") pintarPreparados();
   if (vista === "dia") pintarDia();
   $("#hoyN").textContent = datos.hoy?.pedidos ?? 0;
-  if (!MODO_CAJA && !datos.jornada){ $("#lista").innerHTML = `<div class="vacio"><b>⏸️</b>El día de trabajo no está abierto<small style="display:block;font-size:15px;margin-top:6px;opacity:.8">Se abre desde la pantalla de Caja. Mientras tanto el menú no recibe pedidos.</small></div>`; return; }
+  if (!MODO_CAJA && !datos.jornada){ $("#lista").innerHTML = `<div class="vacio"><b>⏸️</b>El día de trabajo no está abierto<small style="display:block;font-size:15px;margin-top:6px;opacity:.8">Lo abre la persona de caja. Mientras tanto el menú no recibe pedidos.</small></div>`; return; }
   if (!lista.length){ $("#lista").innerHTML = `<div class="vacio"><b>✅</b>Sin pedidos pendientes</div>`; return; }
   $("#lista").innerHTML = lista.map(p => {
     const espera = (datos.ahora - p.creado) / 60000;
@@ -692,7 +713,7 @@ function pintar(){
       ${p.adicional && p.cuenta_total != null ? `<div class="ctaMesa">🧾 Cuenta de la mesa: $${Number(p.cuenta_total).toFixed(2)}</div>` : ""}
       ${p.estado !== "nuevo" ? `<div class="faltan">${faltan ? `Marca ✓ cada plato al servirlo · faltan ${faltan}` : "✅ Todo servido · toca Pedido servido"}</div>` : ""}
       <div class="acciones">${boton}</div>
-      <button class="b-anular" data-anular="${p.id}">🚫 Anular pedido</button></div>`;
+</div>`;
   }).join("");
 }
 
@@ -1001,12 +1022,12 @@ function pintarCarta(){
   const P = carta.platos;
   $("#carta").innerHTML = `
     <div class="hoja">
-      <h2>✏️ Editar carta · los cambios se ven al instante en el menú</h2>
+      <h2>${MODO_CAJA ? "✏️ Editar carta · los cambios se ven al instante en el menú" : "🚫 Platos agotados · marca lo que se acabó y el menú deja de ofrecerlo"}</h2>
       ${P.map(p => `<div class="pl${p.agotado ? " ago" : ""}" data-pl="${esc(p.id)}">
         <div class="nm">${esc(p.nombre)}<small>${esc(p.categoria)}${p.precio !== p.original ? ` · precio original ${plata(p.original)}` : ""}</small>
           ${p.agotado ? `<span class="estAgo">🚫 AGOTADO</span>` : `<span class="estAgo disp">✅ DISPONIBLE</span>`}</div>
-        <input type="text" inputmode="decimal" autocomplete="off" value="${Number(p.precio).toFixed(2)}" aria-label="Precio">
-        <button data-precio>Guardar $</button>
+        ${MODO_CAJA ? `<input type="text" inputmode="decimal" autocomplete="off" value="${Number(p.precio).toFixed(2)}" aria-label="Precio">
+        <button data-precio>Guardar $</button>` : ""}
         <button class="agoB2${p.agotado ? " ago" : ""}" data-ago="${p.agotado ? 0 : 1}">${p.agotado ? "✅ Indicar que está disponible" : "🚫 Indicar que está agotado"}</button>
       </div>`).join("")}
       <div class="sub2" style="margin-top:10px">Los platos agotados se ven en el menú pero no se pueden pedir. Los precios nuevos se cobran desde el siguiente pedido.</div>

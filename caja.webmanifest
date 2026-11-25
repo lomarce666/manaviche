@@ -1,8 +1,8 @@
 {
   "name": "Manaviche · Caja",
   "short_name": "Caja",
-  "start_url": "/cobros",
-  "scope": "/cobros",
+  "start_url": "/caja",
+  "scope": "/caja",
   "display": "standalone",
   "background_color": "#111418",
   "theme_color": "#111418",

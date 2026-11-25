@@ -1,6 +1,6 @@
 /* =============================================================
    CAJA (punto de venta) — se usa en la pestaña 💵 Caja de la cocina
-   y en la página /caja. Uso: montarCaja(elemento, () => clave)
+   y en la página /punto-venta. Uso: montarCaja(elemento, () => clave)
    ============================================================= */
 (function () {
   const css = `

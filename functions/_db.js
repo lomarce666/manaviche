@@ -95,7 +95,7 @@ export async function cuentaAbierta(DB, mesa, jornada, crear = false) {
 // Detalle de una cuenta: cada pedido y los platos sumados
 export async function detalleCuenta(DB, c) {
   const { results } = await DB.prepare(
-    "SELECT numero, items, total, creado, por, estado, reparto, servidos, pago FROM pedidos WHERE cuenta = ?1 AND tipo = 'pedido' ORDER BY id"
+    "SELECT id, numero, items, total, creado, por, estado, reparto, servidos, pago FROM pedidos WHERE cuenta = ?1 AND tipo = 'pedido' ORDER BY id"
   ).bind(c.id).all();
   const pedidos = results.map((p) => ({ ...p, items: p.items ? JSON.parse(p.items) : [], reparto: p.reparto ? JSON.parse(p.reparto) : null, servidos: p.servidos ? JSON.parse(p.servidos) : [] }));
   // Cuánto le toca a cada persona (según quién agregó cada plato)

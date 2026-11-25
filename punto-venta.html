@@ -56,7 +56,7 @@ let CLAVE = leer("caja_clave") || "";
 let caja = null;
 fetch("/restaurante.json").then((r) => r.json()).then((R) => {
   document.title = "Caja · " + R.nombre; $("#nombre").textContent = "Caja " + R.nombre;
-  if (R.caja !== true) location.replace("/cobros");      // sin el sistema de caja: la pantalla de cobro de mesas
+  if (R.caja !== true) location.replace("/caja");      // sin el punto de venta: va a la pantalla de Caja (cobro de mesas)
   if (R.logo) { for (const id of ["#logo", "#logoH"]) { $(id).src = R.logo; $(id).hidden = false; } }
 }).catch(() => {});
 async function entrar() {
@@ -78,7 +78,7 @@ $("#clave").addEventListener("keydown", (e) => { if (e.key === "Enter") entrar()
 $("#btnAjustes").onclick = () => {
   if (confirm("¿Cerrar sesión de la caja en este celular? Se pedirá la clave otra vez.")) {
     try { localStorage.removeItem("caja_clave"); sessionStorage.removeItem("caja_clave"); } catch (e) {}
-    location.replace("/caja?v=" + Date.now());
+    location.replace("/punto-venta?v=" + Date.now());
   }
 };
 if (CLAVE) { $("#clave").value = CLAVE; entrar(); }

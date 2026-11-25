@@ -6,6 +6,12 @@
 <title>Menú</title>
 <meta name="description" content="Menú digital. Pide desde tu mesa.">
 <meta name="theme-color" content="#0d3b4f">
+<link rel="icon" type="image/png" href="/favicon.png">
+<link rel="apple-touch-icon" href="/iconos/menu-180.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Manaviche">
 <style>
 :root{
   --amarillo:#ffd166;
@@ -29,6 +35,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 #marca{position:absolute;left:0;right:0;top:50%;text-align:center;transform-origin:center top;will-change:transform}
 #marca h1{font-size:clamp(46px,15vw,92px);font-weight:900;letter-spacing:-1px;line-height:1;color:var(--amarillo);text-transform:uppercase;display:inline-flex}
 #marca h1 span{display:inline-block;opacity:0;transform:translateY(-120px) rotate(-20deg);animation:caer .7s cubic-bezier(.2,1.6,.4,1) forwards}
+#marca .logo{display:block;width:min(62vw,280px);height:min(62vw,280px);margin:0 auto 14px;border-radius:50%;box-shadow:0 14px 34px rgba(0,0,0,.35);opacity:0;transform:scale(.4) rotate(-12deg);animation:logoEntra .9s .15s cubic-bezier(.2,1.5,.4,1) forwards}
+@keyframes logoEntra{to{opacity:1;transform:none}}
+#marca.conLogo h1{display:none}
+#carta .cab .logoMini{width:34px;height:34px;border-radius:50%;vertical-align:middle;margin-right:8px}
 #marca .sub{margin-top:10px;font-size:16px;letter-spacing:4px;text-transform:uppercase;opacity:0;animation:aparecer .8s 1.2s forwards}
 #marca .ola{display:block;margin:12px auto 0;width:160px;opacity:0;animation:aparecer .8s 1.4s forwards}
 @keyframes caer{to{opacity:1;transform:none}}
@@ -281,6 +291,7 @@ body.conCarta #cartaBtn,body.conCarta #promo,body.conCarta #ayudaBtn{visibility:
 <!-- Escenario animado -->
 <div id="escena">
   <div id="marca">
+    <img class="logo" id="logoMarca" alt="" hidden>
     <h1 id="titulo"></h1>
     <div class="sub" id="eslogan"></div>
     <svg class="ola" viewBox="0 0 160 14"><path d="M2 7 Q 22 -3 42 7 T 82 7 T 122 7 T 158 7" fill="none" stroke="#ffd166" stroke-width="4" stroke-linecap="round"/></svg>
@@ -517,6 +528,19 @@ const titulo = $("#titulo");
   titulo.appendChild(s);
 });
 document.title = NEGOCIO.nombre + " · Menú";
+// Logo del restaurante (restaurante.json → "logo"); si no hay, queda el nombre con letras
+if (NEGOCIO.logo) {
+  const lg = $("#logoMarca");
+  lg.src = NEGOCIO.logo; lg.alt = NEGOCIO.nombre; lg.hidden = false;
+  $("#marca").classList.add("conLogo");
+  const cab = document.querySelector("#carta .cab h3");
+  if (cab && cab.firstChild.nodeType === 3) {
+    const t = document.createElement("span");
+    t.innerHTML = `<img class="logoMini" src="${NEGOCIO.logo}" alt="">`;
+    t.append(cab.firstChild.textContent.trim());
+    cab.firstChild.replaceWith(t);
+  }
+}
 $("#eslogan").textContent = NEGOCIO.eslogan || "";
 
 const platosBox = $("#platos"), puntos = $("#puntos");
@@ -976,8 +1000,13 @@ const sub = marca.querySelector(".sub"), ola = marca.querySelector(".ola"), waFi
 const pts = [...puntos.children];
 
 // Medidas: se leen solo al cargar o al girar el celular (leerlas en cada cuadro hace lento al iPhone)
-let alto = innerHeight, vw = innerWidth, vh = innerHeight, marcaAlto = 0;
-function medir(){ alto = pista.firstElementChild.offsetHeight || innerHeight; vw = innerWidth; vh = innerHeight; marcaAlto = marca.offsetHeight; }
+let alto = innerHeight, vw = innerWidth, vh = innerHeight, marcaAlto = 0, achicar = 0.55;
+function medir(){
+  alto = pista.firstElementChild.offsetHeight || innerHeight; vw = innerWidth; vh = innerHeight; marcaAlto = marca.offsetHeight;
+  // Con logo: arriba queda chiquito (unos 64 px) para no tapar el nombre del plato
+  const lg = marca.classList.contains("conLogo") && $("#logoMarca");
+  achicar = lg && lg.offsetHeight ? 1 - Math.min(0.45, 64 / lg.offsetHeight) : 0.55;
+}
 
 // Colores: el fondo cambia poco a poco siguiendo el dedo
 const hex = c => { const n = parseInt(c.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255]; };
@@ -992,7 +1021,7 @@ function pintar(){
   if (k !== marcaK){
     marcaK = k;
     const yIni = -marcaAlto / 2, yFin = -vh / 2 + 22;
-    marca.style.transform = `translate3d(0, ${(yIni + (yFin - yIni) * k).toFixed(1)}px, 0) scale(${(1 - 0.55 * k).toFixed(3)})`;
+    marca.style.transform = `translate3d(0, ${(yIni + (yFin - yIni) * k).toFixed(1)}px, 0) scale(${(1 - achicar * k).toFixed(3)})`;
     sub.style.opacity = ola.style.opacity = String(clamp(1 - k * 1.4));
     desliza.style.visibility = k > 0.3 ? "hidden" : "visible";
   }

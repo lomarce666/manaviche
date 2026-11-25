@@ -1,6 +1,7 @@
 {
   "nombre": "Manaviche",
   "eslogan": "Sabor manabita",
+  "logo": "/iconos/logo.webp",
   "mesas": 6,
   "pantalla_cocina": true,
   "whatsapp": "593998083141",

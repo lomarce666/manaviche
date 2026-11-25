@@ -1,0 +1,12 @@
+{
+  "name": "Manaviche · Menú",
+  "short_name": "Manaviche",
+  "display": "standalone",
+  "background_color": "#0d3b4f",
+  "theme_color": "#0d3b4f",
+  "icons": [
+    {"src": "/iconos/menu-192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "/iconos/menu-512.png", "sizes": "512x512", "type": "image/png"},
+    {"src": "/iconos/menu-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ]
+}

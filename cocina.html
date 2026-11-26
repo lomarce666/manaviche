@@ -120,6 +120,10 @@ main{padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280
 .detC{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:baseline}
 .detC span{font-size:13px;opacity:.75}
 .detP{display:flex;justify-content:space-between;font-size:14px;padding-left:12px;opacity:.9}
+.papelFondo{background:#e9e3d8;border-radius:12px;padding:14px 8px;margin-top:10px;overflow-x:auto;display:flex;justify-content:center}
+.papel{background:#fff;color:#000;font:11px/1.4 "Courier New",monospace;padding:12px 10px;box-shadow:0 2px 8px rgba(0,0,0,.18);border-radius:2px;flex:none}
+.papel div{white-space:pre;overflow:hidden}.papel .c{text-align:center}.papel .b{font-weight:700}.papel .g{font-size:15px;font-weight:700}
+.miniB{padding:8px 12px;border-radius:10px;background:#4ea1ff;color:#08203a;font-weight:900;font-size:14px;flex:none}
 .impOp{border:3px solid #d8cfbf;border-radius:14px;padding:12px;margin-top:10px;background:#fff;cursor:pointer;opacity:.75}
 .impOp.on{border-color:#2ecc71;background:#eafaf0;opacity:1;cursor:default}
 .impCab{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center}
@@ -552,7 +556,7 @@ function ofrecerComprobante(r){
       <button class="bGrande bGris" data-noimprimir>No imprimir</button></div>
     <div class="hrs" style="font-size:13px;margin-top:8px">Impresora: ${IMP.modo === "bt" ? "📶 Bluetooth" + (impBT ? " · " + esc(impBT.device.name || "conectada") : "") : "🖨️ del celular / computadora"} · ${IMP.ancho} mm · cámbiala en ⚙️</div>`);
 }
-const sinTildes = t => String(t ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[¡¿]/g, "").replace(/[^\x20-\x7E]/g, "");
+const sinTildes = t => String(t ?? "").replace(/·/g, "-").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[¡¿]/g, "").replace(/[^\x20-\x7E]/g, "");
 function lineasComprobante(r){
   const W = IMP.ancho >= 80 ? 48 : 32, din = v => "$" + Number(v).toFixed(2);
   const fila = (a, b) => { a = sinTildes(a); b = sinTildes(b); const n = W - b.length - 1; return (a.length > n ? a.slice(0, n) : a.padEnd(n)) + " " + b; };
@@ -579,7 +583,7 @@ function lineasComprobante(r){
 }
 async function imprimirComprobante(r){
   if (IMP.modo === "bt") return imprimirBT(r);
-  imprimirSistema(r); if (r.id !== "prueba") cerrarReporte();
+  imprimirSistema(r); cerrarReporte(); mostrarListo("🖨️ Enviado a imprimir");
 }
 // Impresora del celular o computadora (la que tenga instalada: USB, wifi, o app de la impresora)
 function imprimirSistema(r){
@@ -634,6 +638,28 @@ async function imprimirBT(r){
     alert("No se pudo imprimir por Bluetooth. Revisa que la impresora esté prendida y cerca.\n\n" + e.message);
   }
 }
+// Vista previa: cómo va a salir el comprobante, con qué impresora, y recién ahí imprimir
+let vistaR = null;
+function vistaComprobante(r){
+  vistaR = r;
+  const L = lineasComprobante(r);
+  const papel = `<div class="papel" style="width:${IMP.ancho >= 80 ? 330 : 236}px">${L.map(x => `<div class="${x.c ? "c " : ""}${x.b ? "b " : ""}${x.g ? "g" : ""}">${esc(x.t) || "&nbsp;"}</div>`).join("")}</div>`;
+  const bt = IMP.modo === "bt";
+  abrirReporte(`<h3>🧾 Así va a salir el comprobante</h3>
+    <div class="papelFondo">${papel}</div>
+    <div class="hrs" style="margin-top:12px;font-weight:800">¿Con qué impresora?</div>
+    <div class="impSeg" style="margin-top:6px">
+      <button data-vimodo="bt" class="${bt ? "on" : ""}">${bt ? "✓ " : ""}📶 Bluetooth</button>
+      <button data-vimodo="sistema" class="${!bt ? "on" : ""}">${!bt ? "✓ " : ""}🖨️ Celular / compu</button></div>
+    ${bt ? `<div class="impEstado ${impBT ? "ok" : ""}" style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+        <span>${impBT ? `✅ Conectada: <b>${esc(impBT.device.name || "impresora")}</b>` : "⚪ Ninguna impresora conectada"}</span>
+        <button class="miniB" id="bConectarBT2">${impBT ? "Cambiar" : "Conectar"}</button></div>`
+      : `<div class="impEstado">Se abrirá la ventana de imprimir para elegir la impresora.</div>`}
+    <div class="impSeg" style="margin-top:8px">${[58, 80].map(a => `<button data-vancho="${a}" class="${IMP.ancho === a ? "on" : ""}">${IMP.ancho === a ? "✓ " : ""}Papel ${a} mm</button>`).join("")}</div>
+    <div class="botones">
+      <button class="bGrande bVerde" data-impya>🖨️ Imprimir comprobante</button>
+      <button class="bGrande bGris" data-noimprimir>Cancelar</button></div>`);
+}
 function pintarImpresora(){
   const bt = IMP.modo === "bt";
   const opcion = (modo, icono, titulo, sub, cuerpo) => {
@@ -671,7 +697,7 @@ document.addEventListener("click", async e => {
   const m = e.target.closest("[data-impmodo]"); if (m && !e.target.closest("button") && IMP.modo !== m.dataset.impmodo){ IMP.modo = m.dataset.impmodo; guardarImp(); return pintarImpresora(); }
   const a = e.target.closest("[data-impancho]"); if (a){ IMP.ancho = Number(a.dataset.impancho); guardarImp(); return pintarImpresora(); }
   if (e.target.id === "bConectarBT"){ try { await conectarBT(); } catch(err){ if (!String(err).includes("cancel")) alert("No se pudo conectar: " + err.message); } return pintarImpresora(); }
-  if (e.target.id === "bPruebaImp") imprimirComprobante({ id: "prueba", hora: Date.now(), donde: "Mesa de prueba", platos: [{ n: "Ceviche Jipijapa", q: 2, t: 16 }, { n: "Agua", q: 1, t: 0.75 }], total: 16.75, metodo: "Efectivo", recibido: 20, vuelto: 3.25 });
+  if (e.target.id === "bPruebaImp") vistaComprobante({ id: "prueba", hora: Date.now(), donde: "Mesa de prueba", platos: [{ n: "Ceviche Jipijapa", q: 2, t: 16 }, { n: "Agua", q: 1, t: 0.75 }], total: 16.75, metodo: "Efectivo", recibido: 20, vuelto: 3.25 });
 });
 
 /* ---------- Notificación de mesero / cuenta ---------- */
@@ -1399,7 +1425,11 @@ $("#reporte").addEventListener("click", async e=>{
     await cobrar(Number(t.dataset.terminar), t.dataset.metodo2, t.dataset.mesa);
     if (rec) ofrecerComprobante(rec);
     return; }
-  const ip = e.target.closest("[data-imprec]"); if (ip){ const L = leerComprobantes(); const r = L.find(x => String(x.id) === ip.dataset.imprec); if (r) imprimirComprobante(r); return; }
+  const ip = e.target.closest("[data-imprec]"); if (ip){ const L = leerComprobantes(); const r = L.find(x => String(x.id) === ip.dataset.imprec); if (r) vistaComprobante(r); return; }
+  if (e.target.closest("[data-impya]")){ if (vistaR) imprimirComprobante(vistaR); return; }
+  const vm = e.target.closest("[data-vimodo]"); if (vm){ IMP.modo = vm.dataset.vimodo; guardarImp(); vistaComprobante(vistaR); return; }
+  const va = e.target.closest("[data-vancho]"); if (va){ IMP.ancho = Number(va.dataset.vancho); guardarImp(); vistaComprobante(vistaR); return; }
+  if (e.target.id === "bConectarBT2"){ try { await conectarBT(); } catch(err){ if (!String(err).includes("cancel")) alert("No se pudo conectar: " + err.message); } vistaComprobante(vistaR); return; }
   if (e.target.closest("[data-noimprimir]")){ cerrarReporte(); return; }
   if (e.target.closest("[data-imprimir]")){ if (reporteActual) descargarPDF(reporteActual); return; }
   if (e.target.closest("[data-wa]") && reporteActual){ window.open("https://wa.me/?text=" + encodeURIComponent(textoReporte(reporteActual)), "_blank"); return; }

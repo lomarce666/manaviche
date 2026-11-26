@@ -32,7 +32,15 @@ header .logoMini{width:38px;height:38px;border-radius:50%;flex:none}
 
 /* Panel */
 #panel{display:none}
-header{position:sticky;top:0;z-index:5;background:#111418;border-bottom:1px solid #232a33;padding:calc(10px + env(safe-area-inset-top)) 16px 10px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+/* Arriba fijo: nombre y pestañas siempre a la vista al bajar */
+.fijo{position:sticky;top:0;z-index:20;background:#111418;padding-bottom:10px;box-shadow:0 6px 12px -8px rgba(0,0,0,.7)}
+.fijo.chico header{padding-top:calc(6px + env(safe-area-inset-top));padding-bottom:6px}
+.fijo.chico header h1{font-size:16px}
+.fijo.chico header .logoMini{width:30px;height:30px}
+.fijo.chico .dato,.fijo.chico #estado{display:none}
+.fijo.chico .pestanas{padding-top:8px}
+.fijo.chico .pestanas button{padding:9px 12px;font-size:15px}
+header{position:relative;background:#111418;border-bottom:1px solid #232a33;padding:calc(10px + env(safe-area-inset-top)) 16px 10px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 header h1{font-size:20px;font-weight:900;text-transform:uppercase;flex:1;min-width:140px}
 .dato{background:#1b2027;border-radius:12px;padding:6px 12px;font-size:14px;opacity:.95}
 .dato b{font-size:18px;color:#ffd166}
@@ -74,7 +82,7 @@ main{padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280
 .total{margin-top:10px;font-size:15px;opacity:.8}
 .acciones{display:flex;gap:10px;margin-top:14px}
 .pideC{margin-top:8px;background:#e63946;color:#fff;border-radius:10px;padding:8px 10px;font-weight:900;font-size:16px;animation:latir 1s infinite}
-.tomarB{max-width:900px;margin:14px auto 0}
+.tomarB{max-width:900px;margin:14px auto 0;padding:0 14px}
 .tSeg{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
 .tSeg button{padding:14px 8px;border-radius:12px;background:#222831;color:#cfd6df;font-weight:900;font-size:16px;border:2px solid transparent}
 .tSeg button.on{background:#ffd166;color:#2a1f00}
@@ -313,6 +321,7 @@ main{padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280
 </section>
 
 <section id="panel">
+  <div class="fijo">
   <header>
     <img class="logoMini" id="logoHeader" alt="" hidden>
     <h1 id="nombre">Cocina</h1>
@@ -331,6 +340,7 @@ main{padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280
     <button id="tabStats" hidden>📊 Estadísticas</button>
     <button id="tabCarta" hidden>✏️ Editar carta</button>
   </nav>
+  </div>
   <main id="lista"><div class="vacio"><b>✅</b>Sin pedidos pendientes</div></main>
   <section id="preparados"></section>
   <section id="mesas"></section>
@@ -576,6 +586,7 @@ function verVista(v){
   if (v === "stats") cargarStats();
   $("#barraAjuste").style.display = MODO_CAJA && (v === "carta" || v === "stats") ? "flex" : "none";
   $("#barraAjuste b").textContent = v === "carta" ? "✏️ Editar carta" : "📊 Estadísticas";
+  const act = document.querySelector(".pestanas button.on"); if (act) act.scrollIntoView({ inline: "center", block: "nearest" });
   pintar();
 }
 // Cocina: Pedidos y Preparados · Caja: Día, Mesas por cobrar y Preparados
@@ -587,6 +598,8 @@ if (!MODO_CAJA){
   $("#tabMesas").innerHTML = `🍽️ Mesas servidas<span class="cuenta" id="cMesas">0</span>`;
 }
 $("#tabTomar").onclick = ()=>verVista("tomar");
+// Al bajar, la parte de arriba se achica pero se queda fija
+addEventListener("scroll", () => { document.querySelector(".fijo").classList.toggle("chico", scrollY > 60); }, { passive: true });
 $("#tabDia").onclick = ()=>verVista("dia");
 $("#tabCaja").onclick = ()=>verVista("caja");
 $("#tabPend").onclick = ()=>verVista("pend");

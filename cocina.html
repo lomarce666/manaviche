@@ -91,7 +91,9 @@ main{padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280
 .tPago button{padding:12px 4px;border-radius:12px;background:#2a313b;color:#fff;font-weight:800;font-size:14px}
 .tPago button.on{background:#2ecc71;color:#08210f}
 .tCat{margin:16px 2px 6px;font-weight:900;font-size:14px;text-transform:uppercase;letter-spacing:.04em;opacity:.7}
-.tPlatos{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:6px}
+.tPlatos{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:10px 6px;padding:8px 0 0 6px}
+.tTile{position:relative;display:grid}
+.tPlatos .tQuitar{position:absolute;top:-8px;left:-6px;width:34px;height:34px;min-height:0;padding:0;border-radius:99px;background:#e63946;color:#fff;font-size:24px;font-weight:900;line-height:1;display:grid;place-items:center;border:2px solid #111418;z-index:2}
 .tPlatos button{position:relative;min-height:64px;padding:8px 6px;border-radius:12px;background:#222831;color:#fff;font-weight:800;font-size:14px;line-height:1.15;display:flex;flex-direction:column;justify-content:center;gap:3px;border:2px solid transparent}
 .tPlatos button small{font-size:12px;color:#ffd166;font-weight:700}
 .tPlatos button.con{border-color:#ffd166;background:#2c2a1d}
@@ -581,8 +583,8 @@ $("#tabDia").hidden = !MODO_CAJA; $("#tabPend").hidden = MODO_CAJA; $("#tabPrep"
 if (!MODO_CAJA){
   $("#tabCarta").hidden = false; $("#tabCarta").textContent = "🚫 Agotados";
   $("#tabTomar").hidden = false;
-  $("#tabPend").innerHTML = `🔔 Pedidos<span class="cuenta" id="cPend">0</span>`;
-  $("#tabMesas").innerHTML = `🍽️ Mesas<span class="cuenta" id="cMesas">0</span>`;
+  $("#tabPend").innerHTML = `🔔 Pedidos pendientes<span class="cuenta" id="cPend">0</span>`;
+  $("#tabMesas").innerHTML = `🍽️ Mesas servidas<span class="cuenta" id="cMesas">0</span>`;
 }
 $("#tabTomar").onclick = ()=>verVista("tomar");
 $("#tabDia").onclick = ()=>verVista("dia");
@@ -764,8 +766,9 @@ function pintarTomar(){
     ${donde}
     <input class="tInput" id="tBuscar" placeholder="🔎 Buscar plato o bebida" value="${esc(T.buscar)}" autocomplete="off" style="margin-top:12px">
     ${cats.map(cat => { const ps = cartaT.filter(p => (p.categoria || "Platos") === cat);
-      return `<div class="tGrupo"><div class="tCat">${esc(cat)}</div><div class="tPlatos">${ps.map(p => `<button data-tadd="${esc(p.id)}" data-nom="${esc(p.nombre.toLowerCase())}" class="${T.items[p.id] ? "con" : ""}" ${p.agotado ? "disabled" : ""}>
-        ${T.items[p.id] ? `<i>${T.items[p.id]}</i>` : ""}<span>${esc(p.nombre)}</span><small>${p.agotado ? "Agotado" : "$" + Number(p.precio).toFixed(2)}</small></button>`).join("")}</div></div>`; }).join("")}
+      return `<div class="tGrupo"><div class="tCat">${esc(cat)}</div><div class="tPlatos">${ps.map(p => `<div class="tTile" data-nom="${esc(p.nombre.toLowerCase())}"><button data-tadd="${esc(p.id)}" class="${T.items[p.id] ? "con" : ""}" ${p.agotado ? "disabled" : ""}>
+        ${T.items[p.id] ? `<i>${T.items[p.id]}</i>` : ""}<span>${esc(p.nombre)}</span><small>${p.agotado ? "Agotado" : "$" + Number(p.precio).toFixed(2)}</small></button>
+        ${T.items[p.id] ? `<button class="tQuitar" data-tmenos="${esc(p.id)}" aria-label="Quitar uno">−</button>` : ""}</div>`).join("")}</div></div>`; }).join("")}
     ${lineas.length ? `<div class="tTicket"><div class="tTit">🧾 ${T.para === "mesa" ? (T.mesa ? "Para la mesa " + T.mesa : "Elige la mesa arriba") : "Pedido por teléfono"}</div>
       ${lineas.map(([id, n]) => `<div class="tLinea"><span><b>${n} x</b> ${esc(porId[id].nombre)}</span><span class="tMas"><button data-tmenos="${esc(id)}">−</button><button data-tadd="${esc(id)}">+</button></span><b>$${(n * porId[id].precio).toFixed(2)}</b></div>`).join("")}
       <input class="tInput" id="tNotas" placeholder="📝 Indicaciones (ej. sin cebolla)" value="${esc(T.notas)}" autocomplete="off" style="margin-top:8px">

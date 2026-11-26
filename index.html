@@ -400,7 +400,7 @@ body.conCarta #cartaBtn,body.conCarta #promo,body.conCarta #ayudaBtn{visibility:
 
 <script>
 // Si el celular guardó una versión vieja de /cocina, lo mandamos a la pantalla de cocina
-if (/^\/cocina/.test(location.pathname) && !/[?&]v=/.test(location.search)) location.replace("/cocina?v=" + Date.now());
+if (/^\/cocina/.test(location.pathname) && !/[?&]v=/.test(location.search)) location.replace("/mesero?v=" + Date.now());
 (async function(){
 /* =================================================================
    Los platos, precios, mesas y datos del restaurante están en

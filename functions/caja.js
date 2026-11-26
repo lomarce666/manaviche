@@ -7,7 +7,7 @@ export async function onRequest({ request, env }) {
   const base = new Response(r.body, { status: r.status, headers: h });
   return new HTMLRewriter()
     .on('link[rel="manifest"]', { element(e) { e.setAttribute("href", "/caja.webmanifest"); } })
-    .on('link[rel="icon"], link[rel="apple-touch-icon"]', { element(e) { e.setAttribute("href", (e.getAttribute("href") || "").replace("/iconos/cocina-", "/iconos/caja-")); } })
+    .on('link[rel="icon"], link[rel="apple-touch-icon"]', { element(e) { e.setAttribute("href", (e.getAttribute("href") || "").replace("/iconos/mesero-", "/iconos/caja-")); } })
     .on('meta[name="apple-mobile-web-app-title"]', { element(e) { e.setAttribute("content", "Caja"); } })
     .on("title", { element(e) { e.setInnerContent("Caja"); } })
     .transform(base);

@@ -49,7 +49,9 @@ export async function prepararTablas(DB) {
   try { await DB.prepare("ALTER TABLE pedidos ADD COLUMN para TEXT").run(); } catch {}        // caja: 'mostrador' / 'llevar'
   try { await DB.prepare("ALTER TABLE jornadas ADD COLUMN fondo REAL").run(); } catch {}      // efectivo con que se abre la caja
   try { await DB.prepare("ALTER TABLE jornadas ADD COLUMN arqueo TEXT").run(); } catch {}     // conteo al cerrar la caja
-  try { await DB.prepare("ALTER TABLE pedidos ADD COLUMN anulado TEXT").run(); } catch {}     // {motivo, hora} si se anuló
+  try { await DB.prepare("ALTER TABLE pedidos ADD COLUMN anulado TEXT").run(); } catch {}
+  try { await DB.prepare("ALTER TABLE cuentas ADD COLUMN enviada INTEGER").run(); } catch {}  // cuándo el mesero la mandó a caja
+  try { await DB.prepare("ALTER TABLE cuentas ADD COLUMN cliente TEXT").run(); } catch {}    // pedidos por teléfono: nombre o número     // {motivo, hora} si se anuló
   // Salidas de dinero de la caja (pago a proveedores, compras, adelantos…)
   try { await DB.prepare("CREATE TABLE IF NOT EXISTS movimientos (id INTEGER PRIMARY KEY AUTOINCREMENT, jornada INTEGER NOT NULL, monto REAL NOT NULL, motivo TEXT NOT NULL, creado INTEGER NOT NULL)").run(); } catch {}
   try { await DB.prepare("CREATE INDEX IF NOT EXISTS movimientos_jornada ON movimientos (jornada)").run(); } catch {}
@@ -128,14 +130,15 @@ export async function detalleCuenta(DB, c) {
     }
   }
   const porPago = Object.values(pp).map((g) => ({ ...g, platos: Object.values(g.platos) }));
-  return { id: c.id, mesa: c.mesa, abierta: c.abierta, pago: c.pago_pref || null, porPago, total: Math.round(c.total * 100) / 100, pedidos, platos: Object.values(platos),
+  return { id: c.id, mesa: c.mesa, abierta: c.abierta, pago: c.pago_pref || null, porPago,
+    enviada: c.enviada || null, cliente: c.cliente || null, telefono: c.mesa < 0, total: Math.round(c.total * 100) / 100, pedidos, platos: Object.values(platos),
     personas: Object.values(personas).map((x) => ({ ...x, total: Math.round(x.total * 100) / 100 })) };
 }
 
 // Resumen para hacer caja de un día de trabajo
 export async function resumenJornada(DB, j) {
   const { results } = await DB.prepare(
-    "SELECT numero, tipo, mesa, items, notas, total, estado, creado, para, anulado FROM pedidos WHERE jornada = ?1 ORDER BY id"
+    "SELECT numero, tipo, mesa, items, notas, total, estado, creado, para, anulado, cuenta, pago FROM pedidos WHERE jornada = ?1 ORDER BY id"
   ).bind(j.id).all();
   const pedidos = results.filter((p) => p.tipo === "pedido").map((p) => ({ ...p, items: p.items ? JSON.parse(p.items) : [] }));
   const platos = {}, mesas = {};
@@ -145,7 +148,7 @@ export async function resumenJornada(DB, j) {
       platos[k] = platos[k] || { nombre: k, cantidad: 0, precio: it.precio, total: 0 };
       platos[k].cantidad += it.cantidad; platos[k].total += it.cantidad * it.precio;
     }
-    const km = p.para && p.para !== "mesa" ? (p.para === "llevar" ? "Para llevar" : "Mostrador") : p.mesa;     // ventas de caja sin mesa
+    const km = p.para === "telefono" ? "Pedidos por teléfono" : p.para && p.para !== "mesa" ? (p.para === "llevar" ? "Para llevar" : "Mostrador") : p.mesa;     // ventas sin mesa
     mesas[km] = mesas[km] || { mesa: km, pedidos: 0, total: 0 };
     mesas[km].pedidos++; mesas[km].total += p.total;
   }
@@ -165,8 +168,26 @@ export async function resumenJornada(DB, j) {
     pagos = Object.values(m).map((x) => ({ metodo: x.metodo, cuentas: x.cuentas.size, total: x.total }));
   } catch {}
   let caja = null; try { caja = await estadoCaja(DB, j); } catch {}
+  // Detalle de cada mesa atendida y de cada pedido por teléfono: qué pidieron, cuánto y cómo pagaron
+  let detalle = [];
+  try {
+    const cs = Object.fromEntries((await DB.prepare("SELECT id, mesa, cliente, abierta, cerrada, metodo FROM cuentas WHERE id IN (SELECT DISTINCT cuenta FROM pedidos WHERE jornada = ?1 AND cuenta IS NOT NULL)").bind(j.id).all()).results.map((c) => [c.id, c]));
+    const g = {};
+    for (const p of pedidos) {
+      const k = p.cuenta != null ? "c" + p.cuenta : "p" + p.numero;
+      const c = p.cuenta != null ? cs[p.cuenta] : null;
+      if (!g[k]) g[k] = { tipo: p.para === "telefono" ? "telefono" : p.para === "llevar" || p.para === "mostrador" ? p.para : "mesa",
+        mesa: p.mesa > 0 ? p.mesa : null, cliente: c ? c.cliente || null : null, desde: p.creado, cobrada: c ? !!c.cerrada : true,
+        total: 0, platos: {}, pagos: {} };
+      const x = g[k]; x.total += p.total;
+      x.pagos[p.pago || (c && c.metodo && c.metodo !== "Mixto" ? c.metodo : "") || "Sin registrar"] = 1;
+      for (const it of p.items) { const q = (x.platos[it.nombre] = x.platos[it.nombre] || { nombre: it.nombre, cantidad: 0, total: 0 }); q.cantidad += it.cantidad; q.total += it.cantidad * it.precio; }
+    }
+    detalle = Object.values(g).map((x) => ({ ...x, total: Math.round(x.total * 100) / 100, pagos: Object.keys(x.pagos),
+      platos: Object.values(x.platos).map((q) => ({ ...q, total: Math.round(q.total * 100) / 100 })) }));
+  } catch (e) { console.log("detalle", String(e)); }
   return {
-    pagos, caja,
+    pagos, caja, detalle,
     anuladas: results.filter((p) => p.tipo === "anulado").map((p) => ({ numero: p.numero, total: p.total, para: p.para, mesa: p.mesa, ...(p.anulado ? JSON.parse(p.anulado) : {}) })),
     fecha: j.fecha, abierta: j.abierta, cerrada: j.cerrada || null,
     pedidos: pedidos.length, total: Math.round(total * 100) / 100,

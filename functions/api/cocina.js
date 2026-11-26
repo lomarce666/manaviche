@@ -11,13 +11,16 @@
 //  POST {accion:"cerrar"}          → Culminar día de trabajo (guarda)
 //  POST {accion:"borrar", alcance:"dia"|"semana"|"todo", id?}
 //  POST {accion:"cobrar", id, metodo} → cerrar la cuenta de una mesa (ya pagó)
+//  POST {accion:"tomar", para:"mesa"|"telefono", mesa?, items, notas?, cliente?, pago?} → el mesero anota un pedido a mano
+//  POST {accion:"enviar_caja", id} / {accion:"devolver_caja", id} → mandar la cuenta a caja (o sacarla)
 //  GET ?carta=1                    → carta con agotados/precios/plato del día
 //  GET ?stats=7                    → estadísticas de los últimos N días
 //  POST {accion:"plato", id, agotado?, precio?}   → cambiar un plato
 //  POST {accion:"promo", id, texto} / {accion:"promo"} → plato del día / quitarlo
 // =============================================================
 
-import { hoyEcuador, prepararTablas, jornadaAbierta, resumenJornada, detalleCuenta, cartaEfectiva, cobrarCuenta, anularPedido, CUENTA_VENCE, responder } from "../_db.js";
+import { hoyEcuador, prepararTablas, jornadaAbierta, resumenJornada, detalleCuenta, cartaEfectiva, cobrarCuenta, anularPedido, CUENTA_VENCE, responder,
+  cuentaAbierta, contar, limpiar, sinBasura, enviarTelegram } from "../_db.js";
 
 const METODOS = ["Efectivo", "Transferencia", "Tarjeta"];
 
@@ -149,6 +152,62 @@ export async function onRequestPost({ request, env }) {
       DB.prepare("UPDATE cuentas SET cerrada = ?1 WHERE cerrada IS NULL").bind(ahora),
     ]);
     return responder(200, { ok: true, reporte: rep });
+  }
+
+  // ---- El mesero anota un pedido a mano (cliente sin QR o pedido por teléfono) ----
+  if (d.accion === "tomar") {
+    const j = await jornadaAbierta(DB, false);
+    if (!j) return responder(409, { ok: false, error: "No hay un día de trabajo abierto. Ábrelo en Caja." });
+    const R = await cartaEfectiva(env, request.url);
+    const para = d.para === "telefono" ? "telefono" : "mesa";
+    const mesa = para === "mesa" ? Number(d.mesa) : 0;
+    if (para === "mesa" && !(Number.isInteger(mesa) && mesa >= 1 && mesa <= Number(R.mesas || 0)))
+      return responder(400, { ok: false, error: "Elige la mesa" });
+    const porId = new Map(R.platos.map((p) => [p.id, p]));
+    const lista = (Array.isArray(d.items) ? d.items.slice(0, 60) : [])
+      .map((it) => ({ p: porId.get(String(it.id)), cantidad: Math.floor(Number(it.cantidad)) }))
+      .filter((it) => it.p && !it.p.agotado && it.cantidad >= 1 && it.cantidad <= 99);
+    if (!lista.length) return responder(400, { ok: false, error: "No hay platos en el pedido" });
+    const items = lista.map((it) => ({ nombre: it.p.nombre, cantidad: it.cantidad, precio: Number(it.p.precio) }));
+    const total = Math.round(items.reduce((t, it) => t + it.cantidad * it.precio, 0) * 100) / 100;
+    const notas = String(d.notas ?? "").replace(/[<>]/g, "").slice(0, 300).trim();
+    const cliente = String(d.cliente ?? "").replace(/[<>]/g, "").slice(0, 60).trim();
+    const pago = METODOS.includes(d.pago) ? d.pago : null;
+    if (para === "telefono" && !pago) return responder(400, { ok: false, error: "Elige cómo va a pagar" });
+    const ahora = Date.now();
+    const { numero, totalDia } = await contar(DB, j.id, total);
+    let c;
+    if (para === "mesa") c = await cuentaAbierta(DB, mesa, j.id, true);
+    else {                                   // cada pedido por teléfono es su propia cuenta y va directo a caja
+      const marca = -ahora;                  // número interno (negativo) para no chocar con las mesas
+      await DB.prepare("INSERT INTO cuentas (mesa, jornada, abierta, actualizada, enviada, cliente, pago_pref) VALUES (?1, ?2, ?3, ?3, ?3, ?4, ?5)")
+        .bind(marca, j.id, ahora, cliente || null, pago).run();
+      c = await DB.prepare("SELECT * FROM cuentas WHERE mesa = ?1 AND cerrada IS NULL").bind(marca).first();
+    }
+    const rr = await DB.prepare("UPDATE cuentas SET total = total + ?2, pedidos = pedidos + 1, actualizada = ?3 WHERE id = ?1 RETURNING total, pedidos").bind(c.id, total, ahora).first();
+    if (pago && para === "mesa") await DB.prepare("UPDATE cuentas SET pago_pref = COALESCE(pago_pref, ?2) WHERE id = ?1").bind(c.id, pago).run();
+    await DB.prepare(
+      "INSERT INTO pedidos (dia, numero, tipo, mesa, items, notas, total, estado, creado, actualizado, jornada, cuenta, por, pago, para) " +
+      "VALUES (?1, ?2, 'pedido', ?3, ?4, ?5, ?6, 'preparando', ?7, ?7, ?8, ?9, ?10, ?11, ?12)"
+    ).bind(hoyEcuador(ahora), numero, mesa, JSON.stringify(items), notas, total, ahora, j.id, c.id, para === "telefono" ? (cliente || "Por teléfono") : "Mesero", pago, para === "telefono" ? "telefono" : null).run();
+    try {                                    // aviso a Telegram (si falla, igual queda en la pantalla)
+      let TOKEN = sinBasura(env.TELEGRAM_TOKEN); if (TOKEN.toLowerCase().startsWith("bot")) TOKEN = TOKEN.slice(3);
+      const CHAT = sinBasura(R.telegram_chat_id).replace(/\s/g, "");
+      const hora = new Date(ahora).toLocaleTimeString("es-EC", { timeZone: "America/Guayaquil", hour: "2-digit", minute: "2-digit" });
+      let t = `🔔 <b>PEDIDO #${numero}</b> (mesero)\n${para === "telefono" ? `📞 <b>POR TELÉFONO</b>${cliente ? " · " + limpiar(cliente, 60) : ""}` : `🍽️ <b>MESA ${mesa}</b>`}   🕐 ${hora}\n\n`;
+      for (const it of items) t += `• <b>${it.cantidad} x</b> ${limpiar(it.nombre, 60)}  —  $${(it.cantidad * it.precio).toFixed(2)}\n`;
+      t += `\n💰 <b>Total: $${total.toFixed(2)}</b>${pago ? `\n💳 Pagará con: <b>${pago}</b>` : ""}`;
+      if (notas) t += `\n\n📝 <b>Indicaciones:</b> ${limpiar(notas, 300)}`;
+      t += `\n\n📊 Hoy van <b>${numero}</b> pedidos · $${Number(totalDia).toFixed(2)} vendidos`;
+      await enviarTelegram(TOKEN, CHAT, t);
+    } catch (e) { console.log("Telegram mesero:", String(e)); }
+    return responder(200, { ok: true, numero, total, cuenta: { id: c.id, total: rr.total } });
+  }
+
+  // ---- Mandar la cuenta a caja para que cobren (o sacarla si fue por error) ----
+  if (d.accion === "enviar_caja" || d.accion === "devolver_caja") {
+    const r = await DB.prepare("UPDATE cuentas SET enviada = ?2 WHERE id = ?1 AND cerrada IS NULL").bind(Number(d.id), d.accion === "enviar_caja" ? Date.now() : null).run();
+    return responder(200, { ok: true, cambio: r.meta ? r.meta.changes : null });
   }
 
   // ---- Anular un pedido (por error, cliente se fue, broma) ----

@@ -1,25 +1,25 @@
 {
-  "id": "/cocina",
-  "name": "Manaviche · Cocina",
-  "short_name": "Cocina",
-  "start_url": "/cocina",
-  "scope": "/cocina",
+  "id": "/mesero",
+  "name": "Manaviche · Mesero",
+  "short_name": "Mesero",
+  "start_url": "/mesero",
+  "scope": "/mesero",
   "display": "standalone",
   "background_color": "#111418",
   "theme_color": "#111418",
   "icons": [
     {
-      "src": "/iconos/cocina-192.png",
+      "src": "/iconos/mesero-192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "/iconos/cocina-512.png",
+      "src": "/iconos/mesero-512.png",
       "sizes": "512x512",
       "type": "image/png"
     },
     {
-      "src": "/iconos/cocina-maskable-512.png",
+      "src": "/iconos/mesero-maskable-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"

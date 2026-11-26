@@ -378,9 +378,9 @@ const leerSes = k => { try { return sessionStorage.getItem(k); } catch(e){ retur
 let CLAVE = leer("cocina_clave") || leerSes("cocina_clave") || "";
 let datos = { pedidos: [] }, vistos = new Set(), primeraCarga = true;
 
-let NOMBRE = "", MESAS_N = 0;
+let NOMBRE = "", MESAS_N = 0, RINFO = {};
 fetch("/restaurante.json").then(r=>r.json()).then(R=>{
-  NOMBRE = R.nombre; MESAS_N = Number(R.mesas) || 0;
+  NOMBRE = R.nombre; RINFO = R; MESAS_N = Number(R.mesas) || 0;
   $("#tabCaja").hidden = R.caja !== true;      // la caja es opcional: "caja": true en restaurante.json
   document.title = PANT + " · " + R.nombre;
   $("#nombre").textContent = PANT + " " + R.nombre;
@@ -498,7 +498,9 @@ if (CLAVE) $("#clave").value = CLAVE;
 $("#btnAjustes").onclick = () => abrirReporte(`<h3>⚙️ Configuración</h3>
   ${MODO_CAJA ? `<div class="botones">
   <button class="bGrande bAzul" data-ajuste="stats">📊 Estadísticas</button>
-  <button class="bGrande bAzul" data-ajuste="carta">✏️ Editar carta</button></div>` : ""}
+  <button class="bGrande bAzul" data-ajuste="carta">✏️ Editar carta</button>
+  <button class="bGrande bAzul" id="bImpresora">🖨️ Impresora de comprobantes</button>
+  <button class="bGrande bAzul" id="bReimprimir">🧾 Volver a imprimir un comprobante</button></div>` : ""}
   <div class="hrs" style="margin-top:14px">${leer("cocina_clave") ? "La sesión está abierta en este celular: entra sin pedir la clave." : "La clave se pedirá la próxima vez que abras la cocina."}</div>
   <div class="botones"><button class="bGrande bRojo" id="cerrarSesion">🚪 Cerrar sesión</button>
   <button class="bGrande bGris" data-cerrar>Volver</button></div>`);
@@ -509,6 +511,142 @@ document.addEventListener("click", e => {
   if (e.target.id !== "cerrarSesion") return;
   try { localStorage.removeItem("cocina_clave"); sessionStorage.removeItem("cocina_clave"); } catch(e){}
   CLAVE = ""; location.replace(BASE + "?v=" + Date.now());      // vuelve a pedir la clave
+});
+
+/* ---------- 🖨️ Comprobantes (impresora pequeña por Bluetooth o la impresora del celular/computadora) ---------- */
+const IMP = { modo: leer("imp_modo") || "sistema", ancho: Number(leer("imp_ancho")) || 58 };
+let impBT = null;                 // { device, car } conectada en esta sesión
+const guardarImp = () => { try { localStorage.setItem("imp_modo", IMP.modo); localStorage.setItem("imp_ancho", String(IMP.ancho)); } catch(e){} };
+function armarComprobante(c, metodo, recibido){
+  if (!c) return null;
+  const ef = metodo === "Efectivo" ? Number(c.total) : metodo === "Mixto" ? Number((c.porPago.find(x => x.metodo === "Efectivo") || {}).total || 0) : 0;
+  const r = { id: c.id + "-" + Date.now(), cuenta: c.id, hora: Date.now(), donde: nombreCuenta(c), platos: c.platos.map(x => ({ n: x.nombre, q: x.cantidad, t: Number(x.total) })),
+    total: Number(c.total), metodo, partes: metodo === "Mixto" ? c.porPago.map(x => ({ m: x.metodo, t: Number(x.total) })) : null,
+    recibido: ef && recibido >= ef ? recibido : 0, vuelto: ef && recibido >= ef ? Math.round((recibido - ef) * 100) / 100 : 0 };
+  try { const L = leerComprobantes().filter(x => Date.now() - x.hora < 2 * 86400000); L.unshift(r); localStorage.setItem("comprobantes", JSON.stringify(L.slice(0, 40))); } catch(e){}
+  return r;
+}
+function leerComprobantes(){ try { return JSON.parse(localStorage.getItem("comprobantes") || "[]"); } catch(e){ return []; } }
+function ofrecerComprobante(r){
+  abrirReporte(`<h3>✅ ${esc(r.donde)} cobrada</h3>
+    <div class="fechaR" style="font-size:28px;margin-top:6px">$${r.total.toFixed(2)}</div>
+    ${r.vuelto ? `<div class="hrs" style="font-size:18px">Vuelto: <b>$${r.vuelto.toFixed(2)}</b></div>` : ""}
+    <div class="hrs" style="margin-top:10px">¿Quieren comprobante?</div>
+    <div class="botones">
+      <button class="bGrande bVerde" data-imprec="${r.id}">🖨️ Imprimir comprobante</button>
+      <button class="bGrande bGris" data-noimprimir>No imprimir</button></div>
+    <div class="hrs" style="font-size:13px;margin-top:8px">Impresora: ${IMP.modo === "bt" ? "📶 Bluetooth" + (impBT ? " · " + esc(impBT.device.name || "conectada") : "") : "🖨️ del celular / computadora"} · ${IMP.ancho} mm · cámbiala en ⚙️</div>`);
+}
+const sinTildes = t => String(t ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[¡¿]/g, "").replace(/[^\x20-\x7E]/g, "");
+function lineasComprobante(r){
+  const W = IMP.ancho >= 80 ? 48 : 32, din = v => "$" + Number(v).toFixed(2);
+  const fila = (a, b) => { a = sinTildes(a); b = sinTildes(b); const n = W - b.length - 1; return (a.length > n ? a.slice(0, n) : a.padEnd(n)) + " " + b; };
+  const f = new Date(r.hora);
+  const L = [];
+  L.push({ t: sinTildes(RINFO.nombre || NOMBRE).toUpperCase(), c: 1, g: 1 });
+  if (RINFO.direccion && !/tu direcci/i.test(RINFO.direccion)) L.push({ t: sinTildes(RINFO.direccion), c: 1 });
+  if (RINFO.telefono) L.push({ t: "Tel: " + sinTildes(RINFO.telefono), c: 1 });
+  L.push({ t: "-".repeat(W) });
+  L.push({ t: "COMPROBANTE DE CONSUMO", c: 1, b: 1 });
+  L.push({ t: fila(f.toLocaleDateString("es-EC"), f.toLocaleTimeString("es-EC", { hour: "2-digit", minute: "2-digit" })) });
+  L.push({ t: sinTildes(r.donde), b: 1 });
+  L.push({ t: "-".repeat(W) });
+  for (const p of r.platos) L.push({ t: fila(p.q + " x " + p.n, din(p.t)) });
+  L.push({ t: "-".repeat(W) });
+  L.push({ t: fila("TOTAL", din(r.total)), b: 1, g: IMP.ancho >= 80 ? 1 : 0 });
+  if (r.partes) r.partes.forEach(x => L.push({ t: fila("  " + x.m, din(x.t)) }));
+  else L.push({ t: fila("Forma de pago", r.metodo) });
+  if (r.recibido){ L.push({ t: fila("Recibido", din(r.recibido)) }); L.push({ t: fila("Vuelto", din(r.vuelto)) }); }
+  L.push({ t: "" });
+  L.push({ t: "Gracias por su visita!", c: 1 });
+  L.push({ t: "Documento sin valor tributario", c: 1 });
+  return L;
+}
+async function imprimirComprobante(r){
+  if (IMP.modo === "bt") return imprimirBT(r);
+  imprimirSistema(r); if (r.id !== "prueba") cerrarReporte();
+}
+// Impresora del celular o computadora (la que tenga instalada: USB, wifi, o app de la impresora)
+function imprimirSistema(r){
+  const L = lineasComprobante(r);
+  const html = `<!doctype html><html><head><meta charset="utf-8"><style>
+    @page{size:${IMP.ancho}mm auto;margin:2mm}
+    body{margin:0;font:${IMP.ancho >= 80 ? 10 : 10.4}px/1.35 "Courier New",monospace;color:#000;width:${IMP.ancho - 4}mm}
+    div{white-space:pre}.c{text-align:center}.b{font-weight:700}.g{font-size:16px;font-weight:700}</style></head><body>
+    ${L.map(x => `<div class="${x.c ? "c " : ""}${x.b ? "b " : ""}${x.g ? "g" : ""}">${esc(x.t) || "&nbsp;"}</div>`).join("")}</body></html>`;
+  const fr = document.createElement("iframe"); fr.style.cssText = "position:fixed;width:0;height:0;border:0;right:0;bottom:0";
+  document.body.appendChild(fr);
+  fr.contentDocument.open(); fr.contentDocument.write(html); fr.contentDocument.close();
+  setTimeout(() => { try { fr.contentWindow.focus(); fr.contentWindow.print(); } catch(e){ alert("No se pudo imprimir"); } setTimeout(() => fr.remove(), 60000); }, 300);
+}
+// Impresora térmica pequeña por Bluetooth (ESC/POS). Funciona en Chrome de Android y en computadoras.
+const BT_SERVICIOS = ["000018f0-0000-1000-8000-00805f9b34fb", "e7810a71-73ae-499d-8c15-faa9aef0c3f2", "49535343-fe7d-4ae5-8fa9-9fafd205e455",
+  "0000ff00-0000-1000-8000-00805f9b34fb", "0000ffe0-0000-1000-8000-00805f9b34fb", "0000fee7-0000-1000-8000-00805f9b34fb"];
+async function conectarBT(){
+  if (!navigator.bluetooth){ alert("Este navegador no puede conectarse por Bluetooth. Usa Google Chrome en Android o en una computadora, o elige \"Impresora del celular / computadora\"."); return null; }
+  const device = await navigator.bluetooth.requestDevice({ acceptAllDevices: true, optionalServices: BT_SERVICIOS });
+  const server = await device.gatt.connect();
+  let car = null;
+  for (const sv of await server.getPrimaryServices()){
+    for (const ch of await sv.getCharacteristics()){ if (ch.properties.writeWithoutResponse || ch.properties.write){ car = ch; break; } }
+    if (car) break;
+  }
+  if (!car){ alert("Esa impresora no permite imprimir por Bluetooth desde el navegador."); return null; }
+  device.addEventListener("gattserverdisconnected", () => { impBT = null; });
+  impBT = { device, car };
+  return impBT;
+}
+async function imprimirBT(r){
+  try {
+    if (!impBT || !impBT.device.gatt.connected){ if (!(await conectarBT())) return; }
+    const E = [];
+    const add = (...b) => E.push(...b), txt = t => { for (const ch of t) E.push(ch.charCodeAt(0) & 0x7f); };
+    add(0x1b, 0x40);                                                // iniciar
+    for (const x of lineasComprobante(r)){
+      add(0x1b, 0x61, x.c ? 1 : 0); add(0x1b, 0x45, x.b || x.g ? 1 : 0); add(0x1d, 0x21, x.g ? 0x11 : 0x00);
+      txt(x.g && x.t.length > (IMP.ancho >= 80 ? 24 : 16) ? x.t.slice(0, IMP.ancho >= 80 ? 24 : 16) : x.t); add(0x0a);
+    }
+    add(0x1b, 0x64, 4, 0x1d, 0x56, 0x42, 0x00);                     // avanzar y cortar (si la impresora corta)
+    const datos8 = new Uint8Array(E), car = impBT.car;
+    for (let i = 0; i < datos8.length; i += 100){
+      const parte = datos8.slice(i, i + 100);
+      if (car.properties.writeWithoutResponse && car.writeValueWithoutResponse) await car.writeValueWithoutResponse(parte); else await car.writeValue(parte);
+      await new Promise(ok => setTimeout(ok, 25));
+    }
+    mostrarListo("🖨️ Comprobante impreso"); cerrarReporte();
+  } catch(e){
+    if (String(e).includes("cancel")) return;
+    alert("No se pudo imprimir por Bluetooth. Revisa que la impresora esté prendida y cerca.\n\n" + e.message);
+  }
+}
+function pintarImpresora(){
+  abrirReporte(`<h3>🖨️ Impresora de comprobantes</h3>
+    <div class="hrs">¿Qué impresora usa esta caja?</div>
+    <div class="botones">
+      <button class="bGrande ${IMP.modo === "bt" ? "bVerde" : "bGris"}" data-impmodo="bt">📶 Impresora pequeña por Bluetooth</button>
+      <button class="bGrande ${IMP.modo === "sistema" ? "bVerde" : "bGris"}" data-impmodo="sistema">🖨️ Impresora del celular / computadora</button></div>
+    <div class="hrs" style="margin-top:12px">Ancho del papel</div>
+    <div class="metodos">${[58, 80].map(a => `<button data-impancho="${a}" style="${IMP.ancho === a ? "background:#2ecc71;color:#08210f" : ""}">${a} mm</button>`).join("")}</div>
+    ${IMP.modo === "bt" ? `<div class="alerta" style="background:#eef6f6;color:#0d3b4f">Prende la impresora y toca <b>Conectar</b>. Funciona en <b>Google Chrome</b> (Android o computadora). En iPhone usa la otra opción.${impBT ? `<br>✅ Conectada: <b>${esc(impBT.device.name || "impresora")}</b>` : ""}</div>
+      <div class="botones"><button class="bGrande bAzul" id="bConectarBT">📶 Conectar impresora</button></div>`
+      : `<div class="alerta" style="background:#eef6f6;color:#0d3b4f">Se abre la ventana de imprimir del celular o la computadora y eliges la impresora (USB, wifi o la app de la impresora).</div>`}
+    <div class="botones"><button class="bGrande bAzul" id="bPruebaImp">🧾 Imprimir prueba</button>
+      <button class="bGrande bGris" data-cerrar>Listo</button></div>`);
+}
+function pintarReimprimir(){
+  const L = leerComprobantes();
+  abrirReporte(`<h3>🧾 Volver a imprimir</h3>
+    ${L.length ? `<div class="botones">${L.slice(0, 20).map(r => `<button class="bGrande bGris" data-imprec="${r.id}" style="text-align:left;font-size:15px">${esc(r.donde)} · $${r.total.toFixed(2)}<br><small style="opacity:.75;font-weight:600">${new Date(r.hora).toLocaleString("es-EC", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })} · ${esc(r.metodo)}</small></button>`).join("")}</div>`
+      : `<div class="hrs">Todavía no hay cobros en esta caja.</div>`}
+    <div class="botones"><button class="bGrande bGris" data-cerrar>Volver</button></div>`);
+}
+document.addEventListener("click", async e => {
+  if (e.target.id === "bImpresora") return pintarImpresora();
+  if (e.target.id === "bReimprimir") return pintarReimprimir();
+  const m = e.target.closest("[data-impmodo]"); if (m){ IMP.modo = m.dataset.impmodo; guardarImp(); return pintarImpresora(); }
+  const a = e.target.closest("[data-impancho]"); if (a){ IMP.ancho = Number(a.dataset.impancho); guardarImp(); return pintarImpresora(); }
+  if (e.target.id === "bConectarBT"){ try { await conectarBT(); } catch(err){ if (!String(err).includes("cancel")) alert("No se pudo conectar: " + err.message); } return pintarImpresora(); }
+  if (e.target.id === "bPruebaImp") imprimirComprobante({ id: "prueba", hora: Date.now(), donde: "Mesa de prueba", platos: [{ n: "Ceviche Jipijapa", q: 2, t: 16 }, { n: "Agua", q: 1, t: 0.75 }], total: 16.75, metodo: "Efectivo", recibido: 20, vuelto: 3.25 });
 });
 
 /* ---------- Notificación de mesero / cuenta ---------- */
@@ -1230,7 +1368,14 @@ $("#dia").addEventListener("click", async e=>{
 $("#reporte").addEventListener("click", async e=>{
   if (e.target.id === "reporte" || e.target.closest("[data-cerrar]")){ cerrarReporte(); return; }
   const m = e.target.closest("[data-metodo]"); if (m){ confirmarTerminar(Number(m.dataset.id), m.dataset.mesa, m.dataset.metodo); return; }
-  const t = e.target.closest("[data-terminar]"); if (t){ cobrar(Number(t.dataset.terminar), t.dataset.metodo2, t.dataset.mesa); return; }
+  const t = e.target.closest("[data-terminar]"); if (t){
+    const recibido = Number(String((document.querySelector("#recibido") || {}).value || "").replace(",", ".")) || 0;
+    const rec = armarComprobante(cuentaPorId(t.dataset.terminar), t.dataset.metodo2, recibido);
+    await cobrar(Number(t.dataset.terminar), t.dataset.metodo2, t.dataset.mesa);
+    if (rec) ofrecerComprobante(rec);
+    return; }
+  const ip = e.target.closest("[data-imprec]"); if (ip){ const L = leerComprobantes(); const r = L.find(x => String(x.id) === ip.dataset.imprec); if (r) imprimirComprobante(r); return; }
+  if (e.target.closest("[data-noimprimir]")){ cerrarReporte(); return; }
   if (e.target.closest("[data-imprimir]")){ if (reporteActual) descargarPDF(reporteActual); return; }
   if (e.target.closest("[data-wa]") && reporteActual){ window.open("https://wa.me/?text=" + encodeURIComponent(textoReporte(reporteActual)), "_blank"); return; }
   if (e.target.id === "bConfirmar"){

@@ -20,11 +20,11 @@ button{font:inherit;cursor:pointer;border:none}
 /* Entrada */
 #entrar{min-height:100vh;display:grid;place-items:center;padding:24px}
 #entrar .caja{width:100%;max-width:360px;text-align:center}
-#entrar h1{font-size:30px;font-weight:900;text-transform:uppercase;letter-spacing:.5px}
+#entrar h1{font-size:25px;font-weight:900;text-transform:uppercase;letter-spacing:.5px}
 #entrar p{opacity:.7;margin:8px 0 22px}
-#clave{width:100%;font-size:22px;text-align:center;padding:14px;border-radius:14px;border:2px solid #333a44;background:#1b2027;color:#fff;outline:none}
+#clave{width:100%;font-size:18px;text-align:center;padding:14px;border-radius:14px;border:2px solid #333a44;background:#1b2027;color:#fff;outline:none}
 #clave:focus{border-color:#ffd166}
-#btnEntrar{width:100%;margin-top:14px;padding:16px;border-radius:14px;background:#ffd166;color:#111;font-size:18px;font-weight:900}
+#btnEntrar{width:100%;margin-top:14px;padding:16px;border-radius:14px;background:#ffd166;color:#111;font-size:15px;font-weight:900}
 .logoCocina{width:150px;height:150px;border-radius:50%;display:block;margin:0 auto 10px;box-shadow:0 10px 28px rgba(0,0,0,.45)}
 #entrar h1.rojo{color:#e03131;letter-spacing:3px}
 header .logoMini{width:38px;height:38px;border-radius:50%;flex:none}
@@ -35,37 +35,37 @@ header .logoMini{width:38px;height:38px;border-radius:50%;flex:none}
 /* Arriba fijo: nombre y pestañas siempre a la vista al bajar */
 .fijo{position:sticky;top:0;z-index:20;background:#111418;padding-bottom:10px;box-shadow:0 6px 12px -8px rgba(0,0,0,.7)}
 .fijo.chico header{padding-top:calc(6px + env(safe-area-inset-top));padding-bottom:6px}
-.fijo.chico header h1{font-size:16px}
+.fijo.chico header h1{font-size:13px}
 .fijo.chico header .logoMini{width:30px;height:30px}
 .fijo.chico .dato,.fijo.chico #estado{display:none}
 .fijo.chico .pestanas{padding-top:8px}
-.fijo.chico .pestanas button{padding:9px 12px;font-size:15px}
+.fijo.chico .pestanas button{padding:9px 12px;font-size:12px}
 header{position:relative;background:#111418;border-bottom:1px solid #232a33;padding:calc(10px + env(safe-area-inset-top)) 16px 10px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-header h1{font-size:20px;font-weight:900;text-transform:uppercase;flex:1;min-width:140px}
-.dato{background:#1b2027;border-radius:12px;padding:6px 12px;font-size:14px;opacity:.95}
-.dato b{font-size:18px;color:#ffd166}
+header h1{font-size:16px;font-weight:900;text-transform:uppercase;flex:1;min-width:140px}
+.dato{background:#1b2027;border-radius:12px;padding:6px 12px;font-size:13px;opacity:.95}
+.dato b{font-size:15px;color:#ffd166}
 .pestanas [hidden]{display:none!important}
 .grupoPago{margin-top:6px;padding-top:6px;border-top:1px dashed rgba(255,255,255,.2)}
 .grupoPago:first-of-type{border-top:0;padding-top:0}
-.lpago{display:flex;justify-content:space-between;gap:8px;font-size:14px;opacity:.85;padding-left:22px}
+.lpago{display:flex;justify-content:space-between;gap:8px;font-size:13px;opacity:.85;padding-left:22px}
 #barraAjuste{align-items:center;gap:12px;max-width:760px;margin:14px auto 0;padding:0 16px}
 #barraAjuste button{padding:10px 14px;border-radius:12px;background:#2a313b;color:#e6e9ee;font-weight:900}
-#barraAjuste b{flex:1;font-size:18px}
+#barraAjuste b{flex:1;font-size:15px}
 #barraAjuste span{font-size:13px;opacity:.6}
-.mantener{display:flex;align-items:center;gap:10px;margin-top:14px;font-size:15px;font-weight:700;text-align:left;cursor:pointer}
+.mantener{display:flex;align-items:center;gap:10px;margin-top:14px;font-size:12px;font-weight:700;text-align:left;cursor:pointer}
 .mantener input{width:22px;height:22px;accent-color:#ffd166;flex:none}
-#btnAjustes{width:40px;height:40px;border-radius:50%;background:#1b2027;font-size:20px;flex:none}
+#btnAjustes{width:40px;height:40px;border-radius:50%;background:#1b2027;font-size:16px;flex:none}
 #estado{font-size:13px;font-weight:700;padding:6px 10px;border-radius:99px;background:#16351f;color:#6ee7a0}
 #estado.mal{background:#4a1515;color:#ff8a8a}
-#avisoSonido{display:none;margin:12px 16px 0;padding:14px;border-radius:14px;background:#e63946;color:#fff;font-weight:900;text-align:center;font-size:17px}
+#avisoSonido{display:none;margin:12px 16px 0;padding:14px;border-radius:14px;background:#e63946;color:#fff;font-weight:900;text-align:center;font-size:14px}
 #avisoSonido.ver{display:block;animation:latir 1s infinite}
 @keyframes latir{50%{opacity:.6}}
 
 main{padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;align-items:start}
-.vacio{grid-column:1/-1;text-align:center;opacity:.55;padding:60px 0;font-size:18px}
-.vacio b{display:block;font-size:46px;margin-bottom:8px}
+.vacio{grid-column:1/-1;text-align:center;opacity:.55;padding:60px 0;font-size:15px}
+.vacio b{display:block;font-size:38px;margin-bottom:8px}
 
-.tarjeta{background:#1b2027;border-radius:18px;padding:16px;border:3px solid transparent}
+.tarjeta{background:#1b2027;border-radius:16px;padding:12px;border:3px solid transparent}
 .tarjeta.nuevo{border-color:#e63946;background:#2a1517;animation:brillo 1.2s infinite}
 @keyframes brillo{50%{border-color:#ff9aa2}}
 .tarjeta.preparando{border-color:#f2b84b}
@@ -73,92 +73,92 @@ main{padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280
 .tarjeta.aviso{background:#16263a;border-color:#4ea1ff}
 .tarjeta.aviso.nuevo{background:#132a45}
 .cab{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
-.num{font-size:28px;font-weight:900}
-.mesa{font-size:22px;font-weight:900;background:#ffd166;color:#111;padding:2px 10px;border-radius:10px}
-.meta{font-size:14px;opacity:.75;margin-top:4px}
-.items{list-style:none;margin:12px 0 0;font-size:18px;line-height:1.5}
+.num{font-size:23px;font-weight:900}
+.mesa{font-size:18px;font-weight:900;background:#ffd166;color:#111;padding:2px 10px;border-radius:10px}
+.meta{font-size:13px;opacity:.75;margin-top:4px}
+.items{list-style:none;margin:12px 0 0;font-size:15px;line-height:1.5}
 .items b{color:#ffd166}
-.nota{margin-top:10px;background:#3a2f12;color:#ffe29a;border-radius:10px;padding:8px 10px;font-size:16px;font-weight:700}
-.total{margin-top:10px;font-size:15px;opacity:.8}
+.nota{margin-top:10px;background:#3a2f12;color:#ffe29a;border-radius:10px;padding:8px 10px;font-size:13px;font-weight:700}
+.total{margin-top:10px;font-size:12px;opacity:.8}
 .acciones{display:flex;gap:10px;margin-top:14px}
-.pideC{margin-top:8px;background:#e63946;color:#fff;border-radius:10px;padding:8px 10px;font-weight:900;font-size:16px;animation:latir 1s infinite}
+.pideC{margin-top:8px;background:#e63946;color:#fff;border-radius:10px;padding:8px 10px;font-weight:900;font-size:13px;animation:latir 1s infinite}
 .tomarB{max-width:900px;margin:14px auto 0;padding:0 14px}
 .tSeg{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
-.tSeg button{padding:14px 8px;border-radius:12px;background:#222831;color:#cfd6df;font-weight:900;font-size:16px;border:2px solid transparent}
+.tSeg button{padding:14px 8px;border-radius:12px;background:#222831;color:#cfd6df;font-weight:900;font-size:13px;border:2px solid transparent}
 .tSeg button.on{background:#ffd166;color:#2a1f00}
-.tTit{font-weight:900;font-size:16px;margin:2px 2px 8px}
+.tTit{font-weight:900;font-size:13px;margin:2px 2px 8px}
 .tMesas{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.tMesas button{padding:14px 4px;border-radius:12px;background:#2a313b;color:#fff;font-weight:900;font-size:16px}
+.tMesas button{padding:14px 4px;border-radius:12px;background:#2a313b;color:#fff;font-weight:900;font-size:13px}
 .tMesas button.ocupada{background:#16351f;color:#6ee7a0}
 .tMesas small{display:block;font-size:12px;font-weight:700;opacity:.85}
-.tElegida{display:flex;justify-content:space-between;align-items:center;gap:8px;background:#16351f;color:#6ee7a0;border-radius:12px;padding:10px 12px;font-size:18px}
+.tElegida{display:flex;justify-content:space-between;align-items:center;gap:8px;background:#16351f;color:#6ee7a0;border-radius:12px;padding:10px 12px;font-size:15px}
 .tElegida small{display:block;font-size:13px;color:#cfe;opacity:.85;font-weight:600}
 .tElegida button{padding:8px 12px;border-radius:10px;background:#2a313b;color:#fff;font-weight:800}
-.tInput{font:inherit;font-size:16px;width:100%;padding:12px;border-radius:12px;border:2px solid #2a313b;background:#161b21;color:#fff}
+.tInput{font:inherit;font-size:13px;width:100%;padding:12px;border-radius:12px;border:2px solid #2a313b;background:#161b21;color:#fff}
 .tPago{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
-.tPago button{padding:12px 4px;border-radius:12px;background:#2a313b;color:#fff;font-weight:800;font-size:14px}
+.tPago button{padding:12px 4px;border-radius:12px;background:#2a313b;color:#fff;font-weight:800;font-size:13px}
 .tPago button.on{background:#2ecc71;color:#08210f}
-.tCat{margin:16px 2px 6px;font-weight:900;font-size:14px;text-transform:uppercase;letter-spacing:.04em;opacity:.7}
+.tCat{margin:16px 2px 6px;font-weight:900;font-size:13px;text-transform:uppercase;letter-spacing:.04em;opacity:.7}
 .tPlatos{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:10px 6px;padding:8px 0 0 6px}
 .tTile{position:relative;display:grid}
-.tPlatos .tQuitar{position:absolute;top:-8px;left:-6px;width:34px;height:34px;min-height:0;padding:0;border-radius:99px;background:#e63946;color:#fff;font-size:24px;font-weight:900;line-height:1;display:grid;place-items:center;border:2px solid #111418;z-index:2}
-.tPlatos button{position:relative;min-height:64px;padding:8px 6px;border-radius:12px;background:#222831;color:#fff;font-weight:800;font-size:14px;line-height:1.15;display:flex;flex-direction:column;justify-content:center;gap:3px;border:2px solid transparent}
+.tPlatos .tQuitar{position:absolute;top:-8px;left:-6px;width:34px;height:34px;min-height:0;padding:0;border-radius:99px;background:#e63946;color:#fff;font-size:20px;font-weight:900;line-height:1;display:grid;place-items:center;border:2px solid #111418;z-index:2}
+.tPlatos button{position:relative;min-height:64px;padding:8px 6px;border-radius:12px;background:#222831;color:#fff;font-weight:800;font-size:13px;line-height:1.15;display:flex;flex-direction:column;justify-content:center;gap:3px;border:2px solid transparent}
 .tPlatos button small{font-size:12px;color:#ffd166;font-weight:700}
 .tPlatos button.con{border-color:#ffd166;background:#2c2a1d}
 .tPlatos button:disabled{opacity:.35}
-.tPlatos button i{position:absolute;top:-6px;right:-4px;background:#ffd166;color:#2a1f00;border-radius:99px;min-width:24px;height:24px;font-style:normal;font-weight:900;display:grid;place-items:center;font-size:14px}
+.tPlatos button i{position:absolute;top:-6px;right:-4px;background:#ffd166;color:#2a1f00;border-radius:99px;min-width:24px;height:24px;font-style:normal;font-weight:900;display:grid;place-items:center;font-size:13px}
 .tTicket{margin-top:16px;background:#1b2027;border-radius:14px;padding:12px}
-.tLinea{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid #2a313b;font-size:16px}
-.tMas{display:flex;gap:4px}.tMas button{width:36px;height:36px;border-radius:10px;background:#2a313b;color:#fff;font-weight:900;font-size:20px}
+.tLinea{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid #2a313b;font-size:13px}
+.tMas{display:flex;gap:4px}.tMas button{width:36px;height:36px;border-radius:10px;background:#2a313b;color:#fff;font-weight:900;font-size:16px}
 .tLimpiar{margin-top:8px;background:none;color:#ff8a8a;font-weight:700;text-decoration:underline}
 .tBarra{position:fixed;left:0;right:0;bottom:0;display:none;gap:10px;align-items:center;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:#0d1013;border-top:1px solid #2a313b;z-index:30}
 .tBarra.ver{display:flex}
-.tBarra div{display:grid;font-size:14px}.tBarra div span{font-size:20px;font-weight:900;color:#ffd166}
-.tBarra button{flex:1;padding:16px 10px;border-radius:14px;background:#2ecc71;color:#08210f;font-weight:900;font-size:17px}
+.tBarra div{display:grid;font-size:13px}.tBarra div span{font-size:16px;font-weight:900;color:#ffd166}
+.tBarra button{flex:1;padding:16px 10px;border-radius:14px;background:#2ecc71;color:#08210f;font-weight:900;font-size:14px}
 .tBarra button:disabled{background:#2a313b;color:#8a949f}
 .detR{border:1px solid #e2d8c6;border-radius:10px;padding:8px 10px;margin:6px 0}
 .detC{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:baseline}
 .detC span{font-size:13px;opacity:.75}
-.detP{display:flex;justify-content:space-between;font-size:14px;padding-left:12px;opacity:.9}
+.detP{display:flex;justify-content:space-between;font-size:13px;padding-left:12px;opacity:.9}
 .papelFondo{background:#e9e3d8;border-radius:12px;padding:14px 8px;margin-top:10px;overflow-x:auto;display:flex;justify-content:center}
 .papel{background:#fff;color:#000;font:11px/1.4 "Courier New",monospace;padding:12px 10px;box-shadow:0 2px 8px rgba(0,0,0,.18);border-radius:2px;flex:none}
 .papel div{white-space:pre;overflow:hidden}.papel .c{text-align:center}.papel .b{font-weight:700}.papel .g{font-size:15px;font-weight:700}
-.miniB{padding:8px 12px;border-radius:10px;background:#4ea1ff;color:#08203a;font-weight:900;font-size:14px;flex:none}
+.miniB{padding:8px 12px;border-radius:10px;background:#4ea1ff;color:#08203a;font-weight:900;font-size:13px;flex:none}
 .impOp{border:3px solid #d8cfbf;border-radius:14px;padding:12px;margin-top:10px;background:#fff;cursor:pointer;opacity:.75}
 .impOp.on{border-color:#2ecc71;background:#eafaf0;opacity:1;cursor:default}
 .impCab{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center}
-.impCab b{display:block;font-size:16px;color:#1d1a16}.impCab small{display:block;font-size:13px;opacity:.7}
-.impRadio{width:30px;height:30px;border-radius:50%;border:3px solid #b9ad99;display:grid;place-items:center;font-weight:900;color:#fff;font-size:18px}
+.impCab b{display:block;font-size:13px;color:#1d1a16}.impCab small{display:block;font-size:13px;opacity:.7}
+.impRadio{width:30px;height:30px;border-radius:50%;border:3px solid #b9ad99;display:grid;place-items:center;font-weight:900;color:#fff;font-size:15px}
 .impOp.on .impRadio{background:#2ecc71;border-color:#2ecc71}
 .impEst{font-size:12px;font-weight:900;color:#8a7f6d}.impOp.on .impEst{color:#1a8f4c}
 .impCuerpo{margin-top:10px;padding-top:10px;border-top:1px dashed #b7e4c7}
-.impPaso{font-size:15px;line-height:1.5}
-.impEstado{margin-top:8px;padding:8px 10px;border-radius:10px;background:#f2ede4;font-size:15px}.impEstado.ok{background:#c8f0d6}
+.impPaso{font-size:12px;line-height:1.5}
+.impEstado{margin-top:8px;padding:8px 10px;border-radius:10px;background:#f2ede4;font-size:12px}.impEstado.ok{background:#c8f0d6}
 .impNota{font-size:13px;opacity:.7;margin-top:6px}
 .impAncho{margin-top:14px}
 .impSeg{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.impSeg button{padding:12px;border-radius:12px;border:3px solid #d8cfbf;background:#fff;font-weight:900;font-size:16px;color:#5a5144}
+.impSeg button{padding:12px;border-radius:12px;border:3px solid #d8cfbf;background:#fff;font-weight:900;font-size:13px;color:#5a5144}
 .impSeg button.on{border-color:#2ecc71;background:#2ecc71;color:#08210f}
-.agregado{margin-top:8px;background:#ffd166;color:#3a2a00;border-radius:10px;padding:8px 10px;font-weight:800;font-size:15px}
+.agregado{margin-top:8px;background:#ffd166;color:#3a2a00;border-radius:10px;padding:8px 10px;font-weight:800;font-size:12px}
 .cuentaM.recien{outline:3px solid #ffd166;animation:latir 1s 4}
-.okM{margin-top:8px;font-size:17px;font-weight:900;color:#6ee7a0}.faltaM{margin-top:8px;font-size:17px;font-weight:900;color:#ffd166}
+.okM{margin-top:8px;font-size:14px;font-weight:900;color:#6ee7a0}.faltaM{margin-top:8px;font-size:14px;font-weight:900;color:#ffd166}
 .botonesM{display:grid;gap:8px;margin-top:12px}
-.bAgregar{padding:14px;border-radius:12px;background:#2a313b;color:#fff;font-weight:900;font-size:16px}
-.bEnviar{padding:16px;border-radius:12px;background:#4ea1ff;color:#08203a;font-weight:900;font-size:17px}
-.enCaja{padding:12px;border-radius:12px;background:#16351f;color:#6ee7a0;font-weight:900;text-align:center;font-size:16px}
+.bAgregar{padding:14px;border-radius:12px;background:#2a313b;color:#fff;font-weight:900;font-size:13px}
+.bEnviar{padding:16px;border-radius:12px;background:#4ea1ff;color:#08203a;font-weight:900;font-size:14px}
+.enCaja{padding:12px;border-radius:12px;background:#16351f;color:#6ee7a0;font-weight:900;text-align:center;font-size:13px}
 .enCaja small{display:block;font-weight:600;font-size:13px;opacity:.85;margin-top:2px}
 .cuentaM.enviadaM{border-color:#2ecc71}
-.vueltoB{margin-top:12px;background:#f4efe6;border-radius:12px;padding:12px;font-size:16px;display:grid;gap:8px}
+.vueltoB{margin-top:12px;background:#f4efe6;border-radius:12px;padding:12px;font-size:13px;display:grid;gap:8px}
 .vueltoB label{display:grid;gap:4px;font-weight:800}
-.vueltoB input{font:inherit;font-size:22px;padding:10px;border-radius:10px;border:2px solid #d8cfbf;width:100%}
-.vueltoB .rapidos{display:flex;gap:6px;flex-wrap:wrap}.vueltoB .rapidos button{padding:8px 12px;border-radius:99px;background:#e2d8c6;font-weight:800;font-size:15px}
-.vuelto{font-size:22px;font-weight:900}
-.b-anular{display:block;margin:12px auto 0;background:none;color:#ff8a8a;font-size:14px;font-weight:700;text-decoration:underline;padding:4px}
+.vueltoB input{font:inherit;font-size:18px;padding:10px;border-radius:10px;border:2px solid #d8cfbf;width:100%}
+.vueltoB .rapidos{display:flex;gap:6px;flex-wrap:wrap}.vueltoB .rapidos button{padding:8px 12px;border-radius:99px;background:#e2d8c6;font-weight:800;font-size:12px}
+.vuelto{font-size:18px;font-weight:900}
+.b-anular{display:block;margin:12px auto 0;background:none;color:#ff8a8a;font-size:13px;font-weight:700;text-decoration:underline;padding:4px}
 .fila .volver.anularL{color:#ff8a8a}
 .motivosA{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
-.motivosA button{padding:8px 10px;border-radius:99px;background:#efe6d6;color:#3a332a;font-size:14px;font-weight:700}
+.motivosA button{padding:8px 10px;border-radius:99px;background:#efe6d6;color:#3a332a;font-size:13px;font-weight:700}
 .motivosA button.on{background:#c0392b;color:#fff}
-.acciones button{flex:1;padding:16px;border-radius:14px;font-size:18px;font-weight:900}
+.acciones button{flex:1;padding:12px;border-radius:14px;font-size:15px;font-weight:900}
 .b-recibido{background:#e63946;color:#fff}
 .b-listo{background:#2a313b;color:#9aa3ad}
 .b-listo.completo{background:#2ecc71;color:#08210f;animation:latir 1.2s infinite}
@@ -167,89 +167,89 @@ main{padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280
 .items li .nmI{flex:1}
 .items li.hecho .nmI{opacity:.45;text-decoration:line-through}
 .vistos{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
-.visto{width:42px;height:42px;border-radius:10px;border:3px solid #4a5563;background:#111418;color:transparent;font-size:24px;font-weight:900;display:grid;place-items:center}
+.visto{width:36px;height:36px;border-radius:10px;border:3px solid #4a5563;background:#111418;color:transparent;font-size:20px;font-weight:900;display:grid;place-items:center}
 .visto.si{background:#2ecc71;border-color:#2ecc71;color:#08210f}
-.faltan{font-size:14px;opacity:.75;margin-top:8px;text-align:center}
+.faltan{font-size:13px;opacity:.75;margin-top:8px;text-align:center}
 .b-ok{background:#4ea1ff;color:#06203d}
-.titulo-aviso{font-size:24px;font-weight:900;margin-top:6px}
+.titulo-aviso{font-size:20px;font-weight:900;margin-top:6px}
 /* Pestañas */
 .pestanas{display:flex;gap:8px;padding:12px 16px 0;overflow-x:auto;scrollbar-width:none}
-.pestanas button{flex:1 0 auto;white-space:nowrap;padding:12px;border-radius:12px;background:#1b2027;color:#cfd6df;font-size:16px;font-weight:800}
+.pestanas button{flex:1 0 auto;white-space:nowrap;padding:10px 12px;border-radius:12px;background:#1b2027;color:#cfd6df;font-size:13px;font-weight:800}
 .pestanas button.on{background:#ffd166;color:#111}
-.pestanas .cuenta{display:inline-block;min-width:24px;padding:0 6px;margin-left:6px;border-radius:99px;background:rgba(0,0,0,.25);font-size:14px}
+.pestanas .cuenta{display:inline-block;min-width:24px;padding:0 6px;margin-left:6px;border-radius:99px;background:rgba(0,0,0,.25);font-size:13px}
 .pestanas button.alerta:not(.on){background:#e63946;color:#fff;animation:latir 1s infinite}
 /* Aviso flotante de mesero / cuenta */
 #avisos{position:fixed;left:0;right:0;top:calc(10px + env(safe-area-inset-top));z-index:40;display:flex;flex-direction:column;align-items:center;gap:10px;pointer-events:none;padding:0 12px}
 .toast{pointer-events:auto;width:100%;max-width:460px;border-radius:18px;padding:16px 18px;display:flex;align-items:center;gap:14px;box-shadow:0 14px 34px rgba(0,0,0,.45);animation:entraToast .35s cubic-bezier(.2,1.4,.4,1);cursor:pointer}
 .toast.mesero{background:#4ea1ff;color:#06203d}
 .toast.cuenta{background:#ffd166;color:#2b1d00}
-.toast .ic{font-size:40px;line-height:1}
-.toast b{display:block;font-size:24px;font-weight:900}
-.toast span{font-size:16px;font-weight:700}
+.toast .ic{font-size:33px;line-height:1}
+.toast b{display:block;font-size:20px;font-weight:900}
+.toast span{font-size:13px;font-weight:700}
 .toast.sale{animation:saleToast .4s ease forwards}
 @keyframes entraToast{from{transform:translateY(-120%);opacity:0}}
 @keyframes saleToast{to{transform:translateY(-120%);opacity:0}}
 /* Día de trabajo */
 #dia{display:none;padding:16px;max-width:760px;margin:0 auto}
 .hoja{background:#1b2027;border-radius:18px;padding:18px;margin-bottom:14px}
-.hoja h2{font-size:15px;text-transform:uppercase;letter-spacing:1px;opacity:.7}
-.fechaGrande{font-size:26px;font-weight:900;margin-top:6px}
-.sub2{opacity:.7;font-size:14px;margin-top:4px}
+.hoja h2{font-size:12px;text-transform:uppercase;letter-spacing:1px;opacity:.7}
+.fechaGrande{font-size:21px;font-weight:900;margin-top:6px}
+.sub2{opacity:.7;font-size:13px;margin-top:4px}
 .cifras{display:flex;gap:10px;margin-top:14px}
 .cifras div{flex:1;background:#111418;border-radius:14px;padding:12px;text-align:center}
-.cifras b{display:block;font-size:28px;color:#ffd166}
+.cifras b{display:block;font-size:23px;color:#ffd166}
 .cifras span{font-size:13px;opacity:.75}
-.bGrande{display:block;width:100%;margin-top:12px;padding:17px;border-radius:14px;font-size:18px;font-weight:900}
+.bGrande{display:block;width:100%;margin-top:10px;padding:13px;border-radius:14px;font-size:15px;font-weight:900}
 .bAzul{background:#4ea1ff;color:#06203d}
 .bRojo{background:#e63946;color:#fff}
 .bVerde{background:#2ecc71;color:#08210f}
 .bGris{background:#2a313b;color:#e6e9ee}
-.campoFecha{width:100%;margin-top:12px;font-size:20px;padding:12px;border-radius:12px;border:2px solid #333a44;background:#111418;color:#fff}
+.campoFecha{width:100%;margin-top:12px;font-size:16px;padding:12px;border-radius:12px;border:2px solid #333a44;background:#111418;color:#fff}
 .dias .d{display:flex;align-items:center;gap:10px;padding:12px 4px;border-bottom:1px solid #2a313b;cursor:pointer}
 .dias .d:last-child{border:none}
 .dias .d .f{flex:1;font-weight:700}
 .dias .d .f small{display:block;font-weight:400;opacity:.6;text-transform:none}
 .dias .d .t{font-weight:900;color:#6ee7a0}
-.dias .d .x{background:none;color:#ff8a8a;font-size:20px;padding:4px 8px}
+.dias .d .x{background:none;color:#ff8a8a;font-size:16px;padding:4px 8px}
 .borrarFila{display:flex;gap:10px;margin-top:12px}
 .filtroF{margin-top:10px}
 .rapidos{display:flex;gap:6px;flex-wrap:wrap}
-.rapidos button{flex:1 0 auto;padding:9px 10px;border-radius:10px;background:#111418;color:#cfd6df;font-weight:800;font-size:14px}
+.rapidos button{flex:1 0 auto;padding:9px 10px;border-radius:10px;background:#111418;color:#cfd6df;font-weight:800;font-size:13px}
 .rapidos button.on{background:#4ea1ff;color:#06203d}
 .rangoF{display:flex;gap:10px;margin-top:10px}
 .rangoF label{flex:1;font-size:13px;opacity:.85;font-weight:700}
-.rangoF input{display:block;width:100%;margin-top:4px;font-size:17px;padding:10px;border-radius:10px;border:2px solid #333a44;background:#111418;color:#fff;color-scheme:dark}
+.rangoF input{display:block;width:100%;margin-top:4px;font-size:14px;padding:10px;border-radius:10px;border:2px solid #333a44;background:#111418;color:#fff;color-scheme:dark}
 .quitarF{background:#2a313b;color:#e6e9ee;border-radius:8px;padding:4px 8px;font-size:13px;font-weight:800;margin-left:6px}
-.borrarFila button{flex:1;padding:12px;border-radius:12px;background:#2a1517;color:#ff8a8a;font-weight:800;font-size:15px}
+.borrarFila button{flex:1;padding:12px;border-radius:12px;background:#2a1517;color:#ff8a8a;font-weight:800;font-size:12px}
 /* Reporte de caja */
 #reporte{position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.75);display:none;align-items:flex-start;justify-content:center;padding:14px;overflow:auto}
 #reporte.ver{display:flex}
 .caja{background:#fffaf0;color:#1d1d1f;width:100%;max-width:520px;border-radius:18px;padding:20px;margin:auto 0}
-.caja h3{font-size:24px;font-weight:900}
+.caja h3{font-size:20px;font-weight:900}
 .caja .fechaR{font-weight:700;margin-top:2px}
-.caja .hrs{color:#6b6458;font-size:14px;margin-top:4px}
+.caja .hrs{color:#6b6458;font-size:13px;margin-top:4px}
 .caja .grandes{display:flex;gap:8px;margin-top:14px}
 .caja .grandes div{flex:1;background:#0d3b4f;color:#fff;border-radius:12px;padding:10px;text-align:center}
-.caja .grandes b{display:block;font-size:22px;color:#ffd166}
+.caja .grandes b{display:block;font-size:18px;color:#ffd166}
 .caja .grandes span{font-size:12px;opacity:.85}
-.caja h4{margin-top:18px;font-size:14px;text-transform:uppercase;letter-spacing:.5px;color:#7a7266}
-.caja table{width:100%;border-collapse:collapse;margin-top:6px;font-size:15px}
+.caja h4{margin-top:18px;font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:#7a7266}
+.caja table{width:100%;border-collapse:collapse;margin-top:6px;font-size:12px}
 .caja th{text-align:left;font-size:12px;color:#7a7266;border-bottom:2px solid #e2d8c6;padding:5px 4px}
 .caja td{padding:7px 4px;border-bottom:1px dashed #e2d8c6}
 .caja .r{text-align:right;white-space:nowrap}
-.caja .totF td{border:none;font-weight:900;font-size:18px;padding-top:10px}
-.caja .alerta{margin-top:12px;background:#fde8e8;color:#9b1c1c;border-radius:10px;padding:10px;font-weight:700;font-size:14px}
+.caja .totF td{border:none;font-weight:900;font-size:15px;padding-top:10px}
+.caja .alerta{margin-top:12px;background:#fde8e8;color:#9b1c1c;border-radius:10px;padding:10px;font-weight:700;font-size:13px}
 .caja .botones{margin-top:18px;display:grid;gap:10px}
 /* Carta y estadísticas */
 #carta,#stats{display:none;padding:16px;max-width:760px;margin:0 auto}
 .pl{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 2px;border-bottom:1px solid #2a313b}
 .pl:last-child{border:none}
-.pl .nm{flex:1;min-width:150px;font-weight:800;font-size:17px}
+.pl .nm{flex:1;min-width:150px;font-weight:800;font-size:14px}
 .pl .nm small{display:block;font-weight:400;opacity:.6;font-size:13px}
 .pl.ago .nm{opacity:.5;text-decoration:line-through}
-.pl input{width:86px;font-size:18px;padding:8px;border-radius:10px;border:2px solid #333a44;background:#111418;color:#fff;text-align:right}
-.pl button{padding:10px 12px;border-radius:10px;font-weight:800;font-size:14px;background:#2a313b;color:#e6e9ee}
-.pl .agoB2{flex:1 0 100%;padding:13px;border-radius:12px;font-size:16px;font-weight:900;background:#4a1515;color:#ffb3b3}
+.pl input{width:86px;font-size:15px;padding:8px;border-radius:10px;border:2px solid #333a44;background:#111418;color:#fff;text-align:right}
+.pl button{padding:10px 12px;border-radius:10px;font-weight:800;font-size:13px;background:#2a313b;color:#e6e9ee}
+.pl .agoB2{flex:1 0 100%;padding:13px;border-radius:12px;font-size:13px;font-weight:900;background:#4a1515;color:#ffb3b3}
 .pl .agoB2.ago{background:#16351f;color:#6ee7a0}
 .estAgo{display:inline-block;margin-top:4px;background:#a8242f;color:#fff;font-size:12px;font-weight:900;padding:3px 8px;border-radius:6px}
 .estAgo.disp{background:#1f7a43}
@@ -257,8 +257,8 @@ main{padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280
 .pl button.agoB{background:#4a1515;color:#ff8a8a}
 .pl button.agoB.si{background:#16351f;color:#6ee7a0}
 .pl button.estB.si{background:#ffd166;color:#111}
-.campoTxt{width:100%;margin-top:10px;font-size:17px;padding:12px;border-radius:12px;border:2px solid #333a44;background:#111418;color:#fff}
-.barra{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:14px}
+.campoTxt{width:100%;margin-top:10px;font-size:14px;padding:12px;border-radius:12px;border:2px solid #333a44;background:#111418;color:#fff}
+.barra{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:13px}
 .barra .et{width:118px;flex:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;opacity:.85}
 .barra .bg{flex:1;background:#111418;border-radius:8px;height:22px;overflow:hidden}
 .barra .bg i{display:block;height:100%;background:#ffd166;border-radius:8px}
@@ -267,14 +267,14 @@ main{padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280
 .rango button{flex:1;padding:10px;border-radius:12px;background:#1b2027;color:#cfd6df;font-weight:800}
 .rango button.on{background:#4ea1ff;color:#06203d}
 .metodos{display:grid;gap:10px;margin-top:14px}
-.metodos button{padding:18px;border-radius:14px;font-size:19px;font-weight:900;background:#0d3b4f;color:#fff}
-.reparto2{margin-top:8px;font-size:14px;opacity:.85}
+.metodos button{padding:18px;border-radius:14px;font-size:16px;font-weight:900;background:#0d3b4f;color:#fff}
+.reparto2{margin-top:8px;font-size:13px;opacity:.85}
 .grupoMesa{background:#161b21;border:1px solid #2a313b;border-radius:16px;padding:10px 12px;margin-bottom:14px}
 .gmCab{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;padding:4px 2px 8px;border-bottom:1px solid #2a313b;margin-bottom:4px}
-.gmCab b:first-child{font-size:19px}
-.gmCab span{font-size:14px;opacity:.85}
-.pagoC{margin-top:8px;background:#16351f;color:#6ee7a0;border-radius:10px;padding:8px 10px;font-size:15px}
-.toastOk{position:fixed;left:50%;bottom:30px;transform:translateX(-50%);background:#2ecc71;color:#08210f;font-weight:900;font-size:18px;padding:14px 22px;border-radius:99px;z-index:50;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+.gmCab b:first-child{font-size:16px}
+.gmCab span{font-size:13px;opacity:.85}
+.pagoC{margin-top:8px;background:#16351f;color:#6ee7a0;border-radius:10px;padding:8px 10px;font-size:12px}
+.toastOk{position:fixed;left:50%;bottom:30px;transform:translateX(-50%);background:#2ecc71;color:#08210f;font-weight:900;font-size:15px;padding:14px 22px;border-radius:99px;z-index:50;box-shadow:0 10px 30px rgba(0,0,0,.5)}
 @media print{
   body{background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   #panel>*:not(#reporte){display:none!important}
@@ -285,43 +285,43 @@ main{padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280
 /* Mesas (cuentas abiertas) */
 #mesas{display:none;padding:16px}
 #mesas .rejilla{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
-.cuentaM{background:#1b2027;border-radius:18px;padding:16px;border:3px solid #2a313b}
+.cuentaM{background:#1b2027;border-radius:18px;padding:12px;border:3px solid #2a313b}
 .cuentaM .cab2{display:flex;justify-content:space-between;align-items:center}
-.cuentaM .tot{font-size:28px;font-weight:900;color:#ffd166}
-.cuentaM ul{list-style:none;margin-top:10px;font-size:16px;line-height:1.6}
+.cuentaM .tot{font-size:23px;font-weight:900;color:#ffd166}
+.cuentaM ul{list-style:none;margin-top:10px;font-size:13px;line-height:1.6}
 .cuentaM li{display:flex;justify-content:space-between;gap:8px}
 .cuentaM li span:last-child{opacity:.8}
 .cuentaM .meta2{font-size:13px;opacity:.65;margin-top:6px}
 .listaCobro{border-color:#2ecc71;box-shadow:0 0 0 2px rgba(46,204,113,.25)}
-.b-cobrar{width:100%;margin-top:12px;padding:15px;border-radius:14px;background:#2ecc71;color:#08210f;font-size:17px;font-weight:900}
+.b-cobrar{width:100%;margin-top:12px;padding:15px;border-radius:14px;background:#2ecc71;color:#08210f;font-size:14px;font-weight:900}
 .adic{display:inline-block;background:#4ea1ff;color:#06203d;font-size:12px;font-weight:900;padding:3px 8px;border-radius:8px;margin-left:6px;vertical-align:middle}
-.ctaMesa{margin-top:6px;font-size:14px;color:#9fd0ff;font-weight:700}
+.ctaMesa{margin-top:6px;font-size:13px;color:#9fd0ff;font-weight:700}
 /* Preparados */
 #preparados{display:none;padding:16px}
 .resumen{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
 .resumen div{flex:1;min-width:140px;background:#16351f;border-radius:16px;padding:14px;text-align:center}
-.resumen b{display:block;font-size:30px;color:#6ee7a0}
-.resumen span{font-size:14px;opacity:.8}
+.resumen b{display:block;font-size:25px;color:#6ee7a0}
+.resumen span{font-size:13px;opacity:.8}
 .fila{display:flex;gap:12px;align-items:flex-start;background:#1b2027;border-radius:14px;padding:12px 14px;margin-bottom:10px}
-.fila .n{font-size:20px;font-weight:900;min-width:52px}
-.fila .det{flex:1;font-size:15px;line-height:1.45}
+.fila .n{font-size:16px;font-weight:900;min-width:52px}
+.fila .det{flex:1;font-size:12px;line-height:1.45}
 .fila .det small{display:block;opacity:.65;font-size:13px}
-.fila .monto{font-weight:900;font-size:18px;color:#ffd166;text-align:right}
+.fila .monto{font-weight:900;font-size:15px;color:#ffd166;text-align:right}
 .fila{cursor:pointer}
-.fila .ver{display:inline-block;margin-top:6px;color:#4ea1ff;font-weight:800;font-size:14px}
+.fila .ver{display:inline-block;margin-top:6px;color:#4ea1ff;font-weight:800;font-size:13px}
 #detalle{position:fixed;inset:0;z-index:20;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;padding:18px}
 #detalle.ver{display:flex}
-.ticket{background:#fffaf0;color:#1d1d1f;width:100%;max-width:380px;border-radius:18px;padding:20px;max-height:90vh;overflow:auto;font-size:16px}
-.ticket h3{font-size:26px;font-weight:900;display:flex;justify-content:space-between;align-items:center}
-.ticket .m{background:#0d3b4f;color:#fff;font-size:16px;padding:4px 10px;border-radius:10px}
-.ticket .hrs{color:#6b6458;font-size:14px;margin-top:6px;line-height:1.5}
+.ticket{background:#fffaf0;color:#1d1d1f;width:100%;max-width:380px;border-radius:18px;padding:20px;max-height:90vh;overflow:auto;font-size:13px}
+.ticket h3{font-size:21px;font-weight:900;display:flex;justify-content:space-between;align-items:center}
+.ticket .m{background:#0d3b4f;color:#fff;font-size:13px;padding:4px 10px;border-radius:10px}
+.ticket .hrs{color:#6b6458;font-size:13px;margin-top:6px;line-height:1.5}
 .ticket table{width:100%;border-collapse:collapse;margin-top:14px}
 .ticket th{text-align:left;font-size:12px;text-transform:uppercase;color:#7a7266;border-bottom:2px solid #e2d8c6;padding:6px 4px}
 .ticket td{padding:8px 4px;border-bottom:1px dashed #e2d8c6;vertical-align:top}
 .ticket .d{text-align:right;white-space:nowrap}
-.ticket .tot td{border:none;font-size:20px;font-weight:900;padding-top:12px}
+.ticket .tot td{border:none;font-size:16px;font-weight:900;padding-top:12px}
 .ticket .nt{margin-top:12px;background:#fff3cd;border-radius:10px;padding:8px 10px;font-weight:700}
-.ticket .cerrar{width:100%;margin-top:16px;padding:14px;border-radius:12px;background:#0d3b4f;color:#fff;font-weight:900;font-size:17px}
+.ticket .cerrar{width:100%;margin-top:16px;padding:14px;border-radius:12px;background:#0d3b4f;color:#fff;font-weight:900;font-size:14px}
 .fila .volver{display:block;margin-top:6px;background:none;color:#9aa4b1;font-size:12px;text-decoration:underline;padding:0}
 </style>
 </head>
@@ -329,7 +329,7 @@ main{padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280
 
 <section id="entrar">
   <div class="caja">
-    <div id="iconoEntrar" style="font-size:54px">👨‍🍳</div>
+    <div id="iconoEntrar" style="font-size:44px">👨‍🍳</div>
     <h1 id="nombreEntrar">Cocina</h1>
     <p>Escribe la clave de la cocina</p>
     <input id="clave" type="password" autocomplete="current-password" placeholder="Clave">
@@ -548,8 +548,8 @@ function armarComprobante(c, metodo, recibido){
 function leerComprobantes(){ try { return JSON.parse(localStorage.getItem("comprobantes") || "[]"); } catch(e){ return []; } }
 function ofrecerComprobante(r){
   abrirReporte(`<h3>✅ ${esc(r.donde)} cobrada</h3>
-    <div class="fechaR" style="font-size:28px;margin-top:6px">$${r.total.toFixed(2)}</div>
-    ${r.vuelto ? `<div class="hrs" style="font-size:18px">Vuelto: <b>$${r.vuelto.toFixed(2)}</b></div>` : ""}
+    <div class="fechaR" style="font-size:23px;margin-top:6px">$${r.total.toFixed(2)}</div>
+    ${r.vuelto ? `<div class="hrs" style="font-size:15px">Vuelto: <b>$${r.vuelto.toFixed(2)}</b></div>` : ""}
     <div class="hrs" style="margin-top:10px">¿Quieren comprobante?</div>
     <div class="botones">
       <button class="bGrande bVerde" data-imprec="${r.id}">🖨️ Imprimir comprobante</button>
@@ -687,7 +687,7 @@ function pintarImpresora(){
 function pintarReimprimir(){
   const L = leerComprobantes();
   abrirReporte(`<h3>🧾 Volver a imprimir</h3>
-    ${L.length ? `<div class="botones">${L.slice(0, 20).map(r => `<button class="bGrande bGris" data-imprec="${r.id}" style="text-align:left;font-size:15px">${esc(r.donde)} · $${r.total.toFixed(2)}<br><small style="opacity:.75;font-weight:600">${new Date(r.hora).toLocaleString("es-EC", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })} · ${esc(r.metodo)}</small></button>`).join("")}</div>`
+    ${L.length ? `<div class="botones">${L.slice(0, 20).map(r => `<button class="bGrande bGris" data-imprec="${r.id}" style="text-align:left;font-size:12px">${esc(r.donde)} · $${r.total.toFixed(2)}<br><small style="opacity:.75;font-weight:600">${new Date(r.hora).toLocaleString("es-EC", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })} · ${esc(r.metodo)}</small></button>`).join("")}</div>`
       : `<div class="hrs">Todavía no hay cobros en esta caja.</div>`}
     <div class="botones"><button class="bGrande bGris" data-cerrar>Volver</button></div>`);
 }
@@ -808,7 +808,7 @@ function pintarMesas(){
   if (!MODO_CAJA) return pintarMesasMesero();
   const L = porCobrarLista();
   $("#mesas").innerHTML = L.length ? `<div class="rejilla">${L.map(tarjetaCobro).join("")}</div>`
-    : `<div class="vacio"><b>🧾</b>No hay nada por cobrar<small style="display:block;font-size:15px;margin-top:6px;opacity:.7">Aquí llega cada mesa cuando el mesero la manda a caja, y los pedidos por teléfono.</small></div>`;
+    : `<div class="vacio"><b>🧾</b>No hay nada por cobrar<small style="display:block;font-size:12px;margin-top:6px;opacity:.7">Aquí llega cada mesa cuando el mesero la manda a caja, y los pedidos por teléfono.</small></div>`;
 }
 // Mesero: todas las mesas abiertas; desde aquí agrega platos y manda la mesa a caja
 function pintarMesasMesero(){
@@ -827,7 +827,7 @@ function pintarMesasMesero(){
       ${c.enviada ? `<div class="enCaja">✅ En caja · esperando que cobren<small>Si agregas algo, a caja le llega solo</small></div>`
         : `<button class="bEnviar" data-enviar="${c.id}">📤 Ya no piden más · mandar a caja</button>`}
     </div></div>`; }).join("")}</div>`
-    : `<div class="vacio"><b>🍽️</b>No hay mesas abiertas<small style="display:block;font-size:15px;margin-top:6px;opacity:.7">Cuando pidan con el QR o anotes un pedido en "Tomar pedido", la mesa aparece aquí.</small></div>`;
+    : `<div class="vacio"><b>🍽️</b>No hay mesas abiertas<small style="display:block;font-size:12px;margin-top:6px;opacity:.7">Cuando pidan con el QR o anotes un pedido en "Tomar pedido", la mesa aparece aquí.</small></div>`;
 }
 const todoServido = c => c.pedidos.every(p => p.estado === "listo") && !datos.pedidos.some(p => p.tipo === "pedido" && p.cuenta === c.id);
 const pideCuenta = c => datos.pedidos.find(p => p.tipo === "cuenta" && (p.cuenta_abierta === c.id || (!c.telefono && p.mesa === c.mesa)));
@@ -842,20 +842,20 @@ function abrirCobro(id, mesa, total, pago){
   const partes = (cta && cta.porPago || []).filter(x => x.total > 0);
   if (partes.length > 1){                       // parte en efectivo, parte por transferencia, etc.
     abrirReporte(`<h3>💵 Cobrar ${esc(mesa)}</h3>
-      <div class="fechaR" style="font-size:30px;margin-top:6px">$${total}</div>
+      <div class="fechaR" style="font-size:25px;margin-top:6px">$${total}</div>
       <div class="hrs">Esta mesa paga con varias formas:</div>
       <table>${partes.map(x => `<tr><td><b>${ICON_PAGO[x.metodo] || ""} ${esc(x.metodo)}</b></td><td class="r"><b>$${Number(x.total).toFixed(2)}</b></td></tr>
-        ${(x.platos || []).map(it => `<tr><td style="padding-left:22px;font-size:14px;opacity:.8">${it.cantidad} x ${esc(it.nombre)}</td><td class="r" style="font-size:14px;opacity:.8">$${Number(it.total).toFixed(2)}</td></tr>`).join("")}`).join("")}</table>
+        ${(x.platos || []).map(it => `<tr><td style="padding-left:22px;font-size:13px;opacity:.8">${it.cantidad} x ${esc(it.nombre)}</td><td class="r" style="font-size:13px;opacity:.8">$${Number(it.total).toFixed(2)}</td></tr>`).join("")}`).join("")}</table>
       <div class="metodos"><button data-metodo="Mixto" data-id="${id}" data-mesa="${mesa}" style="background:#2ecc71;color:#08210f">✅ Cobrar así</button></div>
       <div class="hrs" style="margin-top:14px">¿Al final pagaron todo de una sola forma?</div>
-      <div class="metodos">${["Efectivo", "Transferencia", "Tarjeta"].map(m => `<button data-metodo="${m}" data-id="${id}" data-mesa="${mesa}" style="padding:12px;font-size:16px">${ICON_PAGO[m]} Todo por ${m}</button>`).join("")}</div>
+      <div class="metodos">${["Efectivo", "Transferencia", "Tarjeta"].map(m => `<button data-metodo="${m}" data-id="${id}" data-mesa="${mesa}" style="padding:12px;font-size:13px">${ICON_PAGO[m]} Todo por ${m}</button>`).join("")}</div>
       <div class="botones"><button class="bGrande bGris" data-cerrar>Cancelar</button></div>`);
     return;
   }
   if (partes.length === 1 && partes[0].metodo !== "Sin elegir") pago = partes[0].metodo;
   const orden = ["Efectivo", "Transferencia", "Tarjeta"].sort((a, b) => (b === pago) - (a === pago));
   abrirReporte(`<h3>💵 Cobrar ${esc(mesa)}</h3>
-    <div class="fechaR" style="font-size:30px;margin-top:6px">$${total}</div>
+    <div class="fechaR" style="font-size:25px;margin-top:6px">$${total}</div>
     <div class="hrs">${pago ? `El cliente eligió <b>${esc(pago)}</b>.` : "¿Cómo pagó?"}</div>
     <div class="metodos">${orden.map(m => `<button data-metodo="${m}" data-id="${id}" data-mesa="${mesa}"${m === pago ? ` style="background:#2ecc71;color:#08210f"` : ""}>${ICON_PAGO[m]} Cobrar por ${m}${m === pago ? " ✓" : ""}</button>`).join("")}</div>
     <div class="botones"><button class="bGrande bGris" data-cerrar>Cancelar</button></div>`);
@@ -866,7 +866,7 @@ function confirmarTerminar(id, mesa, metodo){
   // ¿Cuánto se paga en efectivo? (para calcular el vuelto)
   const efectivo = !cta ? 0 : metodo === "Efectivo" ? Number(cta.total) : metodo === "Mixto" ? Number((cta.porPago.find(x => x.metodo === "Efectivo") || {}).total || 0) : 0;
   abrirReporte(`<h3>💵 Cobrar ${esc(mesa)}</h3>
-    <div class="hrs" style="font-size:16px;margin-top:8px">Forma de pago: <b>${como}</b></div>
+    <div class="hrs" style="font-size:13px;margin-top:8px">Forma de pago: <b>${como}</b></div>
     ${efectivo > 0 ? `<div class="vueltoB" data-efectivo="${efectivo.toFixed(2)}">
       <div>En efectivo: <b>$${efectivo.toFixed(2)}</b></div>
       <label>¿Con cuánto paga?<input id="recibido" type="text" inputmode="decimal" autocomplete="off" placeholder="0.00"></label>
@@ -889,7 +889,7 @@ function elegirAnular(idCuenta){
   const c = (datos.mesas || []).find(x => x.id === idCuenta); if (!c) return;
   if (c.pedidos.length === 1) return pedirAnular(c.pedidos[0].id);
   abrirReporte(`<h3>🚫 Mesa ${c.mesa}: ¿qué pedido anulas?</h3>
-    <div class="botones">${c.pedidos.map(p => `<button class="bGrande bGris" data-anularuno="${p.id}" style="text-align:left;font-size:15px">#${p.numero} · $${Number(p.total).toFixed(2)}<br><small style="opacity:.8;font-weight:600">${p.items.map(it => `${it.cantidad} x ${esc(it.nombre)}`).join(", ")}</small></button>`).join("")}
+    <div class="botones">${c.pedidos.map(p => `<button class="bGrande bGris" data-anularuno="${p.id}" style="text-align:left;font-size:12px">#${p.numero} · $${Number(p.total).toFixed(2)}<br><small style="opacity:.8;font-weight:600">${p.items.map(it => `${it.cantidad} x ${esc(it.nombre)}`).join(", ")}</small></button>`).join("")}
     <button class="bGrande bGris" data-cerrar>Cancelar</button></div>`);
 }
 $("#reporte").addEventListener("click", e=>{ const u = e.target.closest("[data-anularuno]"); if (u) pedirAnular(Number(u.dataset.anularuno));
@@ -913,12 +913,12 @@ function pedirAnular(id){
   if (!p) for (const c of datos.mesas || []){ const q = c.pedidos.find(x => x.id === id); if (q){ p = { ...q, mesa: c.mesa }; break; } }
   if (!p) return;
   abrirReporte(`<h3>🚫 Anular pedido #${p.numero ?? "—"}</h3>
-    <div class="hrs" style="font-size:15px">${esc(dondeTxt(p))} · $${Number(p.total).toFixed(2)}</div>
-    <div style="margin-top:8px;font-size:15px">${p.items.map(it => `${it.cantidad} x ${esc(it.nombre)}`).join("<br>")}</div>
+    <div class="hrs" style="font-size:12px">${esc(dondeTxt(p))} · $${Number(p.total).toFixed(2)}</div>
+    <div style="margin-top:8px;font-size:12px">${p.items.map(it => `${it.cantidad} x ${esc(it.nombre)}`).join("<br>")}</div>
     <div class="alerta" style="background:#fff4e0;color:#7a4b00">Se quita de la cocina, de la cuenta de la mesa y del total del día. Queda anotado en el reporte con el motivo.</div>
     <h4>¿Por qué se anula?</h4>
     <div class="motivosA">${["Pedido por error", "El cliente ya no lo quiere", "El cliente se fue", "Pedido de broma", "Se repitió el pedido"].map(m => `<button data-motivoA="${m}">${m}</button>`).join("")}</div>
-    <textarea id="motivoA" placeholder="O escribe el motivo…" style="font:inherit;font-size:16px;width:100%;margin-top:8px;padding:10px;border-radius:10px;border:2px solid #d8cfbf;min-height:60px"></textarea>
+    <textarea id="motivoA" placeholder="O escribe el motivo…" style="font:inherit;font-size:13px;width:100%;margin-top:8px;padding:10px;border-radius:10px;border:2px solid #d8cfbf;min-height:60px"></textarea>
     <div class="botones"><button class="bGrande" data-anularOk="${id}" style="background:#c0392b;color:#fff">🚫 Anular pedido</button>
       <button class="bGrande bGris" data-cerrar>Cancelar</button></div>`);
 }
@@ -944,7 +944,7 @@ async function abrirTomar(){
   pintarTomar();
 }
 function pintarTomar(){
-  if (!datos.jornada){ $("#tomar").innerHTML = `<div class="vacio"><b>⏸️</b>El día de trabajo no está abierto<small style="display:block;font-size:15px;margin-top:6px;opacity:.8">Lo abre la persona de caja.</small></div>`; return; }
+  if (!datos.jornada){ $("#tomar").innerHTML = `<div class="vacio"><b>⏸️</b>El día de trabajo no está abierto<small style="display:block;font-size:12px;margin-top:6px;opacity:.8">Lo abre la persona de caja.</small></div>`; return; }
   const T = tomar, porId = Object.fromEntries(cartaT.map(p => [p.id, p]));
   const lineas = Object.entries(T.items).filter(([id, n]) => n > 0 && porId[id]);
   const total = lineas.reduce((t, [id, n]) => t + n * porId[id].precio, 0);
@@ -1055,7 +1055,7 @@ function pintarPreparados(){
       <div><b>${L.length}</b><span>pedidos preparados hoy</span></div>
       <div><b>$${Number(datos.hoy?.total ?? suma).toFixed(2)}</b><span>Vendido por el menú</span></div>
     </div>
-    ${top ? `<p style="opacity:.75;margin:0 2px 14px;font-size:14px">Más pedidos: ${top}</p>` : ""}
+    ${top ? `<p style="opacity:.75;margin:0 2px 14px;font-size:13px">Más pedidos: ${top}</p>` : ""}
     ${L.length ? gruposPorMesa(L).map(g => `<div class="grupoMesa">
       <div class="gmCab"><b>${g.para ? dondeTxt(g) : `🍽️ Mesa ${g.mesa}`}</b><span>${g.para ? "✅ Pagado en caja" : g.cerrada ? `✅ Cobrada ${hora(g.cerrada)}` : "🧾 Por cobrar"} · ${g.pedidos.length} pedido${g.pedidos.length === 1 ? "" : "s"} · <b>$${g.total.toFixed(2)}</b></span></div>
       ${g.pedidos.map(p => `<div class="fila">
@@ -1073,7 +1073,7 @@ function tarjetaCobro(c){
     <div class="cab2"><span class="mesa">${esc(nombreCuenta(c)).toUpperCase()}</span><span class="tot">$${Number(c.total).toFixed(2)}</span></div>
     <div class="meta2">📤 Lo mandó el mesero ${hace(c.enviada)}</div>
     ${despues.length ? `<div class="agregado">🆕 Agregaron después: ${despues.map(p => p.items.map(it => `${it.cantidad} x ${esc(it.nombre)}`).join(", ")).join(" · ")}</div>` : ""}
-    ${todoServido(c) ? "" : `<div style="margin-top:8px;font-size:16px;font-weight:900;color:#ffd166">⏳ El mesero todavía tiene platos por entregar</div>`}
+    ${todoServido(c) ? "" : `<div style="margin-top:8px;font-size:13px;font-weight:900;color:#ffd166">⏳ El mesero todavía tiene platos por entregar</div>`}
     <div class="meta2">${c.pedidos.length} pedido(s) · desde ${hora(c.abierta)}</div>
     <ul>${c.platos.map(x => `<li><span><b>${x.cantidad} x</b> ${esc(x.nombre)}</span><span>$${Number(x.total).toFixed(2)}</span></li>`).join("")}</ul>
     ${bloquePagos(c)}
@@ -1094,7 +1094,7 @@ function pintar(){
   if (vista === "prep") pintarPreparados();
   if (vista === "dia") pintarDia();
   $("#hoyN").textContent = datos.hoy?.pedidos ?? 0;
-  if (!MODO_CAJA && !datos.jornada){ $("#lista").innerHTML = `<div class="vacio"><b>⏸️</b>El día de trabajo no está abierto<small style="display:block;font-size:15px;margin-top:6px;opacity:.8">Lo abre la persona de caja. Mientras tanto el menú no recibe pedidos y no se pueden anotar pedidos.</small></div>`; return; }
+  if (!MODO_CAJA && !datos.jornada){ $("#lista").innerHTML = `<div class="vacio"><b>⏸️</b>El día de trabajo no está abierto<small style="display:block;font-size:12px;margin-top:6px;opacity:.8">Lo abre la persona de caja. Mientras tanto el menú no recibe pedidos y no se pueden anotar pedidos.</small></div>`; return; }
   if (!lista.length){ $("#lista").innerHTML = `<div class="vacio"><b>✅</b>Sin pedidos pendientes</div>`; return; }
   $("#lista").innerHTML = lista.map(p => {
     const espera = (datos.ahora - p.creado) / 60000;
@@ -1103,7 +1103,7 @@ function pintar(){
       return `<div class="tarjeta aviso ${p.estado === "nuevo" ? "nuevo" : ""}">
         <div class="cab"><span class="mesa">MESA ${p.mesa}</span><span class="meta">${hora(p.creado)} · ${hace(p.creado)}</span></div>
         <div class="titulo-aviso">${p.tipo === "cuenta" ? "🧾 Piden la cuenta" : "🙋 Llaman al mesero"}</div>
-        ${p.tipo === "cuenta" && p.cuenta_total != null ? `<div class="ctaMesa" style="font-size:18px">Total: $${Number(p.cuenta_total).toFixed(2)}</div>` : ""}
+        ${p.tipo === "cuenta" && p.cuenta_total != null ? `<div class="ctaMesa" style="font-size:15px">Total: $${Number(p.cuenta_total).toFixed(2)}</div>` : ""}
         ${p.tipo === "cuenta" && p.pago ? `<div class="pagoC">💳 Pagará con: <b>${esc(p.pago)}</b></div>` : ""}
         <div class="acciones"><button class="b-ok" data-id="${p.id}" data-estado="listo">OK, voy</button>
         ${p.tipo === "cuenta" && p.cuenta_abierta ? (cuentaPorId(p.cuenta_abierta)?.enviada ? `<div class="enCaja" style="flex:1">✅ Ya está en caja</div>` : `<button class="b-listo completo" data-enviar="${p.cuenta_abierta}">📤 Mandar a caja</button>`) : ""}</div></div>`;
@@ -1207,7 +1207,7 @@ function pintarDia(){
     </div>` : `
     <div class="hoja">
       <h2>☀️ No hay un día de trabajo abierto</h2>
-      <div class="alerta" style="background:#4a1515;color:#ffb3b3;margin:8px 0;padding:10px 12px;border-radius:12px;font-size:15px">🔒 El menú está cerrado: los clientes pueden ver la carta pero no pedir.</div>
+      <div class="alerta" style="background:#4a1515;color:#ffb3b3;margin:8px 0;padding:10px 12px;border-radius:12px;font-size:12px">🔒 El menú está cerrado: los clientes pueden ver la carta pero no pedir.</div>
       <div class="sub2">Elige la fecha y toca "Nuevo día laboral" para abrir el menú a los pedidos.</div>
       <input type="date" class="campoFecha" id="fechaNueva" value="${datos.hoyFecha}">
       <button class="bGrande bVerde" id="bNuevo">☀️ Nuevo día laboral</button>

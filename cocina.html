@@ -120,6 +120,21 @@ main{padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280
 .detC{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:baseline}
 .detC span{font-size:13px;opacity:.75}
 .detP{display:flex;justify-content:space-between;font-size:14px;padding-left:12px;opacity:.9}
+.impOp{border:3px solid #d8cfbf;border-radius:14px;padding:12px;margin-top:10px;background:#fff;cursor:pointer;opacity:.75}
+.impOp.on{border-color:#2ecc71;background:#eafaf0;opacity:1;cursor:default}
+.impCab{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center}
+.impCab b{display:block;font-size:16px;color:#1d1a16}.impCab small{display:block;font-size:13px;opacity:.7}
+.impRadio{width:30px;height:30px;border-radius:50%;border:3px solid #b9ad99;display:grid;place-items:center;font-weight:900;color:#fff;font-size:18px}
+.impOp.on .impRadio{background:#2ecc71;border-color:#2ecc71}
+.impEst{font-size:12px;font-weight:900;color:#8a7f6d}.impOp.on .impEst{color:#1a8f4c}
+.impCuerpo{margin-top:10px;padding-top:10px;border-top:1px dashed #b7e4c7}
+.impPaso{font-size:15px;line-height:1.5}
+.impEstado{margin-top:8px;padding:8px 10px;border-radius:10px;background:#f2ede4;font-size:15px}.impEstado.ok{background:#c8f0d6}
+.impNota{font-size:13px;opacity:.7;margin-top:6px}
+.impAncho{margin-top:14px}
+.impSeg{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.impSeg button{padding:12px;border-radius:12px;border:3px solid #d8cfbf;background:#fff;font-weight:900;font-size:16px;color:#5a5144}
+.impSeg button.on{border-color:#2ecc71;background:#2ecc71;color:#08210f}
 .agregado{margin-top:8px;background:#ffd166;color:#3a2a00;border-radius:10px;padding:8px 10px;font-weight:800;font-size:15px}
 .cuentaM.recien{outline:3px solid #ffd166;animation:latir 1s 4}
 .okM{margin-top:8px;font-size:17px;font-weight:900;color:#6ee7a0}.faltaM{margin-top:8px;font-size:17px;font-weight:900;color:#ffd166}
@@ -620,17 +635,27 @@ async function imprimirBT(r){
   }
 }
 function pintarImpresora(){
+  const bt = IMP.modo === "bt";
+  const opcion = (modo, icono, titulo, sub, cuerpo) => {
+    const on = IMP.modo === modo;
+    return `<div class="impOp${on ? " on" : ""}" data-impmodo="${modo}">
+      <div class="impCab"><span class="impRadio">${on ? "✓" : ""}</span><div><b>${icono} ${titulo}</b><small>${sub}</small></div>
+        <span class="impEst">${on ? "ELEGIDA" : "Tocar para elegir"}</span></div>
+      ${on ? `<div class="impCuerpo">${cuerpo}</div>` : ""}</div>`;
+  };
   abrirReporte(`<h3>🖨️ Impresora de comprobantes</h3>
-    <div class="hrs">¿Qué impresora usa esta caja?</div>
+    <div class="hrs">Toca la impresora que usa esta caja. La elegida se pone en verde.</div>
+    ${opcion("bt", "📶", "Impresora pequeña por Bluetooth", "Las térmicas pequeñas de comprobantes",
+      `<div class="impPaso">1. Prende la impresora.<br>2. Toca <b>Conectar impresora</b> y elígela de la lista.</div>
+       <div class="impEstado ${impBT ? "ok" : ""}">${impBT ? `✅ Conectada: <b>${esc(impBT.device.name || "impresora")}</b>` : "⚪ Todavía no está conectada"}</div>
+       <button class="bGrande bAzul" id="bConectarBT" style="margin-top:8px">📶 ${impBT ? "Conectar otra" : "Conectar impresora"}</button>
+       <div class="impNota">Funciona en Google Chrome (Android o computadora). En iPhone usa la otra opción.</div>`)}
+    ${opcion("sistema", "🖨️", "Impresora del celular / computadora", "USB, wifi o la app de la impresora",
+      `<div class="impPaso">Al imprimir se abre la ventana de imprimir del celular o la computadora y ahí eliges la impresora.</div>`)}
+    <div class="impAncho"><div class="hrs" style="margin:0 0 6px">Ancho del papel:</div>
+      <div class="impSeg">${[58, 80].map(a => `<button data-impancho="${a}" class="${IMP.ancho === a ? "on" : ""}">${IMP.ancho === a ? "✓ " : ""}${a} mm</button>`).join("")}</div></div>
     <div class="botones">
-      <button class="bGrande ${IMP.modo === "bt" ? "bVerde" : "bGris"}" data-impmodo="bt">📶 Impresora pequeña por Bluetooth</button>
-      <button class="bGrande ${IMP.modo === "sistema" ? "bVerde" : "bGris"}" data-impmodo="sistema">🖨️ Impresora del celular / computadora</button></div>
-    <div class="hrs" style="margin-top:12px">Ancho del papel</div>
-    <div class="metodos">${[58, 80].map(a => `<button data-impancho="${a}" style="${IMP.ancho === a ? "background:#2ecc71;color:#08210f" : ""}">${a} mm</button>`).join("")}</div>
-    ${IMP.modo === "bt" ? `<div class="alerta" style="background:#eef6f6;color:#0d3b4f">Prende la impresora y toca <b>Conectar</b>. Funciona en <b>Google Chrome</b> (Android o computadora). En iPhone usa la otra opción.${impBT ? `<br>✅ Conectada: <b>${esc(impBT.device.name || "impresora")}</b>` : ""}</div>
-      <div class="botones"><button class="bGrande bAzul" id="bConectarBT">📶 Conectar impresora</button></div>`
-      : `<div class="alerta" style="background:#eef6f6;color:#0d3b4f">Se abre la ventana de imprimir del celular o la computadora y eliges la impresora (USB, wifi o la app de la impresora).</div>`}
-    <div class="botones"><button class="bGrande bAzul" id="bPruebaImp">🧾 Imprimir prueba</button>
+      <button class="bGrande bVerde" id="bPruebaImp">🧾 Imprimir prueba · ${bt ? "Bluetooth" : "celular / computadora"} · ${IMP.ancho} mm</button>
       <button class="bGrande bGris" data-cerrar>Listo</button></div>`);
 }
 function pintarReimprimir(){
@@ -643,7 +668,7 @@ function pintarReimprimir(){
 document.addEventListener("click", async e => {
   if (e.target.id === "bImpresora") return pintarImpresora();
   if (e.target.id === "bReimprimir") return pintarReimprimir();
-  const m = e.target.closest("[data-impmodo]"); if (m){ IMP.modo = m.dataset.impmodo; guardarImp(); return pintarImpresora(); }
+  const m = e.target.closest("[data-impmodo]"); if (m && !e.target.closest("button") && IMP.modo !== m.dataset.impmodo){ IMP.modo = m.dataset.impmodo; guardarImp(); return pintarImpresora(); }
   const a = e.target.closest("[data-impancho]"); if (a){ IMP.ancho = Number(a.dataset.impancho); guardarImp(); return pintarImpresora(); }
   if (e.target.id === "bConectarBT"){ try { await conectarBT(); } catch(err){ if (!String(err).includes("cancel")) alert("No se pudo conectar: " + err.message); } return pintarImpresora(); }
   if (e.target.id === "bPruebaImp") imprimirComprobante({ id: "prueba", hora: Date.now(), donde: "Mesa de prueba", platos: [{ n: "Ceviche Jipijapa", q: 2, t: 16 }, { n: "Agua", q: 1, t: 0.75 }], total: 16.75, metodo: "Efectivo", recibido: 20, vuelto: 3.25 });

@@ -14,13 +14,13 @@
   "colores": {"inicio": "#0d3b4f", "acento": "#ffd166"},
 
   "platos": [
+    {"id": "ceviche-jipijapa", "nombre": "Ceviche Jipijapa", "precio": 6.5, "desc": "Camarón fresco al estilo manabita, con su toque de maní. Con chifles y limón.", "dibujo": "ceviche", "foto": "", "fondo": "#c8553d", "agotado": false, "estrella": true, "categoria": "Ceviches"},
+
     {"id": "encebollado", "nombre": "Encebollado", "precio": 3.5, "desc": "Albacora, yuca y cebolla curtida. El que levanta a cualquiera.", "dibujo": "encebollado", "foto": "", "fondo": "#1f6f78", "agotado": false, "categoria": "Encebollados"},
 
     {"id": "encebollado-mixto-camaron", "nombre": "Encebollado mixto con camarón", "precio": 5, "desc": "", "dibujo": "encebollado", "foto": "", "fondo": "#2b4162", "agotado": false, "categoria": "Encebollados"},
 
     {"id": "encebollado-junior", "nombre": "Encebollado junior", "precio": 2.5, "desc": "", "dibujo": "encebollado", "foto": "", "fondo": "#4f7f35", "agotado": false, "categoria": "Encebollados"},
-
-    {"id": "ceviche-jipijapa", "nombre": "Ceviche Jipijapa", "precio": 6.5, "desc": "Camarón fresco al estilo manabita, con su toque de maní. Con chifles y limón.", "dibujo": "ceviche", "foto": "", "fondo": "#c8553d", "agotado": false, "categoria": "Ceviches"},
 
     {"id": "ceviche-camaron", "nombre": "Ceviche de camarón", "precio": 6.5, "desc": "", "dibujo": "ceviche", "foto": "", "fondo": "#d07a1e", "agotado": false, "categoria": "Ceviches"},
 

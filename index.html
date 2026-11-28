@@ -63,6 +63,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 .plato{position:absolute;inset:0}
 .texto{position:absolute;left:24px;right:24px;top:calc(96px + env(safe-area-inset-top));opacity:0;visibility:hidden}
 .num{font-size:13px;font-weight:700;letter-spacing:3px;opacity:.75}
+.estrellaTag{display:inline-block;margin-bottom:8px;background:var(--amarillo);color:#1d1d1f;font-weight:900;font-size:14px;letter-spacing:1px;padding:6px 12px;border-radius:99px;box-shadow:0 4px 12px rgba(0,0,0,.25)}
+.estrellaMini{display:inline-block;background:#ffd166;color:#1d1d1f;font-weight:900;font-size:11px;letter-spacing:.5px;padding:2px 8px;border-radius:99px;margin-bottom:3px}
 .texto h2{font-size:clamp(34px,10.5vw,56px);font-weight:900;line-height:.98;margin-top:8px;text-transform:uppercase;letter-spacing:-.5px}
 .texto p{font-size:15px;opacity:.85;margin-top:10px;max-width:420px}
 .fila{display:flex;align-items:center;gap:14px;margin-top:16px}
@@ -623,6 +625,7 @@ const nodos = ESCENA.map((p,i)=>{
   el.innerHTML = `
     <div class="mano ${lado}${p.mano_foto ? " conFoto" : ""}"><div class="flotar" style="animation-delay:-${i*0.5}s">${p.mano_foto ? `<img class="manoFoto${/mano5-/.test(p.mano_foto) ? " viejo" : ""}" src="${p.mano_foto}" alt="${p.nombre}" decoding="async"${i ? ` loading="lazy"` : ""}>` : manoSVG(p.comida, p.foto, i)}</div></div>
     <div class="texto">
+      ${p.estrella ? `<div class="estrellaTag">⭐ PLATO ESTRELLA</div>` : ""}
       <div class="num">${String(i+1).padStart(2,"0")} / ${String(ESCENA.length).padStart(2,"0")}</div>
       <h2>${p.nombre}</h2>
       <p>${p.desc || ""}</p>
@@ -1034,7 +1037,7 @@ const sinTilde = t => String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/
 $("#cats").innerHTML = (CATS.length > 1 ? [`<button data-cat="" class="on">Todo</button>`, ...CATS.map(c => `<button data-cat="${c}">${c}</button>`)] : []).join("");
 function pintarCarta(){
   const q = sinTilde(buscar.value.trim());
-  const promoId = NEGOCIO.promo && NEGOCIO.promo.id;
+  const promoId = (PLATOS.find(p => p.estrella) || {}).id || (NEGOCIO.promo && NEGOCIO.promo.id);
   let html = "", hay = 0;
   for (const c of CATS){
     if (catSel && c !== catSel) continue;
@@ -1042,7 +1045,7 @@ function pintarCarta(){
     if (!lista.length) continue;
     hay += lista.length;
     html += `<h4>${c}</h4>` + lista.map(p => `<div class="cp${p.id === promoId ? " estrella" : ""}">
-      <div class="nm"><b>${p.id === promoId ? "⭐ " : ""}${p.nombre}</b>${p.desc ? `<small>${p.desc}</small>` : ""}</div>
+      <div class="nm">${p.id === promoId ? `<span class="estrellaMini">⭐ PLATO ESTRELLA</span>` : ""}<b>${p.nombre}</b>${p.desc ? `<small>${p.desc}</small>` : ""}</div>
       <span class="pr">${precioTxt(p.precio)}</span>
       ${p.agotado ? `<span class="ago">Agotado</span>` : `<span class="acc"><button class="quitar" data-menos="${p.i}" aria-label="Quitar uno" hidden>−</button><button class="pedir" data-i="${p.i}">Agregar +</button></span>`}
     </div>`).join("");

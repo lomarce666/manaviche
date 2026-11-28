@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="preload" as="image" href="/iconos/logo.webp" fetchpriority="high">
 <title>Menú</title>
 <meta name="description" content="Menú digital. Pide desde tu mesa.">
 <meta name="theme-color" content="#0d3b4f">
@@ -35,7 +36,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 #marca{position:absolute;left:0;right:0;top:50%;text-align:center;transform-origin:center top;will-change:transform}
 #marca h1{font-size:clamp(46px,15vw,92px);font-weight:900;letter-spacing:-1px;line-height:1;color:var(--amarillo);text-transform:uppercase;display:inline-flex}
 #marca h1 span{display:inline-block;opacity:0;transform:translateY(-120px) rotate(-20deg);animation:caer .7s cubic-bezier(.2,1.6,.4,1) forwards}
-#marca .logo{display:block;width:min(62vw,280px);height:min(62vw,280px);margin:0 auto 14px;border-radius:50%;box-shadow:0 14px 34px rgba(0,0,0,.35);opacity:0;animation:logoEntra 1.3s .1s cubic-bezier(.25,.8,.3,1) forwards, logoFlota 3.6s 1.5s ease-in-out infinite}
+#marca .logo{display:block;width:min(62vw,280px);height:min(62vw,280px);margin:0 auto 14px;border-radius:50%;box-shadow:0 14px 34px rgba(0,0,0,.35);opacity:0}
+/* La entrada empieza solo cuando la imagen ya cargó (antes se veía el círculo vacío) */
+#marca .logo.listo{animation:logoEntra 1.3s .1s cubic-bezier(.25,.8,.3,1) forwards, logoFlota 3.6s 1.5s ease-in-out infinite}
 /* Entrada del logo: sube desde abajo girando, como las manos con los platos, rebota y se queda flotando */
 @keyframes logoEntra{
   0%{opacity:0;transform:translate3d(0,60vh,0) rotate(-28deg) scale(.55)}
@@ -99,6 +102,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 .wa{display:inline-block;margin-top:26px;background:#25d366;color:#fff;font-weight:800;font-size:17px;padding:16px 26px;border-radius:99px;text-decoration:none;box-shadow:0 8px 0 rgba(0,0,0,.18)}
 .dir{margin-top:22px;font-size:14px;opacity:.8;line-height:1.5}
 .dir a{color:var(--amarillo)}
+.dir .dirTit{font-weight:900;font-size:16px}
+.dir .dirTxt{margin-top:2px}
+.dir .verUbi{display:inline-block;margin-top:10px;padding:13px 24px;border-radius:99px;background:#0d3b4f;color:#fff !important;font-size:17px;font-weight:900;text-decoration:none;box-shadow:0 6px 16px rgba(0,0,0,.18)}
 
 /* ---------- Botón agregar ---------- */
 .pedir{cursor:pointer;transition:transform .15s, background .2s, color .2s}
@@ -325,7 +331,7 @@ body.conCarta #cartaBtn,body.conCarta #promo,body.conCarta #ayudaBtn{visibility:
 #masMenu .mmFin b{display:block;font-size:22px;font-weight:900;text-transform:uppercase}
 #masMenu .mmFin .wa{margin-top:12px;display:inline-block}
 #masMenu .mmFin .dir{color:#5a5248;opacity:1}
-#masMenu .mmFin .dir a{color:#0d3b4f}
+#masMenu .mmFin .dir{margin-top:22px}
 /* Gracias + reseña */
 .estrellas{font-size:34px;letter-spacing:4px;margin-top:6px}
 
@@ -590,7 +596,14 @@ document.title = NEGOCIO.nombre + " · Menú";
 // Logo del restaurante (restaurante.json → "logo"); si no hay, queda el nombre con letras
 if (NEGOCIO.logo) {
   const lg = $("#logoMarca");
+  lg.decoding = "sync"; lg.fetchPriority = "high";
+  let yaListo = false;
+  const empezar = () => { if (yaListo) return; yaListo = true; lg.classList.add("listo"); };
+  lg.onload = () => (lg.decode ? lg.decode().catch(() => {}) : Promise.resolve()).then(empezar);
+  lg.onerror = () => { lg.hidden = true; $("#marca").classList.remove("conLogo"); };
+  setTimeout(empezar, 2500);                     // si el internet está lento, igual aparece
   lg.src = NEGOCIO.logo; lg.alt = NEGOCIO.nombre; lg.hidden = false;
+  if (lg.complete && lg.naturalWidth) empezar();
   $("#marca").classList.add("conLogo");
   const cab = document.querySelector("#carta .cab h3");
   if (cab && cab.firstChild.nodeType === 3) {
@@ -1044,7 +1057,7 @@ $("#cats").addEventListener("click", e => { const b = e.target.closest("[data-ca
 
 // (El plato del día ya no sale como franja al abrir el menú; solo se destaca con ⭐ en la carta completa)
 
-$("#dir").innerHTML = `${NEGOCIO.direccion ? "📍 " + NEGOCIO.direccion : ""}${NEGOCIO.mapa ? `<br><a class="clic" href="${NEGOCIO.mapa}" target="_blank" rel="noopener">Ver ubicación</a>` : ""}`;
+$("#dir").innerHTML = `<div class="dirTit">📍 Dirección del restaurante</div>${NEGOCIO.direccion && !/aquí/i.test(NEGOCIO.direccion) ? `<div class="dirTxt">${NEGOCIO.direccion}</div>` : ""}${NEGOCIO.mapa ? `<a class="clic verUbi" href="${NEGOCIO.mapa}" target="_blank" rel="noopener">🗺️ Ver ubicación</a>` : ""}`;
 
 // pasos: inicio + platos + final
 const pista = $("#pista");

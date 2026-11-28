@@ -382,7 +382,6 @@ body.conCarta #cartaBtn,body.conCarta #promo,body.conCarta #ayudaBtn{visibility:
     <p>¿Estás en la mesa…</p>
     <div class="grande" id="confMesa">0</div>
     <small id="confDetalle"></small>
-    <div class="pagoEl"><p>💳 ¿Cómo vas a pagar?</p><div class="chips"><button data-pago="Efectivo">💵 Efectivo</button><button data-pago="Transferencia">📲 Transferencia</button><button data-pago="Tarjeta">💳 Tarjeta</button></div></div>
     <button id="confSi">✅ Sí, enviar a la cocina</button>
     <button id="confNo">✏️ Modificar pedido</button>
   </div>
@@ -638,7 +637,7 @@ let miNombre = "";                      // ya no se pide el nombre: los clientes
 const idxDe = new Map(PLATOS.map((p,i)=>[p.id, i]));
 const llevarDe = i => idxDe.get(PLATOS[i].id + "~llevar");     // índice de su versión para llevar
 let cuentaMesa = null;
-let miPago = "", pagoServidor = "";        // forma de pago: obligatoria en el primer pedido; luego la ve toda la mesa
+let miPago = "", pagoServidor = "";        // (ya no se usa: la forma de pago se elige en caja)
 let COMPARTIDO = false, versionMesa = -1, lineasMesa = [], personasMesa = [], ultimoVisto = 0, ultimoPing = 0, cargadoMesa = false, enVuelo = 0;
 
 function aplicarMesa(e, desdeServidor){
@@ -784,11 +783,10 @@ function refrescar(){
   if (hayCuenta){
     ya.innerHTML = `<h5>🧾 Ya pidió la mesa ${MESA_QR} <span>$${cuentaMesa.total.toFixed(2)}</span></h5>
       ${cuentaMesa.pedidos.map(p => { const e = ESTADO_TXT[p.estado] || ESTADO_TXT.nuevo;
-        return `<div class="ped ${p.estado === "listo" ? "completo" : ""}"><div class="pcab"><span>Pedido #${p.numero} · $${p.total.toFixed(2)}${p.pago ? ` · ${p.pago}` : ""}</span><b class="${e[1]}">${e[0]}</b></div>
+        return `<div class="ped ${p.estado === "listo" ? "completo" : ""}"><div class="pcab"><span>Pedido #${p.numero} · $${p.total.toFixed(2)}</span><b class="${e[1]}">${e[0]}</b></div>
           <ul>${p.items.map((it, i) => { const n = p.estado === "listo" ? it.cantidad : Math.min(Number((p.servidos || [])[i]) || 0, it.cantidad);
             return `<li class="${n >= it.cantidad ? "ok" : ""}"><span><b>${it.cantidad} x</b> ${it.nombre}</span><span class="chk">${Array.from({ length: Math.min(it.cantidad, 12) }, (_, k) => k < n ? "✅" : "⬜").join("")}</span></li>`; }).join("")}</ul>
           ${p.estado === "listo" ? `<div class="fin">🎉 ¡Tu pedido está completo! Buen provecho.</div>` : ""}</div>`; }).join("")}
-      ${(cuentaMesa.porPago || []).filter(x => x.metodo !== "Sin elegir").length > 1 ? `<details class="reparto" open><summary>💳 ¿Qué se paga con qué?</summary>${cuentaMesa.porPago.map(g => `<div class="nota2" style="margin-top:6px"><b>${{ Efectivo: "💵", Transferencia: "📲", Tarjeta: "💳" }[g.metodo] || "💳"} ${g.metodo}: $${g.total.toFixed(2)}</b></div><ul>${(g.platos || []).map(x => `<li><span>${x.cantidad} x ${x.nombre}</span><span>$${x.total.toFixed(2)}</span></li>`).join("")}</ul>`).join("")}</details>` : ""}
       <div class="nota2">Cada ✅ es un plato que ya te sirvieron.</div>`;
   }
   // Ya pidieron: guía para seguir pidiendo, y lo nuevo se ve claramente como "se suma a tu cuenta"
@@ -950,17 +948,12 @@ resultado.addEventListener("click", e=>{
 $("#confSi").onclick = async ()=>{
   const btn = $("#confSi");
   if (btn.disabled) return;
-  if (!miPago){                                             // la forma de pago es obligatoria
-    const t = $("#confirma .pagoEl p"); t.innerHTML = "⚠️ Elige cómo vas a pagar para enviar el pedido"; t.classList.add("falta");
-    const ch = $("#confirma .chips"); ch.classList.remove("temblar"); void ch.offsetWidth; ch.classList.add("temblar");
-    return;
-  }
   const mesa = Number(mesaIn.value), notas = $("#notas").value.trim();
   const linkWA = wa(mensajeWhatsApp(mesa, notas));
   const datos = {
     tipo: "pedido", mesa, notas,
     items: Object.entries(carrito).map(([i,q])=>({ id: PLATOS[i].id, cantidad: q })),
-    compartido: COMPARTIDO && mesa === MESA_QR, yo: YO, nombre: miNombre, k: CLAVE_QR, pago: miPago,
+    compartido: COMPARTIDO && mesa === MESA_QR, yo: YO, nombre: miNombre, k: CLAVE_QR,
     // quién agregó cada plato, para dividir la cuenta
     reparto: COMPARTIDO ? lineasMesa.map(l => ({ p: l.p, q: l.q, n: l.por === YO ? miNombre : (l.n || "") })) : null
   };
@@ -995,19 +988,9 @@ ayudaPanel.addEventListener("click", async e=>{
   else { $("#ayudaMsg").innerHTML = `No se pudo enviar. <a href="${wa(`Mesa ${mesa}: por favor ${tipo === "cuenta" ? "la cuenta" : "un mesero"}`)}" target="_blank" rel="noopener">Avisar por WhatsApp</a> o llama al mesero.`; }
 });
 
-/* ---------- Forma de pago que elige el cliente (opcional, se recuerda) ---------- */
-function pintarPago(){
-  document.querySelectorAll("[data-pago]").forEach(b => b.classList.toggle("on", b.dataset.pago === miPago));
-  const t = $("#confirma .pagoEl p");
-  if (t){
-    t.innerHTML = pagoServidor ? `💳 ¿Cómo vas a pagar este pedido? <small>(cada uno puede elegir la suya)</small>` : "💳 ¿Cómo vas a pagar? <b>(obligatorio)</b>";
-    t.classList.remove("falta");
-  }
-  $("#confSi").classList.toggle("apagado", !miPago);
-}
-document.addEventListener("click", e => { const b = e.target.closest("[data-pago]"); if (!b) return;
-  miPago = b.dataset.pago; pintarPago(); });
-pintarPago();
+/* ---------- Forma de pago ---------- */
+// El cliente ya no elige cómo paga: eso se decide en caja al cobrar (efectivo o transferencia)
+function pintarPago(){}
 
 /* ---------- Carta completa con categorías y buscador ---------- */
 const cartaBox = $("#carta"), cartaLista = $("#cartaLista"), buscar = $("#buscar");

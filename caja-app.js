@@ -75,7 +75,7 @@
   `;
   const st = document.createElement("style"); st.textContent = css; document.head.appendChild(st);
 
-  const ICON = { Efectivo: "💵", Transferencia: "📲", Tarjeta: "💳" };
+  const ICON = { Efectivo: "💵", Transferencia: "📲" };
   const plata = (n) => "$" + Number(n || 0).toFixed(2);
   const esc = (t) => String(t ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const hora = (ms) => new Date(ms).toLocaleTimeString("es-EC", { hour: "2-digit", minute: "2-digit" });
@@ -157,7 +157,7 @@
             <div class="totalPV"><span>Total</span><span>${plata(t)}</span></div>
             <input type="text" id="pvNotas" placeholder="📝 Indicaciones para la cocina (opcional)" maxlength="300" value="${esc(notas)}">
             <div style="margin:12px 0 6px;font-weight:900">💳 ${necesitaPago ? "¿Cómo paga?" : "¿Cómo pagará? (opcional)"}</div>
-            <div class="chipsPV tipos">${["Efectivo", "Transferencia", "Tarjeta"].map((m) => `<button data-pagoPV="${m}" class="${pago === m ? "on" : ""}">${ICON[m]} ${m}</button>`).join("")}</div>
+            <div class="chipsPV tipos">${["Efectivo", "Transferencia"].map((m) => `<button data-pagoPV="${m}" class="${pago === m ? "on" : ""}">${ICON[m]} ${m}</button>`).join("")}</div>
             ${pago === "Efectivo" && necesitaPago && n ? `<input type="text" id="pvRecibido" inputmode="decimal" autocomplete="off" placeholder="¿Con cuánto paga? (opcional)" value="${esc(recibido)}">
               <div class="rapidos2">${[t, 5, 10, 20, 50].filter((v, i, a) => (i === 0 || v > t) && a.indexOf(v) === i).slice(0, 5).map((v, i) => `<button data-rec="${v}">${i === 0 ? "Exacto" : plata(v)}</button>`).join("")}</div>
               ${vuelto != null ? `<div class="vuelto${vuelto < 0 ? " falta" : ""}">${vuelto < 0 ? `Faltan ${plata(-vuelto)}` : `Vuelto: ${plata(vuelto)}`}</div>` : ""}` : ""}
@@ -198,7 +198,7 @@
       abrirM(`<h3>💵 Cobrar mesa ${c.mesa}</h3><div class="grande">${plata(c.total)}</div>
         ${partes.length > 1 ? `<div>${partes.map((x) => `${ICON[x.metodo]} ${esc(x.metodo)}: <b>${plata(x.total)}</b>`).join("<br>")}</div>
           <button class="bM verde" data-metodoPV="Mixto" data-id="${c.id}">✅ Cobrar así</button><div style="margin-top:12px;font-size:14px">o todo de una forma:</div>` : ""}
-        ${["Efectivo", "Transferencia", "Tarjeta"].map((m) => `<button class="bM${partes.length === 1 && partes[0].metodo === m ? " verde" : ""}" data-metodoPV="${m}" data-id="${c.id}">${ICON[m]} ${partes.length > 1 ? "Todo por" : "Cobrar por"} ${m}</button>`).join("")}
+        ${["Efectivo", "Transferencia"].map((m) => `<button class="bM${partes.length === 1 && partes[0].metodo === m ? " verde" : ""}" data-metodoPV="${m}" data-id="${c.id}">${ICON[m]} ${partes.length > 1 ? "Todo por" : "Cobrar por"} ${m}</button>`).join("")}
         <button class="bM gris" data-x>Cancelar</button>`);
     }
     function confirmarMesa(id, metodo) {

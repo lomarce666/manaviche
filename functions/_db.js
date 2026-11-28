@@ -45,6 +45,8 @@ export async function prepararTablas(DB) {
   try { await DB.prepare("ALTER TABLE pedidos ADD COLUMN servidos TEXT").run(); } catch {}
   try { await DB.prepare("ALTER TABLE cuentas ADD COLUMN metodo TEXT").run(); } catch {}
   try { await DB.prepare("ALTER TABLE cuentas ADD COLUMN pago_pref TEXT").run(); } catch {}
+  // Al cobrar mitad y mitad: {"Efectivo": 8.5, "Transferencia": 6.5, "platos": [{nombre, cantidad, transferencia}]}
+  try { await DB.prepare("ALTER TABLE cuentas ADD COLUMN reparto_pago TEXT").run(); } catch {}
   try { await DB.prepare("ALTER TABLE pedidos ADD COLUMN pago TEXT").run(); } catch {}
   try { await DB.prepare("ALTER TABLE pedidos ADD COLUMN para TEXT").run(); } catch {}        // caja: 'mostrador' / 'llevar'
   try { await DB.prepare("ALTER TABLE jornadas ADD COLUMN fondo REAL").run(); } catch {}      // efectivo con que se abre la caja
@@ -157,10 +159,21 @@ export async function resumenJornada(DB, j) {
   let pagos = [];
   try {
     // cada pedido cuenta con su propia forma de pago (una mesa puede pagar parte en efectivo y parte por transferencia)
-    const ps = (await DB.prepare("SELECT p.total, p.pago, p.cuenta, c.metodo, c.cerrada FROM pedidos p LEFT JOIN cuentas c ON c.id = p.cuenta " +
+    const ps = (await DB.prepare("SELECT p.total, p.pago, p.cuenta, c.metodo, c.cerrada, c.reparto_pago FROM pedidos p LEFT JOIN cuentas c ON c.id = p.cuenta " +
       "WHERE p.jornada = ?1 AND p.tipo = 'pedido'").bind(j.id).all()).results;
-    const m = {};
+    const m = {}, mixtas = new Set();
     for (const p of ps) {
+      // Mitad y mitad: se suma una vez por cuenta, con lo que marcó la caja
+      if (p.reparto_pago && p.cerrada != null) {
+        if (mixtas.has(p.cuenta)) continue;
+        mixtas.add(p.cuenta);
+        let rp = {}; try { rp = JSON.parse(p.reparto_pago); } catch {}
+        for (const k of METODOS_PAGO) if (Number(rp[k]) > 0) {
+          m[k] = m[k] || { metodo: k, cuentas: new Set(), total: 0 };
+          m[k].cuentas.add(p.cuenta); m[k].total = Math.round((m[k].total + Number(rp[k])) * 100) / 100;
+        }
+        continue;
+      }
       const k = p.cuenta != null && p.cerrada == null ? "Sin cobrar" : (p.pago || (p.metodo && p.metodo !== "Mixto" ? p.metodo : "") || "Sin registrar");
       m[k] = m[k] || { metodo: k, cuentas: new Set(), total: 0 };
       m[k].cuentas.add(p.cuenta ?? "x" + Math.random()); m[k].total = Math.round((m[k].total + p.total) * 100) / 100;
@@ -171,7 +184,7 @@ export async function resumenJornada(DB, j) {
   // Detalle de cada mesa atendida y de cada pedido por teléfono: qué pidieron, cuánto y cómo pagaron
   let detalle = [];
   try {
-    const cs = Object.fromEntries((await DB.prepare("SELECT id, mesa, cliente, abierta, cerrada, metodo FROM cuentas WHERE id IN (SELECT DISTINCT cuenta FROM pedidos WHERE jornada = ?1 AND cuenta IS NOT NULL)").bind(j.id).all()).results.map((c) => [c.id, c]));
+    const cs = Object.fromEntries((await DB.prepare("SELECT id, mesa, cliente, abierta, cerrada, metodo, reparto_pago FROM cuentas WHERE id IN (SELECT DISTINCT cuenta FROM pedidos WHERE jornada = ?1 AND cuenta IS NOT NULL)").bind(j.id).all()).results.map((c) => [c.id, c]));
     const g = {};
     for (const p of pedidos) {
       const k = p.cuenta != null ? "c" + p.cuenta : "p" + p.numero;
@@ -180,7 +193,10 @@ export async function resumenJornada(DB, j) {
         mesa: p.mesa > 0 ? p.mesa : null, cliente: c ? c.cliente || null : null, desde: p.creado, cobrada: c ? !!c.cerrada : true,
         total: 0, platos: {}, pagos: {} };
       const x = g[k]; x.total += p.total;
-      x.pagos[p.pago || (c && c.metodo && c.metodo !== "Mixto" ? c.metodo : "") || "Sin registrar"] = 1;
+      if (c && c.reparto_pago && c.cerrada) {
+        let rp = {}; try { rp = JSON.parse(c.reparto_pago); } catch {}
+        for (const k of METODOS_PAGO) if (Number(rp[k]) > 0) x.pagos[`${k} $${Number(rp[k]).toFixed(2)}`] = 1;
+      } else x.pagos[p.pago || (c && c.metodo && c.metodo !== "Mixto" ? c.metodo : "") || "Sin registrar"] = 1;
       for (const it of p.items) { const q = (x.platos[it.nombre] = x.platos[it.nombre] || { nombre: it.nombre, cantidad: 0, total: 0 }); q.cantidad += it.cantidad; q.total += it.cantidad * it.precio; }
     }
     detalle = Object.values(g).map((x) => ({ ...x, total: Math.round(x.total * 100) / 100, pagos: Object.keys(x.pagos),
@@ -325,13 +341,39 @@ export async function enviarTelegram(TOKEN, CHAT, texto) {
 }
 
 
-// Cobrar una cuenta de mesa. metodo: "Efectivo"/"Transferencia"/"Tarjeta" = todo con esa forma;
-// "Mixto" = cada pedido con la que eligió el cliente
-export const METODOS_PAGO = ["Efectivo", "Transferencia", "Tarjeta"];
-export async function cobrarCuenta(DB, id, metodoPedido) {
-  const metodo = METODOS_PAGO.includes(metodoPedido) ? metodoPedido : metodoPedido === "Mixto" ? "Mixto" : null;
+// Cobrar una cuenta de mesa. metodo: "Efectivo"/"Transferencia" = todo con esa forma;
+// "Mixto" + partes = la caja marcó qué platos se pagan por transferencia (el resto, en efectivo).
+// El local no acepta tarjeta.
+export const METODOS_PAGO = ["Efectivo", "Transferencia"];
+export const redondo = (n) => Math.round(Number(n || 0) * 100) / 100;
+export async function repartoDePago(DB, id, partes) {
+  const c = await DB.prepare("SELECT * FROM cuentas WHERE id = ?1").bind(id).first();
+  if (!c) return null;
+  const det = await detalleCuenta(DB, c);
+  const pedidoTr = new Map((Array.isArray(partes) ? partes.slice(0, 100) : []).map((x) => [String(x.nombre), Math.floor(Number(x.transferencia)) || 0]));
+  let tr = 0, total = 0;
+  const platos = det.platos.map((p) => {
+    const t = Math.min(p.cantidad, Math.max(0, pedidoTr.get(p.nombre) || 0));
+    const unidad = p.cantidad ? p.total / p.cantidad : 0;
+    tr += t * unidad; total += p.total;
+    return { nombre: p.nombre, cantidad: p.cantidad, transferencia: t, efectivo: p.cantidad - t, precio: redondo(unidad) };
+  });
+  tr = redondo(tr);
+  return { Efectivo: redondo(total - tr), Transferencia: tr, platos };
+}
+export async function cobrarCuenta(DB, id, metodoPedido, partes) {
+  let metodo = METODOS_PAGO.includes(metodoPedido) ? metodoPedido : metodoPedido === "Mixto" ? "Mixto" : null;
+  let reparto = null;
+  if (metodo === "Mixto" && Array.isArray(partes)) {
+    reparto = await repartoDePago(DB, id, partes);
+    if (reparto && !reparto.Transferencia) { metodo = "Efectivo"; reparto = null; }
+    else if (reparto && !reparto.Efectivo) { metodo = "Transferencia"; reparto = null; }
+  }
   if (METODOS_PAGO.includes(metodo)) await DB.prepare("UPDATE pedidos SET pago = ?2 WHERE cuenta = ?1 AND tipo = 'pedido'").bind(id, metodo).run();
-  await DB.prepare("UPDATE cuentas SET cerrada = ?2, metodo = ?3 WHERE id = ?1 AND cerrada IS NULL").bind(id, Date.now(), metodo).run();
+  if (reparto) await DB.prepare("UPDATE pedidos SET pago = NULL WHERE cuenta = ?1 AND tipo = 'pedido'").bind(id).run();
+  await DB.prepare("UPDATE cuentas SET cerrada = ?2, metodo = ?3, reparto_pago = ?4 WHERE id = ?1 AND cerrada IS NULL")
+    .bind(id, Date.now(), metodo, reparto ? JSON.stringify(reparto) : null).run();
+  return { metodo, reparto };
   // La próxima gente que use esa mesa empieza con el carrito vacío
   const c = await DB.prepare("SELECT mesa FROM cuentas WHERE id = ?1").bind(id).first();
   if (c) await DB.batch([
@@ -346,9 +388,13 @@ export async function cobrarCuenta(DB, id, metodoPedido) {
 export async function estadoCaja(DB, j) {
   if (!j) return null;
   const r = await DB.prepare("SELECT COALESCE(SUM(p.total), 0) AS efectivo FROM pedidos p LEFT JOIN cuentas c ON c.id = p.cuenta " +
-    "WHERE p.jornada = ?1 AND p.tipo = 'pedido' AND (p.cuenta IS NULL OR c.cerrada IS NOT NULL) " +
+    "WHERE p.jornada = ?1 AND p.tipo = 'pedido' AND (p.cuenta IS NULL OR c.cerrada IS NOT NULL) AND c.reparto_pago IS NULL " +
     "AND COALESCE(p.pago, CASE WHEN c.metodo != 'Mixto' THEN c.metodo END) = 'Efectivo'").bind(j.id).first();
-  const efectivo = Math.round((r?.efectivo || 0) * 100) / 100;
+  // Mesas que pagaron una parte en efectivo y otra por transferencia
+  const rm = await DB.prepare("SELECT reparto_pago FROM cuentas WHERE reparto_pago IS NOT NULL AND cerrada IS NOT NULL " +
+    "AND id IN (SELECT DISTINCT cuenta FROM pedidos WHERE jornada = ?1 AND cuenta IS NOT NULL)").bind(j.id).all();
+  const efMixto = rm.results.reduce((t, x) => { try { return t + Number(JSON.parse(x.reparto_pago).Efectivo || 0); } catch { return t; } }, 0);
+  const efectivo = Math.round(((r?.efectivo || 0) + efMixto) * 100) / 100;
   const fondo = j.fondo == null ? null : Number(j.fondo);
   let lista = [];
   try { lista = (await DB.prepare("SELECT id, monto, motivo, creado FROM movimientos WHERE jornada = ?1 ORDER BY id").bind(j.id).all()).results; } catch {}

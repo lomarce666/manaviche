@@ -22,7 +22,7 @@
 import { hoyEcuador, prepararTablas, jornadaAbierta, resumenJornada, detalleCuenta, cartaEfectiva, cobrarCuenta, anularPedido, CUENTA_VENCE, responder,
   cuentaAbierta, contar, limpiar, sinBasura, enviarTelegram } from "../_db.js";
 
-const METODOS = ["Efectivo", "Transferencia", "Tarjeta"];
+const METODOS = ["Efectivo", "Transferencia"];          // el local no acepta tarjeta
 
 const ESTADOS = ["nuevo", "recibido", "preparando", "listo"];
 const fechaValida = (f) => /^\d{4}-\d{2}-\d{2}$/.test(String(f || ""));
@@ -224,8 +224,8 @@ export async function onRequestPost({ request, env }) {
   if (d.accion === "cobrar") {
     const id = Number(d.id);
     if (!Number.isInteger(id)) return responder(400, { ok: false, error: "Datos inválidos" });
-    await cobrarCuenta(DB, id, d.metodo);
-    return responder(200, { ok: true });
+    const r = await cobrarCuenta(DB, id, d.metodo, d.partes);
+    return responder(200, { ok: true, ...r });
   }
 
   // ---- Carta: agotado / precio de un plato ----

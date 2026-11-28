@@ -234,12 +234,15 @@ export async function cartaEfectiva(env, url) {
   R.platos = (R.platos || []).map((p, i) => ({ ...p, id: p.id || "p" + i }));
   if (env.DB) try {
     await prepararTablas(env.DB);
-    const { results } = await env.DB.prepare("SELECT clave, valor FROM ajustes").all();
-    const aj = Object.fromEntries(results.map((r) => [r.clave, JSON.parse(r.valor)]));
+    const { results } = await env.DB.prepare("SELECT clave, valor, actualizado FROM ajustes").all();
+    const aj = Object.fromEntries(results.map((r) => [r.clave, { ...JSON.parse(r.valor), _cuando: Number(r.actualizado) || 0 }]));
+    // "precios_desde" (restaurante.json): un precio cambiado desde la caja ANTES de esa fecha ya no vale;
+    // manda el precio del archivo. Los cambios hechos después sí valen. (Los agotados no se tocan.)
+    const desde = Number(R.precios_desde) || 0;
     R.platos = R.platos.map((p) => {
       const a = aj["plato:" + p.id];
       if (!a) return p;
-      return { ...p, agotado: typeof a.agotado === "boolean" ? a.agotado : p.agotado, precio: Number.isFinite(a.precio) && a.precio > 0 ? a.precio : p.precio };
+      return { ...p, agotado: typeof a.agotado === "boolean" ? a.agotado : p.agotado, precio: Number.isFinite(a.precio) && a.precio > 0 && a._cuando > desde ? a.precio : p.precio };
     });
     // (el plato del día ya no se usa)
   } catch (e) { console.log("Ajustes:", String(e)); }

@@ -4,6 +4,7 @@
   "logo": "/iconos/logo.webp",
   "mesas": 6,
   "recargo_llevar": 0.25,
+  "precios_desde": 1795838041725,
   "caja": false,
   "pantalla_cocina": true,
   "whatsapp": "593997276597",
@@ -14,7 +15,7 @@
   "colores": {"inicio": "#0d3b4f", "acento": "#ffd166"},
 
   "platos": [
-    {"id": "ceviche-jipijapa", "nombre": "Ceviche Jipijapa", "precio": 6.5, "desc": "Camarón fresco al estilo manabita, con su toque de maní. Con chifles y limón.", "dibujo": "ceviche", "foto": "", "fondo": "#c8553d", "agotado": false, "estrella": true, "categoria": "Ceviches"},
+    {"id": "ceviche-jipijapa", "nombre": "Ceviche Jipijapa", "precio": 6.5, "desc": "Pescado picudo encurtido, maní, aguacate, cebolla, pimiento, tomate y hierbita.", "dibujo": "ceviche", "foto": "", "fondo": "#c8553d", "agotado": false, "estrella": true, "categoria": "Ceviches"},
 
     {"id": "encebollado", "nombre": "Encebollado", "precio": 3.5, "desc": "Albacora, yuca y cebolla curtida. El que levanta a cualquiera.", "dibujo": "encebollado", "foto": "", "fondo": "#1f6f78", "agotado": false, "categoria": "Encebollados"},
 
@@ -26,11 +27,17 @@
 
     {"id": "ceviche-mixto", "nombre": "Ceviche mixto", "precio": 8.5, "desc": "", "dibujo": "ceviche", "foto": "", "fondo": "#7a3b2e", "agotado": false, "categoria": "Ceviches"},
 
-    {"id": "jugo-natural", "nombre": "Jugo natural", "precio": 1.5, "desc": "Maracuyá, mora, naranjilla o coco.", "categoria": "Bebidas", "solo_carta": true, "agotado": false},
+    {"id": "coca-cola", "nombre": "Coca-Cola", "precio": 1, "desc": "", "categoria": "Bebidas", "solo_carta": true, "agotado": false},
 
-    {"id": "cola", "nombre": "Cola personal", "precio": 1.0, "desc": "", "categoria": "Bebidas", "solo_carta": true, "agotado": false},
+    {"id": "pepsi", "nombre": "Pepsi", "precio": 1, "desc": "", "categoria": "Bebidas", "solo_carta": true, "agotado": false},
 
-    {"id": "agua", "nombre": "Agua", "precio": 0.75, "desc": "500 ml", "categoria": "Bebidas", "solo_carta": true, "agotado": false},
+    {"id": "inca-kola", "nombre": "Inca Kola", "precio": 1, "desc": "", "categoria": "Bebidas", "solo_carta": true, "agotado": false},
+
+    {"id": "fiora", "nombre": "Fiora", "precio": 1, "desc": "", "categoria": "Bebidas", "solo_carta": true, "agotado": false},
+
+    {"id": "fuze-tea", "nombre": "Fuze Tea", "precio": 1, "desc": "", "categoria": "Bebidas", "solo_carta": true, "agotado": false},
+
+    {"id": "agua", "nombre": "Agua", "precio": 1, "desc": "", "categoria": "Bebidas", "solo_carta": true, "agotado": false},
 
     {"id": "chifles", "nombre": "Chifles", "precio": 0.5, "desc": "", "categoria": "Adicionales", "solo_carta": true, "agotado": false},
 

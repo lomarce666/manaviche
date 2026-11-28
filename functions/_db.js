@@ -216,8 +216,7 @@ export const responder = (status, body) =>
 export async function cartaEfectiva(env, url) {
   const R = await (await env.ASSETS.fetch(new URL("/restaurante.json", url))).json();
   R.platos = (R.platos || []).map((p, i) => ({ ...p, id: p.id || "p" + i }));
-  if (!env.DB) return R;
-  try {
+  if (env.DB) try {
     await prepararTablas(env.DB);
     const { results } = await env.DB.prepare("SELECT clave, valor FROM ajustes").all();
     const aj = Object.fromEntries(results.map((r) => [r.clave, JSON.parse(r.valor)]));
@@ -228,6 +227,22 @@ export async function cartaEfectiva(env, url) {
     });
     // (el plato del día ya no se usa)
   } catch (e) { console.log("Ajustes:", String(e)); }
+  agregarParaLlevar(R);
+  return R;
+}
+
+// Cada plato (no bebidas ni adicionales) tiene su versión "para llevar": va en tarrina y cuesta
+// "recargo_llevar" más (restaurante.json, $0.25 si no se dice). Su id termina en "~llevar".
+// Sigue al plato original en precio y agotado. No se muestra en la carta: se elige desde el carrito o el mesero.
+export const SIN_LLEVAR = ["Bebidas", "Adicionales"];
+export function agregarParaLlevar(R) {
+  const rec = Number.isFinite(Number(R.recargo_llevar)) ? Number(R.recargo_llevar) : 0.25;
+  const base = (R.platos || []).filter((p) => !p.llevar_de && !String(p.id).endsWith("~llevar") && !SIN_LLEVAR.includes(p.categoria || ""));
+  R.platos = (R.platos || []).filter((p) => !p.llevar_de).concat(base.map((p) => ({
+    id: p.id + "~llevar", nombre: p.nombre + " · para llevar", precio: Math.round((Number(p.precio) + rec) * 100) / 100,
+    categoria: p.categoria || "", solo_carta: true, agotado: !!p.agotado, llevar_de: p.id, desc: "",
+  })));
+  R.recargo_llevar = rec;
   return R;
 }
 

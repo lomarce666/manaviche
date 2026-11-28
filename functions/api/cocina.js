@@ -60,7 +60,7 @@ export async function onRequestGet({ request, env }) {
     const R = await cartaEfectiva(env, request.url);
     const base = await (await env.ASSETS.fetch(new URL("/restaurante.json", request.url))).json();
     const original = Object.fromEntries((base.platos || []).map((p, i) => [p.id || "p" + i, p.precio]));
-    return responder(200, { ok: true, platos: R.platos.map((p) => ({ id: p.id, nombre: p.nombre, precio: p.precio, original: original[p.id], agotado: !!p.agotado, categoria: p.categoria || "" })), promo: R.promo || null });
+    return responder(200, { ok: true, platos: R.platos.map((p) => ({ id: p.id, nombre: p.nombre, precio: p.precio, original: original[p.id], agotado: !!p.agotado, categoria: p.categoria || "", llevar_de: p.llevar_de || undefined })), recargo_llevar: R.recargo_llevar, promo: R.promo || null });
   }
   // Estadísticas
   if (url.searchParams.get("stats")) {
@@ -166,6 +166,8 @@ export async function onRequestPost({ request, env }) {
     const porId = new Map(R.platos.map((p) => [p.id, p]));
     const lista = (Array.isArray(d.items) ? d.items.slice(0, 60) : [])
       .map((it) => ({ p: porId.get(String(it.id)), cantidad: Math.floor(Number(it.cantidad)) }))
+      // Por pedido (teléfono) todos los platos van en tarrina: se cobran como "para llevar"
+      .map((it) => (para === "telefono" && it.p && !it.p.llevar_de && porId.has(it.p.id + "~llevar") ? { ...it, p: porId.get(it.p.id + "~llevar") } : it))
       .filter((it) => it.p && !it.p.agotado && it.cantidad >= 1 && it.cantidad <= 99);
     if (!lista.length) return responder(400, { ok: false, error: "No hay platos en el pedido" });
     const items = lista.map((it) => ({ nombre: it.p.nombre, cantidad: it.cantidad, precio: Number(it.p.precio) }));
@@ -229,7 +231,7 @@ export async function onRequestPost({ request, env }) {
   // ---- Carta: agotado / precio de un plato ----
   if (d.accion === "plato") {
     const R = await cartaEfectiva(env, request.url);
-    const p = R.platos.find((x) => x.id === String(d.id));
+    const p = R.platos.find((x) => x.id === String(d.id) && !x.llevar_de);
     if (!p) return responder(404, { ok: false, error: "Ese plato no existe" });
     const actual = await DB.prepare("SELECT valor FROM ajustes WHERE clave = ?1").bind("plato:" + p.id).first();
     const v = actual ? JSON.parse(actual.valor) : {};

@@ -104,6 +104,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 .pedir{cursor:pointer;transition:transform .15s, background .2s, color .2s}
 .pedir:active{transform:scale(.92)}
 .pedir.listo{background:var(--crema);color:#1d1d1f}
+/* Botón rojo "−" para quitar uno (aparece cuando ya agregaste el plato) */
+.quitar{flex:none;width:40px;height:40px;border-radius:50%;border:none;background:#d62f3b;color:#fff;font:inherit;font-size:24px;font-weight:900;line-height:1;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;padding:0 0 3px;transition:transform .15s}
+.quitar:active{transform:scale(.88)}
+.quitar[hidden]{display:none}
+.cp .quitar{width:34px;height:34px;font-size:22px}
+.cp .acc{display:flex;align-items:center;gap:6px;flex:none}
 
 /* ---------- Burbuja del carrito ---------- */
 #burbuja{position:fixed;right:16px;bottom:calc(20px + env(safe-area-inset-bottom));height:66px;padding:0 6px 0 18px;border-radius:99px;background:var(--amarillo);color:#1d1d1f;border:none;display:flex;align-items:center;gap:10px;box-shadow:0 10px 26px rgba(0,0,0,.35);z-index:60;cursor:pointer;transform:scale(0);transform-origin:right center;transition:transform .35s cubic-bezier(.2,1.6,.4,1);font-family:inherit;text-align:left}
@@ -131,6 +137,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 .item .nm{flex:1;min-width:0}
 .item .nm b{display:block;font-size:15px}
 .item .nm small{color:#7a7266;font-size:13px}
+/* Adicionales dentro del carrito (chifles y otros) */
+#extras{margin:14px 0 4px;background:#fff3cf;border-radius:16px;padding:12px 14px;display:none}
+#extras.ver{display:block}
+#extras h5{font-size:15px;font-weight:900;margin-bottom:8px}
+#extras .ex{display:flex;align-items:center;gap:8px;padding:7px 0;border-top:1px dashed #e8d9a8}
+#extras .ex:first-of-type{border-top:none}
+#extras .ex b{flex:1;font-size:15px}
+#extras .ex .pr{font-weight:800;color:#0d3b4f}
+#extras .pedir{border:none;background:#0d3b4f;color:#fff;border-radius:99px;padding:8px 12px;font:inherit;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap}
+#extras .pedir.listo{background:#179c4a}
+#extras .quitar{width:32px;height:32px;font-size:20px}
+.item{flex-wrap:wrap}
+.aLlevar{flex-basis:100%;margin:-2px 0 0 58px;text-align:left;background:#fff3cf;border:1.5px dashed #e2b93b;color:#5a4200;border-radius:12px;padding:9px 12px;font:inherit;font-size:14px;font-weight:700;cursor:pointer}
+.aLlevar small{font-weight:600;opacity:.8}
+.etqLlevar{display:inline-block;background:#ffd166;color:#2a1f00;border-radius:7px;padding:1px 7px;font-size:12px;font-weight:900;vertical-align:2px;white-space:nowrap}
 .cant{display:flex;align-items:center;gap:8px}
 .cant button{width:32px;height:32px;border-radius:50%;border:none;font-size:18px;font-weight:800;cursor:pointer}
 .cant .menos{background:#efe7d8;color:#1d1d1f}
@@ -325,7 +346,6 @@ body.conCarta #cartaBtn,body.conCarta #promo,body.conCarta #ayudaBtn{visibility:
   <div class="cabeza"><h3>Tu pedido</h3><button class="x" id="cerrar" aria-label="Cerrar">×</button></div>
   <div class="compartida" id="compartida">
     👥 <b id="compTitulo">Carrito de la mesa</b><br><span id="compTexto">Todos en la mesa ven este carrito y cualquiera puede enviarlo.</span>
-    <input id="miNombre" maxlength="20" placeholder="Tu nombre (opcional)" autocomplete="given-name">
   </div>
   <div id="franja"></div>
   <div class="yaPedido" id="yaPedido"></div>
@@ -341,6 +361,7 @@ body.conCarta #cartaBtn,body.conCarta #promo,body.conCarta #ayudaBtn{visibility:
   </div>
   <div class="agregarMas" id="agregarMas"></div>
   <div id="lista"></div>
+  <div id="extras"></div>
   <div id="zonaEnvio">
   <div class="total"><span id="totalEtq">Total</span><b id="total">$0</b></div>
   <div class="mesa">
@@ -426,6 +447,14 @@ try {
 } catch (e) {
   document.body.innerHTML = `<div style="min-height:100vh;display:grid;place-items:center;text-align:center;padding:30px;font-family:system-ui;background:#0d3b4f;color:#fff7e6"><div><div style="font-size:56px">🍽️</div><h1 style="margin-top:10px">Menú no disponible</h1><p style="opacity:.8;margin-top:8px">Intenta de nuevo en un momento o pide tu carta al mesero.</p></div></div>`;
   return;
+}
+// Versión "para llevar" de cada plato (+$0.25 por la tarrina). Normalmente ya viene del servidor;
+// si el menú se abrió sin servidor, se arma aquí igual.
+if (!(NEGOCIO.platos || []).some(p => p.llevar_de)){
+  const rec = Number.isFinite(Number(NEGOCIO.recargo_llevar)) ? Number(NEGOCIO.recargo_llevar) : 0.25;
+  NEGOCIO.platos = (NEGOCIO.platos || []).concat((NEGOCIO.platos || []).filter(p => !["Bebidas", "Adicionales"].includes(p.categoria || "")).map(p => ({
+    id: p.id + "~llevar", nombre: p.nombre + " · para llevar", precio: Math.round((Number(p.precio) + rec) * 100) / 100,
+    categoria: p.categoria || "", solo_carta: true, agotado: !!p.agotado, llevar_de: p.id, desc: "" })));
 }
 const PLATOS = (NEGOCIO.platos || []).map((p, i) => ({ ...p, i, id: p.id || ("p" + i), comida: p.dibujo || "", fondo: p.fondo || "#2b4162" }));
 const ESCENA = PLATOS.filter(p => !p.solo_carta);          // los que salen en la animación
@@ -564,12 +593,12 @@ const nodos = ESCENA.map((p,i)=>{
       <p>${p.desc || ""}</p>
       <div class="fila">
         <span class="precio">${precioTxt(p.precio)}</span>
-        ${p.agotado ? `<span class="agotado">Agotado hoy</span>` : `<button class="pedir clic" data-i="${p.i}">Agregar +</button>`}
+        ${p.agotado ? `<span class="agotado">Agotado hoy</span>` : `<button class="quitar clic" data-menos="${p.i}" aria-label="Quitar uno" hidden>−</button><button class="pedir clic" data-i="${p.i}">Agregar +</button>`}
       </div>
     </div>`;
   platosBox.appendChild(el);
   puntos.appendChild(document.createElement("i"));
-  return { el, vivo: false, mano: el.querySelector(".mano"), texto: el.querySelector(".texto"), pedir: el.querySelector(".pedir") || document.createElement("i"), lado: lado === "der" ? 1 : -1 };
+  return { el, vivo: false, mano: el.querySelector(".mano"), texto: el.querySelector(".texto"), pedir: el.querySelector(".pedir") || document.createElement("i"), quitar: el.querySelector(".quitar") || document.createElement("i"), lado: lado === "der" ? 1 : -1 };
 });
 $("#waFinal").href = wa(`Hola ${NEGOCIO.nombre}, quiero hacer un pedido 😋`);
 
@@ -605,8 +634,9 @@ const plata = n => "$" + n.toFixed(2);
 const leerLS = k => { try { return localStorage.getItem(k); } catch(e){ return null; } };
 const guardarLS = (k,v) => { try { localStorage.setItem(k,v); } catch(e){} };
 const YO = leerLS("mesa_yo") || (()=>{ const id = Math.random().toString(36).slice(2) + Date.now().toString(36); guardarLS("mesa_yo", id); return id; })();
-let miNombre = leerLS("mesa_nombre") || "";
+let miNombre = "";                      // ya no se pide el nombre: los clientes van y vienen
 const idxDe = new Map(PLATOS.map((p,i)=>[p.id, i]));
+const llevarDe = i => idxDe.get(PLATOS[i].id + "~llevar");     // índice de su versión para llevar
 let cuentaMesa = null;
 let miPago = "", pagoServidor = "";        // forma de pago: obligatoria en el primer pedido; luego la ve toda la mesa
 let COMPARTIDO = false, versionMesa = -1, lineasMesa = [], personasMesa = [], ultimoVisto = 0, ultimoPing = 0, cargadoMesa = false, enVuelo = 0;
@@ -670,7 +700,7 @@ function pintarCompartido(){
   $("#compartida").classList.add("ver");
   $("#compTitulo").textContent = `Carrito de la mesa ${MESA_QR}`;
   $("#compTexto").textContent = otros.length
-    ? `Conectados: tú y ${otros.map(o => o.nombre || "otra persona").join(", ")}. Todos ven este carrito y cualquiera puede enviarlo.`
+    ? `${otros.length + 1} personas conectadas en tu mesa. Todos ven este carrito y cualquiera puede enviarlo.`
     : "Si otra persona de tu mesa escanea el QR, verá este mismo carrito.";
 }
 function quienesPidieron(i){
@@ -683,12 +713,10 @@ function quienesPidieron(i){
   if (!e || !e.ok) return;                                       // sin servidor: carrito normal
   COMPARTIDO = true;
   ultimoVisto = e.ultimo ? e.ultimo.cuando : 1;
-  $("#miNombre").value = miNombre;
   aplicarMesa(e, true); pintarCompartido();
   setInterval(async ()=>{ if (!document.hidden){ const x = await consultarMesa(); if (x){ aplicarMesa(x, "consulta"); pintarCompartido(); } } }, 3000);
   document.addEventListener("visibilitychange", async ()=>{ if (!document.hidden){ ultimoPing = 0; aplicarMesa(await consultarMesa(), true); pintarCompartido(); } });
 })();
-$("#miNombre").addEventListener("change", e=>{ miNombre = e.target.value.replace(/[<>"'`]/g,"").trim().slice(0,20); guardarLS("mesa_nombre", miNombre); ultimoPing = 0; });
 
 // Avisos cuando cambia el estado de un pedido, y "gracias" cuando cobran la cuenta
 let estadosVistos = null, cuentaVista = null;
@@ -760,7 +788,6 @@ function refrescar(){
           <ul>${p.items.map((it, i) => { const n = p.estado === "listo" ? it.cantidad : Math.min(Number((p.servidos || [])[i]) || 0, it.cantidad);
             return `<li class="${n >= it.cantidad ? "ok" : ""}"><span><b>${it.cantidad} x</b> ${it.nombre}</span><span class="chk">${Array.from({ length: Math.min(it.cantidad, 12) }, (_, k) => k < n ? "✅" : "⬜").join("")}</span></li>`; }).join("")}</ul>
           ${p.estado === "listo" ? `<div class="fin">🎉 ¡Tu pedido está completo! Buen provecho.</div>` : ""}</div>`; }).join("")}
-      ${(cuentaMesa.personas || []).length > 1 ? `<details class="reparto"><summary>👥 ¿Cuánto le toca a cada uno?</summary><ul>${cuentaMesa.personas.map(x => `<li><span>${x.nombre}</span><span>$${x.total.toFixed(2)}</span></li>`).join("")}</ul><div class="nota2">Según quién agregó cada plato al carrito.</div></details>` : ""}
       ${(cuentaMesa.porPago || []).filter(x => x.metodo !== "Sin elegir").length > 1 ? `<details class="reparto" open><summary>💳 ¿Qué se paga con qué?</summary>${cuentaMesa.porPago.map(g => `<div class="nota2" style="margin-top:6px"><b>${{ Efectivo: "💵", Transferencia: "📲", Tarjeta: "💳" }[g.metodo] || "💳"} ${g.metodo}: $${g.total.toFixed(2)}</b></div><ul>${(g.platos || []).map(x => `<li><span>${x.cantidad} x ${x.nombre}</span><span>$${x.total.toFixed(2)}</span></li>`).join("")}</ul>`).join("")}</details>` : ""}
       <div class="nota2">Cada ✅ es un plato que ya te sirvieron.</div>`;
   }
@@ -779,15 +806,28 @@ function refrescar(){
     b.textContent = q ? `Agregado ✓ (${q})` : "Agregar +";
     b.classList.toggle("listo", q > 0);
   });
+  document.querySelectorAll(".quitar").forEach(b => { b.hidden = !carrito[b.dataset.menos]; });
   // lista de la ventana
-  $("#lista").innerHTML = Object.entries(carrito).map(([i,q])=>{
-    const p = PLATOS[i];
+  // Cada "para llevar" va justo debajo de su plato
+  const orden = i => { const p = PLATOS[i]; return p.llevar_de ? idxDe.get(p.llevar_de) + 0.5 : Number(i); };
+  $("#lista").innerHTML = Object.entries(carrito).sort((a, b) => orden(a[0]) - orden(b[0])).map(([i,q])=>{
+    const p = PLATOS[i], v = llevarDe(i), puedeLlevar = v != null && !PLATOS[v].agotado;
     return `<div class="item">
-      <div class="ic" style="background:${p.fondo}22">${ICONOS[p.comida] || (p.categoria === "Bebidas" ? "🥤" : "🍽️")}</div>
-      <div class="nm"><b>${p.nombre}</b><small>${plata(p.precio)} c/u · ${plata(p.precio*q)}</small>${COMPARTIDO && quienesPidieron(i) ? `<small class="de">👤 ${quienesPidieron(i)}</small>` : ""}</div>
+      <div class="ic" style="background:${p.fondo}22">${p.llevar_de ? "🥡" : ICONOS[p.comida] || (p.categoria === "Bebidas" ? "🥤" : p.categoria === "Adicionales" ? ({ pan: "🍞" }[p.id] || "🍟") : "🍽️")}</div>
+      <div class="nm"><b>${p.llevar_de ? `${PLATOS[idxDe.get(p.llevar_de)].nombre} <span class="etqLlevar">🥡 Para llevar</span>` : p.nombre}</b><small>${plata(p.precio)} c/u · ${plata(p.precio*q)}</small></div>
       <div class="cant"><button class="menos" data-menos="${i}" aria-label="Quitar uno">−</button><span>${q}</span><button class="mas" data-mas="${i}" aria-label="Agregar uno">+</button></div>
+      ${puedeLlevar ? `<button class="aLlevar" data-allevar="${i}">🥡 Quiero 1 <b>para llevar</b> <small>(+${plata(PLATOS[v].precio - p.precio)} tarrina)</small></button>` : ""}
     </div>`;
   }).join("");
+  // ¿Quieres agregar un adicional? (solo si ya eligió algún plato)
+  const EXTRAS = PLATOS.filter(p => p.categoria === "Adicionales" && !p.agotado);
+  const hayPlato = Object.keys(carrito).some(i => PLATOS[i].categoria !== "Adicionales" && PLATOS[i].categoria !== "Bebidas");
+  const ex = $("#extras");
+  ex.classList.toggle("ver", hayPlato && EXTRAS.length > 0);
+  ex.innerHTML = hayPlato && EXTRAS.length ? `<h5>🍟 ¿Quieres agregar un adicional?</h5>` + EXTRAS.map(p => { const q = carrito[p.i] || 0;
+    return `<div class="ex"><b>${p.nombre}</b><span class="pr">${precioTxt(p.precio)}</span>
+      <button class="quitar" data-menos="${p.i}" aria-label="Quitar uno"${q ? "" : " hidden"}>−</button>
+      <button class="pedir${q ? " listo" : ""}" data-i="${p.i}">${q ? `Agregado ✓ (${q})` : "Agregar +"}</button></div>`; }).join("") : "";
   if (!n && !hayCuenta) cerrarVentana();
   validar();
   pintarCompartido();
@@ -820,7 +860,12 @@ document.addEventListener("click", e=>{
   if (ped){ const i = ped.dataset.i; carrito[i] = (carrito[i]||0) + 1; volar(ped); refrescar(); avisar(`${PLATOS[i].nombre} agregado 😋`); if (COMPARTIDO) cambiarMesa(PLATOS[i].id, 1); return; }
   const mas = e.target.closest("[data-mas]"), menos = e.target.closest("[data-menos]");
   if (mas){ const i = mas.dataset.mas; carrito[i]++; refrescar(); if (COMPARTIDO) cambiarMesa(PLATOS[i].id, 1); }
-  if (menos){ const i = menos.dataset.menos; if(--carrito[i] <= 0) delete carrito[i]; refrescar(); if (COMPARTIDO) cambiarMesa(PLATOS[i].id, -1); }
+  const lle = e.target.closest("[data-allevar]");
+  if (lle){ const i = lle.dataset.allevar, v = llevarDe(i); if (v == null || !carrito[i]) return;
+    if (--carrito[i] <= 0) delete carrito[i]; carrito[v] = (carrito[v] || 0) + 1; refrescar();
+    avisar(`🥡 1 ${PLATOS[i].nombre} para llevar`);
+    if (COMPARTIDO){ cambiarMesa(PLATOS[i].id, -1); cambiarMesa(PLATOS[v].id, 1); } return; }
+  if (menos){ const i = menos.dataset.menos; if (!carrito[i]) return; if(--carrito[i] <= 0) delete carrito[i]; refrescar(); if (!menos.closest("#lista")) avisar(carrito[i] ? `Quitaste 1 ${PLATOS[i].nombre} · quedan ${carrito[i]}` : `${PLATOS[i].nombre} quitado del pedido`); if (COMPARTIDO) cambiarMesa(PLATOS[i].id, -1); }
 });
 burbuja.onclick = ()=>{ cartaBox.classList.remove("ver"); document.body.classList.remove("conCarta"); abrirVentana(); };
 $("#cerrar").onclick = cerrarVentana;
@@ -966,7 +1011,7 @@ pintarPago();
 
 /* ---------- Carta completa con categorías y buscador ---------- */
 const cartaBox = $("#carta"), cartaLista = $("#cartaLista"), buscar = $("#buscar");
-const CATS = [...new Set(PLATOS.map(p => p.categoria || "Otros"))];
+const CATS = [...new Set(PLATOS.filter(p => !p.llevar_de).map(p => p.categoria || "Otros"))];
 let catSel = "";
 const sinTilde = t => String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 $("#cats").innerHTML = (CATS.length > 1 ? [`<button data-cat="" class="on">Todo</button>`, ...CATS.map(c => `<button data-cat="${c}">${c}</button>`)] : []).join("");
@@ -976,13 +1021,13 @@ function pintarCarta(){
   let html = "", hay = 0;
   for (const c of CATS){
     if (catSel && c !== catSel) continue;
-    const lista = PLATOS.filter(p => (p.categoria || "Otros") === c && (!q || sinTilde(p.nombre + " " + (p.desc || "")).includes(q)));
+    const lista = PLATOS.filter(p => !p.llevar_de && (p.categoria || "Otros") === c && (!q || sinTilde(p.nombre + " " + (p.desc || "")).includes(q)));
     if (!lista.length) continue;
     hay += lista.length;
     html += `<h4>${c}</h4>` + lista.map(p => `<div class="cp${p.id === promoId ? " estrella" : ""}">
       <div class="nm"><b>${p.id === promoId ? "⭐ " : ""}${p.nombre}</b>${p.desc ? `<small>${p.desc}</small>` : ""}</div>
       <span class="pr">${precioTxt(p.precio)}</span>
-      ${p.agotado ? `<span class="ago">Agotado</span>` : `<button class="pedir" data-i="${p.i}">Agregar +</button>`}
+      ${p.agotado ? `<span class="ago">Agotado</span>` : `<span class="acc"><button class="quitar" data-menos="${p.i}" aria-label="Quitar uno" hidden>−</button><button class="pedir" data-i="${p.i}">Agregar +</button></span>`}
     </div>`).join("");
   }
   cartaLista.innerHTML = html + `<p id="cartaVacia" style="display:${hay ? "none" : "block"}">No encontramos "${buscar.value.replace(/[<>]/g, "")}" 🤔</p>`;
@@ -1047,7 +1092,7 @@ function pintar(){
     const cerca = t > -1 && t < 1;
     if (cerca !== n.vivo){ n.vivo = cerca; n.el.classList.toggle("vivo", cerca); }
     if (!cerca){
-      if (n.mano.style.opacity !== "0"){ n.mano.style.opacity = 0; n.texto.style.opacity = 0; n.pedir.style.pointerEvents = "none"; }
+      if (n.mano.style.opacity !== "0"){ n.mano.style.opacity = 0; n.texto.style.opacity = 0; n.pedir.style.pointerEvents = n.quitar.style.pointerEvents = "none"; }
       return;
     }
     let x, y, r, s, o;
@@ -1058,7 +1103,7 @@ function pintar(){
     const to = clamp(1 - (Math.abs(t) - 0.35) / 0.35);       // 100% visible mientras el plato esté cerca del centro
     n.texto.style.opacity = to.toFixed(3);
     n.texto.style.transform = `translate3d(0, ${(t * -40).toFixed(1)}px, 0)`;
-    n.pedir.style.pointerEvents = to > 0.6 ? "auto" : "none";
+    n.pedir.style.pointerEvents = n.quitar.style.pointerEvents = to > 0.6 ? "auto" : "none";
     if (Math.abs(t) < 0.5) activo = i;
   });
 

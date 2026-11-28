@@ -107,6 +107,13 @@ main{padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280
 .tPlatos button.con{border-color:#ffd166;background:#2c2a1d}
 .tPlatos button:disabled{opacity:.35}
 .tPlatos button i{position:absolute;top:-6px;right:-4px;background:#ffd166;color:#2a1f00;border-radius:99px;min-width:24px;height:24px;font-style:normal;font-weight:900;display:grid;place-items:center;font-size:13px}
+.tGrupos{position:sticky;top:var(--altoFijo,0px);z-index:5;display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:12px 0 4px;padding:6px 0;background:#111418}
+.tGrupos button{position:relative;padding:13px 4px;border-radius:12px;background:#222831;color:#cfd6df;font-weight:900;font-size:13px;border:2px solid transparent}
+.tGrupos button.on{background:#ffd166;color:#2a1f00}
+.tGrupos button i{position:absolute;top:-7px;right:-3px;background:#2ecc71;color:#08210f;border-radius:99px;min-width:22px;height:22px;font-style:normal;font-weight:900;display:grid;place-items:center;font-size:12px}
+.tAvisoLlevar{margin:8px 0 2px;background:#2c2a1d;color:#ffe29a;border-radius:12px;padding:10px 12px;font-size:13px}
+.tLinea .tBtnLlevar{grid-column:1/-1;justify-self:start;margin-top:2px;padding:7px 10px;border-radius:10px;background:#2c2a1d;color:#ffe29a;font-size:12px;font-weight:700;border:1px dashed #6b5a22}
+.tEtqLlevar{font-style:normal;font-size:12px;font-weight:800;color:#2a1f00;background:#ffd166;border-radius:6px;padding:1px 6px;white-space:nowrap}
 .tTicket{margin-top:16px;background:#1b2027;border-radius:14px;padding:12px}
 .tLinea{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid #2a313b;font-size:13px}
 .tMas{display:flex;gap:4px}.tMas button{width:36px;height:36px;border-radius:10px;background:#2a313b;color:#fff;font-weight:900;font-size:16px}
@@ -747,6 +754,8 @@ async function cargar(){
 setInterval(()=>{ if ($("#panel").style.display === "block") cargar(); }, 3000);
 
 /* ---------- Dibujar tarjetas ---------- */
+// Cambia el contenido solo si de verdad cambió: así el celular no redibuja todo cada 3 segundos (se trababa en gama baja)
+function poner(el, html){ if (el._html !== html){ el._html = html; el.innerHTML = html; } }
 const esc = t => String(t ?? "").replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
 const hace = ms => { const m = Math.floor((datos.ahora - ms) / 60000); return m < 1 ? "recién" : `hace ${m} min`; };
 const hora = ms => new Date(ms).toLocaleTimeString("es-EC", { hour: "2-digit", minute: "2-digit" });
@@ -788,7 +797,18 @@ if (!MODO_CAJA){
 }
 $("#tabTomar").onclick = ()=>verVista("tomar");
 // Al bajar, la parte de arriba se achica pero se queda fija
-addEventListener("scroll", () => { document.querySelector(".fijo").classList.toggle("chico", scrollY > 60); }, { passive: true });
+// Antes se encogía y crecía sin parar alrededor de los 60 px (al achicarse, la página "saltaba" y volvía a crecer):
+// ahora se achica después de 140 px y solo vuelve a crecer arriba del todo, y no se achica si la página es corta.
+let fijoChico = false, fijoPend = false;
+function revisarFijo(){
+  fijoPend = false;
+  const y = scrollY, sobra = document.documentElement.scrollHeight - innerHeight;
+  if (!fijoChico && y > 140 && sobra > 260){ fijoChico = true; document.querySelector(".fijo").classList.add("chico"); }
+  else if (fijoChico && y < 12){ fijoChico = false; document.querySelector(".fijo").classList.remove("chico"); }
+}
+// Alto de la barra de arriba, para que los botones Platos/Bebidas/Adicionales queden fijos justo debajo
+try { new ResizeObserver(() => document.documentElement.style.setProperty("--altoFijo", document.querySelector(".fijo").offsetHeight + "px")).observe(document.querySelector(".fijo")); } catch(e){}
+addEventListener("scroll", () => { if (!fijoPend){ fijoPend = true; requestAnimationFrame(revisarFijo); } }, { passive: true });
 $("#tabDia").onclick = ()=>verVista("dia");
 $("#tabCaja").onclick = ()=>verVista("caja");
 $("#tabPend").onclick = ()=>verVista("pend");
@@ -807,14 +827,14 @@ function bloquePagos(c){
 function pintarMesas(){
   if (!MODO_CAJA) return pintarMesasMesero();
   const L = porCobrarLista();
-  $("#mesas").innerHTML = L.length ? `<div class="rejilla">${L.map(tarjetaCobro).join("")}</div>`
-    : `<div class="vacio"><b>🧾</b>No hay nada por cobrar<small style="display:block;font-size:12px;margin-top:6px;opacity:.7">Aquí llega cada mesa cuando el mesero la manda a caja, y los pedidos por teléfono.</small></div>`;
+  poner($("#mesas"), L.length ? `<div class="rejilla">${L.map(tarjetaCobro).join("")}</div>`
+    : `<div class="vacio"><b>🧾</b>No hay nada por cobrar<small style="display:block;font-size:12px;margin-top:6px;opacity:.7">Aquí llega cada mesa cuando el mesero la manda a caja, y los pedidos por teléfono.</small></div>`);
 }
 // Mesero: todas las mesas abiertas; desde aquí agrega platos y manda la mesa a caja
 function pintarMesasMesero(){
   const L = (datos.mesas || []).filter(c => c.pedidos.length)
     .sort((a, b) => (!!pideCuenta(b) - !!pideCuenta(a)) || (a.telefono - b.telefono) || (a.mesa - b.mesa));
-  $("#mesas").innerHTML = L.length ? `<div class="rejilla">${L.map(c => {
+  poner($("#mesas"), L.length ? `<div class="rejilla">${L.map(c => {
     const faltan = c.pedidos.reduce((t, p) => t + p.items.reduce((u, it, i) => u + it.cantidad - Math.min(Number((p.servidos || [])[i]) || 0, it.cantidad), 0) * (p.estado === "listo" ? 0 : 1), 0);
     return `<div class="cuentaM${c.enviada ? " enviadaM" : ""}">
     <div class="cab2"><span class="mesa">${esc(nombreCuenta(c)).toUpperCase()}</span><span class="tot">$${Number(c.total).toFixed(2)}</span></div>
@@ -827,7 +847,7 @@ function pintarMesasMesero(){
       ${c.enviada ? `<div class="enCaja">✅ En caja · esperando que cobren<small>Si agregas algo, a caja le llega solo</small></div>`
         : `<button class="bEnviar" data-enviar="${c.id}">📤 Ya no piden más · mandar a caja</button>`}
     </div></div>`; }).join("")}</div>`
-    : `<div class="vacio"><b>🍽️</b>No hay mesas abiertas<small style="display:block;font-size:12px;margin-top:6px;opacity:.7">Cuando pidan con el QR o anotes un pedido en "Tomar pedido", la mesa aparece aquí.</small></div>`;
+    : `<div class="vacio"><b>🍽️</b>No hay mesas abiertas<small style="display:block;font-size:12px;margin-top:6px;opacity:.7">Cuando pidan con el QR o anotes un pedido en "Tomar pedido", la mesa aparece aquí.</small></div>`);
 }
 const todoServido = c => c.pedidos.every(p => p.estado === "listo") && !datos.pedidos.some(p => p.tipo === "pedido" && p.cuenta === c.id);
 const pideCuenta = c => datos.pedidos.find(p => p.tipo === "cuenta" && (p.cuenta_abierta === c.id || (!c.telefono && p.mesa === c.mesa)));
@@ -935,11 +955,14 @@ $("#reporte").addEventListener("click", async e=>{
   cerrarReporte(); mostrarListo("🚫 Pedido anulado"); cargar();
 });
 /* ---------- Mesero: tomar un pedido a mano (en mesa o por teléfono) ---------- */
-const nuevoTomar = () => ({ para: "mesa", mesa: 0, items: {}, notas: "", cliente: "", pago: "", buscar: "" });
-let tomar = nuevoTomar(), cartaT = null, enviandoT = false;
+const nuevoTomar = () => ({ para: "mesa", mesa: 0, items: {}, notas: "", cliente: "", pago: "", buscar: "", grupo: "platos" });
+// Platos / Bebidas / Adicionales (botones de arriba en "Tomar pedido")
+const grupoDe = p => p.categoria === "Bebidas" ? "bebidas" : p.categoria === "Adicionales" ? "adicionales" : "platos";
+const LLEVAR = "~llevar";
+let tomar = nuevoTomar(), cartaT = null, enviandoT = false, recLlevar = 0.25;
 async function abrirTomar(){
   if (!cartaT){ $("#tomar").innerHTML = `<div class="vacio">Cargando platos…</div>`; }
-  try { const j = await api("GET", null, "?carta=1"); if (j.ok) cartaT = j.platos; } catch(e){}
+  try { const j = await api("GET", null, "?carta=1"); if (j.ok){ cartaT = j.platos; recLlevar = Number(j.recargo_llevar ?? 0.25); } } catch(e){}
   if (!cartaT){ $("#tomar").innerHTML = `<div class="vacio">No se pudo cargar la carta. Revisa el internet.</div>`; return; }
   pintarTomar();
 }
@@ -950,7 +973,12 @@ function pintarTomar(){
   const total = lineas.reduce((t, [id, n]) => t + n * porId[id].precio, 0);
   const cant = lineas.reduce((t, [, n]) => t + n, 0);
   const abierta = m => (datos.mesas || []).find(c => !c.telefono && c.mesa === m);
-  const cats = [...new Set(cartaT.map(p => p.categoria || "Platos"))];
+  const base = cartaT.filter(p => !p.llevar_de);
+  const cats = [...new Set(base.map(p => p.categoria || "Platos"))];
+  const nDe = id => (T.items[id] || 0) + (T.items[id + LLEVAR] || 0);
+  const rec = recLlevar;
+  const precioTile = p => T.para === "telefono" && porId[p.id + LLEVAR] ? porId[p.id + LLEVAR].precio : p.precio;
+  const nGrupo = g => lineas.filter(([id]) => grupoDe(porId[id]) === g).reduce((t, [, n]) => t + n, 0);
   let donde;
   if (T.para === "mesa"){
     donde = T.mesa
@@ -967,12 +995,16 @@ function pintarTomar(){
     <div class="tSeg"><button data-tpara="mesa" class="${T.para === "mesa" ? "on" : ""}">🍽️ En mesa</button><button data-tpara="telefono" class="${T.para === "telefono" ? "on" : ""}">📞 Por pedido</button></div>
     ${donde}
     <input class="tInput" id="tBuscar" placeholder="🔎 Buscar plato o bebida" value="${esc(T.buscar)}" autocomplete="off" style="margin-top:12px">
-    ${cats.map(cat => { const ps = cartaT.filter(p => (p.categoria || "Platos") === cat);
-      return `<div class="tGrupo"><div class="tCat">${esc(cat)}</div><div class="tPlatos">${ps.map(p => `<div class="tTile" data-nom="${esc(p.nombre.toLowerCase())}"><button data-tadd="${esc(p.id)}" class="${T.items[p.id] ? "con" : ""}" ${p.agotado ? "disabled" : ""}>
-        ${T.items[p.id] ? `<i>${T.items[p.id]}</i>` : ""}<span>${esc(p.nombre)}</span><small>${p.agotado ? "Agotado" : "$" + Number(p.precio).toFixed(2)}</small></button>
-        ${T.items[p.id] ? `<button class="tQuitar" data-tmenos="${esc(p.id)}" aria-label="Quitar uno">−</button>` : ""}</div>`).join("")}</div></div>`; }).join("")}
+    <div class="tGrupos">${[["platos", "🍽️ Platos"], ["bebidas", "🥤 Bebidas"], ["adicionales", "🍟 Adicionales"]].map(([g, t]) => `<button data-tgrupo="${g}" class="${T.grupo === g ? "on" : ""}">${t}${nGrupo(g) ? `<i>${nGrupo(g)}</i>` : ""}</button>`).join("")}</div>
+    ${T.para === "telefono" ? `<div class="tAvisoLlevar">🥡 Por pedido: cada plato va en tarrina y cuesta <b>$${rec.toFixed(2)} más</b> (ya está sumado).</div>` : ""}
+    ${cats.map(cat => { const ps = base.filter(p => (p.categoria || "Platos") === cat);
+      return `<div class="tGrupo" data-grupo="${grupoDe(ps[0])}"><div class="tCat">${esc(cat)}</div><div class="tPlatos">${ps.map(p => `<div class="tTile" data-nom="${esc(p.nombre.toLowerCase())}"><button data-tadd="${esc(p.id)}" class="${nDe(p.id) ? "con" : ""}" ${p.agotado ? "disabled" : ""}>
+        ${nDe(p.id) ? `<i>${nDe(p.id)}</i>` : ""}<span>${esc(p.nombre)}</span><small>${p.agotado ? "Agotado" : "$" + Number(precioTile(p)).toFixed(2)}</small></button>
+        ${nDe(p.id) ? `<button class="tQuitar" data-ttmenos="${esc(p.id)}" aria-label="Quitar uno">−</button>` : ""}</div>`).join("")}</div></div>`; }).join("")}
     ${lineas.length ? `<div class="tTicket"><div class="tTit">🧾 ${T.para === "mesa" ? (T.mesa ? "Para la mesa " + T.mesa : "Elige la mesa arriba") : "Pedido por teléfono"}</div>
-      ${lineas.map(([id, n]) => `<div class="tLinea"><span><b>${n} x</b> ${esc(porId[id].nombre)}</span><span class="tMas"><button data-tmenos="${esc(id)}">−</button><button data-tadd="${esc(id)}">+</button></span><b>$${(n * porId[id].precio).toFixed(2)}</b></div>`).join("")}
+      ${lineas.map(([id, n]) => { const p = porId[id], puedeLlevar = T.para === "mesa" && !p.llevar_de && porId[id + LLEVAR];
+        return `<div class="tLinea${p.llevar_de ? " llevar" : ""}"><span><b>${n} x</b> ${esc(p.llevar_de ? porId[p.llevar_de]?.nombre || p.nombre : p.nombre)}${p.llevar_de ? ` <em class="tEtqLlevar">🥡 para llevar</em>` : ""}</span><span class="tMas"><button data-tmenos="${esc(id)}">−</button><button data-tadd2="${esc(id)}">+</button></span><b>$${(n * p.precio).toFixed(2)}</b>
+        ${puedeLlevar ? `<button class="tBtnLlevar" data-tllevar="${esc(id)}">🥡 Pasar 1 a <b>para llevar</b> (+$${rec.toFixed(2)})</button>` : ""}</div>`; }).join("")}
       <input class="tInput" id="tNotas" placeholder="📝 Indicaciones (ej. sin cebolla)" value="${esc(T.notas)}" autocomplete="off" style="margin-top:8px">
       <button class="tLimpiar" data-tlimpiar>Vaciar</button></div>` : ""}
     <div style="height:90px"></div>
@@ -986,8 +1018,10 @@ function filtrarTomar(){
   const b = tomar.buscar.trim().toLowerCase();
   document.querySelectorAll("#tomar .tGrupo").forEach(g => {
     let alguno = false;
+    // Al buscar se busca en todo; si no, solo se ve el grupo elegido arriba (Platos, Bebidas o Adicionales)
+    const delGrupo = !!b || g.dataset.grupo === tomar.grupo;
     g.querySelectorAll("[data-nom]").forEach(x => { const ok = !b || x.dataset.nom.includes(b); x.style.display = ok ? "" : "none"; alguno = alguno || ok; });
-    g.style.display = alguno ? "" : "none";
+    g.style.display = alguno && delGrupo ? "" : "none";
   });
 }
 $("#tomar").addEventListener("input", e=>{
@@ -998,11 +1032,26 @@ $("#tomar").addEventListener("input", e=>{
 $("#tomar").addEventListener("click", async e=>{
   const T = tomar, q = sel => e.target.closest(sel);
   let x;
-  if ((x = q("[data-tpara]"))){ T.para = x.dataset.tpara; return pintarTomar(); }
+  if ((x = q("[data-tpara]"))){
+    T.para = x.dataset.tpara;
+    // Por pedido: todos los platos pasan a "para llevar"; en mesa vuelven a ser normales
+    const nuevo = {};
+    for (const [id, n] of Object.entries(T.items)){ if (!n) continue;
+      const b0 = id.endsWith(LLEVAR) ? id.slice(0, -LLEVAR.length) : id;
+      const k = T.para === "telefono" && cartaT.some(p => p.id === b0 + LLEVAR) ? b0 + LLEVAR : b0;
+      nuevo[k] = (nuevo[k] || 0) + n; }
+    T.items = nuevo; return pintarTomar(); }
+  if ((x = q("[data-tgrupo]"))){ T.grupo = x.dataset.tgrupo; T.buscar = ""; return pintarTomar(); }
+  if ((x = q("[data-tllevar]"))){ const id = x.dataset.tllevar; if (T.items[id] > 0){ T.items[id]--; T.items[id + LLEVAR] = (T.items[id + LLEVAR] || 0) + 1; } return pintarTomar(); }
+  if ((x = q("[data-tadd2]"))){ T.items[x.dataset.tadd2] = (T.items[x.dataset.tadd2] || 0) + 1; return pintarTomar(); }
+  if ((x = q("[data-ttmenos]"))){ const id = x.dataset.ttmenos, ll = id + LLEVAR;
+    const k = T.para === "telefono" ? (T.items[ll] ? ll : id) : (T.items[id] ? id : ll);
+    T.items[k] = Math.max(0, (T.items[k] || 0) - 1); return pintarTomar(); }
   if ((x = q("[data-tmesa]"))){ T.mesa = Number(x.dataset.tmesa); return pintarTomar(); }
   if (q("[data-tcambiar]")){ T.mesa = 0; return pintarTomar(); }
   if ((x = q("[data-tpago]"))){ T.pago = x.dataset.tpago; return pintarTomar(); }
-  if ((x = q("[data-tadd]"))){ T.items[x.dataset.tadd] = (T.items[x.dataset.tadd] || 0) + 1; return pintarTomar(); }
+  if ((x = q("[data-tadd]"))){ let id = x.dataset.tadd; if (T.para === "telefono" && cartaT.some(p => p.id === id + LLEVAR)) id += LLEVAR;
+    T.items[id] = (T.items[id] || 0) + 1; return pintarTomar(); }
   if ((x = q("[data-tmenos]"))){ T.items[x.dataset.tmenos] = Math.max(0, (T.items[x.dataset.tmenos] || 0) - 1); return pintarTomar(); }
   if (q("[data-tlimpiar]")){ T.items = {}; T.notas = ""; return pintarTomar(); }
 });
@@ -1094,9 +1143,9 @@ function pintar(){
   if (vista === "prep") pintarPreparados();
   if (vista === "dia") pintarDia();
   $("#hoyN").textContent = datos.hoy?.pedidos ?? 0;
-  if (!MODO_CAJA && !datos.jornada){ $("#lista").innerHTML = `<div class="vacio"><b>⏸️</b>El día de trabajo no está abierto<small style="display:block;font-size:12px;margin-top:6px;opacity:.8">Lo abre la persona de caja. Mientras tanto el menú no recibe pedidos y no se pueden anotar pedidos.</small></div>`; return; }
-  if (!lista.length){ $("#lista").innerHTML = `<div class="vacio"><b>✅</b>Sin pedidos pendientes</div>`; return; }
-  $("#lista").innerHTML = lista.map(p => {
+  if (!MODO_CAJA && !datos.jornada){ poner($("#lista"), `<div class="vacio"><b>⏸️</b>El día de trabajo no está abierto<small style="display:block;font-size:12px;margin-top:6px;opacity:.8">Lo abre la persona de caja. Mientras tanto el menú no recibe pedidos y no se pueden anotar pedidos.</small></div>`); return; }
+  if (!lista.length){ poner($("#lista"), `<div class="vacio"><b>✅</b>Sin pedidos pendientes</div>`); return; }
+  poner($("#lista"), lista.map(p => {
     const espera = (datos.ahora - p.creado) / 60000;
     const tarde = p.estado !== "nuevo" && espera > 20;
     if (p.tipo !== "pedido"){
@@ -1125,7 +1174,7 @@ function pintar(){
       ${p.estado !== "nuevo" ? `<div class="faltan">${faltan ? `Marca ✓ cada plato al servirlo · faltan ${faltan}` : "✅ Todo servido · toca Pedido servido"}</div>` : ""}
       <div class="acciones">${boton}</div>
 </div>`;
-  }).join("");
+  }).join(""));
 }
 
 /* ---------- Botones Recibido / vistos / Pedido servido ---------- */
@@ -1450,6 +1499,7 @@ let carta = null;
 async function cargarCarta(){
   const j = await api("GET", null, "?carta=1");
   if (!j.ok){ $("#carta").innerHTML = `<div class="vacio">No se pudo cargar la carta</div>`; return; }
+  j.platos = (j.platos || []).filter(p => !p.llevar_de);
   carta = j; pintarCarta();
 }
 function pintarCarta(){

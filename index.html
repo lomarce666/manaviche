@@ -315,25 +315,27 @@ body.conCarta #cartaBtn,body.conCarta #promo,body.conCarta #ayudaBtn{visibility:
 .reparto summary{font-weight:900;font-size:14px;color:#0d3b4f;cursor:pointer}
 .reparto li{font-size:14px}
 /* Página de bebidas y adicionales (después del último plato) */
-#masMenu{position:relative;z-index:50;scroll-snap-align:start;min-height:100vh;min-height:100svh;background:#fffaf0;color:#1d1d1f;border-radius:28px 28px 0 0;padding:26px 20px calc(130px + env(safe-area-inset-bottom));box-shadow:0 -14px 40px rgba(0,0,0,.35)}
+#masMenu{position:relative;z-index:50;scroll-snap-align:start;min-height:100vh;min-height:100svh;background:var(--fondoMas,#0d3b4f);color:var(--crema);padding:calc(78px + env(safe-area-inset-top)) 18px calc(120px + env(safe-area-inset-bottom))}
 #masMenu:empty{display:none}
-#masMenu .mmGrupo + .mmGrupo{margin-top:26px}
-#masMenu h3{font-size:26px;font-weight:900;text-transform:uppercase;color:#0d3b4f;margin-bottom:4px}
-#masMenu .mmSub{font-size:14px;color:#7a7266;margin-bottom:6px}
-#masMenu .mm{display:flex;align-items:center;gap:10px;padding:13px 0;border-bottom:1px dashed #e2d8c6}
-#masMenu .mm .nm{flex:1;min-width:0}
-#masMenu .mm .nm b{display:block;font-size:17px}
-#masMenu .mm .nm small{color:#7a7266;font-size:13px}
-#masMenu .mm .pr{font-weight:900;font-size:16px;color:#0d3b4f;white-space:nowrap}
-#masMenu .pedir{border:none;background:#0d3b4f;color:#fff;border-radius:99px;padding:10px 14px;font:inherit;font-size:14px;font-weight:800;white-space:nowrap}
-#masMenu .pedir.listo{background:#179c4a}
-#masMenu .quitar{width:36px;height:36px;font-size:22px}
-#masMenu .ago{font-size:13px;font-weight:800;color:#a8242f;white-space:nowrap}
-#masMenu .mmFin{margin-top:30px;text-align:center;color:#0d3b4f}
-#masMenu .mmFin b{display:block;font-size:22px;font-weight:900;text-transform:uppercase}
+#masMenu .mmGrupo + .mmGrupo{margin-top:22px}
+#masMenu h3{font-size:clamp(26px,8vw,36px);font-weight:900;text-transform:uppercase;line-height:1;color:var(--crema)}
+#masMenu .mmSub{font-size:14px;opacity:.75;margin:4px 0 10px}
+/* Dos columnas: así entran las bebidas y debajo los adicionales */
+#masMenu .mmLista{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+#masMenu .mm{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.14);border-radius:16px;padding:10px;display:flex;flex-direction:column;gap:6px}
+#masMenu .mm .nm b{display:block;font-size:16px;line-height:1.15}
+#masMenu .mm .nm small{opacity:.7;font-size:12px}
+#masMenu .mm .pr{display:inline-block;align-self:flex-start;background:var(--amarillo);color:#1d1d1f;font-weight:900;font-size:15px;padding:2px 10px;border-radius:8px}
+#masMenu .mm .bts{display:flex;gap:6px;margin-top:auto}
+#masMenu .pedir{flex:1;border:2px solid var(--crema);background:transparent;color:var(--crema);border-radius:99px;padding:8px 6px;font:inherit;font-size:13px;font-weight:800;white-space:nowrap}
+#masMenu .pedir.listo{background:var(--crema);color:#1d1d1f}
+#masMenu .quitar{width:36px;height:36px;font-size:22px;flex:none}
+#masMenu .ago{font-size:13px;font-weight:800;color:#ffb3b8}
+#masMenu .mmFin{margin-top:26px;text-align:center}
+#masMenu .mmFin b{display:block;font-size:22px;font-weight:900;text-transform:uppercase;color:var(--amarillo)}
 #masMenu .mmFin .wa{margin-top:12px;display:inline-block}
-#masMenu .mmFin .dir{color:#5a5248;opacity:1}
-#masMenu .mmFin .dir{margin-top:22px}
+#masMenu .mmFin .dir{margin-top:22px;opacity:1}
+#masMenu .mmFin .dir .verUbi{background:var(--crema);color:#0d3b4f !important}
 /* Gracias + reseña */
 .estrellas{font-size:34px;letter-spacing:4px;margin-top:6px}
 
@@ -1070,11 +1072,12 @@ const MAS_CATS = [...new Set(MAS.map(p => p.categoria || "Otros"))];
 for (let i = 0; i < ESCENA.length + (MAS.length ? 1 : 2); i++){ const d = document.createElement("div"); d.className = "paso"; pista.appendChild(d); }
 if (MAS.length){
   $("#final").style.display = "none";
+  $("#masMenu").style.setProperty("--fondoMas", FONDO_INICIO);
   const ICO_CAT = { Bebidas: "🥤", Adicionales: "🍟" }, SUB_CAT = { Bebidas: "Para acompañar tu plato", Adicionales: "Agrégale algo más" };
   $("#masMenu").innerHTML = MAS_CATS.map(c => `<div class="mmGrupo"><h3>${ICO_CAT[c] || "🍽️"} ${c}</h3>${SUB_CAT[c] ? `<div class="mmSub">${SUB_CAT[c]}</div>` : ""}
-    ${MAS.filter(p => (p.categoria || "Otros") === c).map(p => `<div class="mm"><div class="nm"><b>${p.nombre}</b>${p.desc ? `<small>${p.desc}</small>` : ""}</div>
+    <div class="mmLista">${MAS.filter(p => (p.categoria || "Otros") === c).map(p => `<div class="mm"><div class="nm"><b>${p.nombre}</b>${p.desc ? `<small>${p.desc}</small>` : ""}</div>
       <span class="pr">${precioTxt(p.precio)}</span>
-      ${p.agotado ? `<span class="ago">Agotado</span>` : `<button class="quitar" data-menos="${p.i}" aria-label="Quitar uno" hidden>−</button><button class="pedir" data-i="${p.i}">Agregar +</button>`}</div>`).join("")}</div>`).join("")
+      <div class="bts">${p.agotado ? `<span class="ago">🚫 Agotado</span>` : `<button class="quitar" data-menos="${p.i}" aria-label="Quitar uno" hidden>−</button><button class="pedir" data-i="${p.i}">Agregar +</button>`}</div></div>`).join("")}</div></div>`).join("")
     + `<div class="mmFin"><b>¿Ya se te antojó?</b><a class="wa" href="${$("#waFinal").href}" target="_blank" rel="noopener">💬 Pedir por WhatsApp</a><div class="dir">${$("#dir").innerHTML}</div></div>`;
 }
 

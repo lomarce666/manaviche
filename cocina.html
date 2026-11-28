@@ -110,6 +110,8 @@ main{padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280
 .tElegida small{display:block;font-size:13px;color:#cfe;opacity:.85;font-weight:600}
 .tElegida button{padding:8px 12px;border-radius:10px;background:#2a313b;color:#fff;font-weight:800}
 .tInput{font:inherit;font-size:13px;width:100%;padding:12px;border-radius:12px;border:2px solid #2a313b;background:#161b21;color:#fff}
+.tInput.falta{border-color:#e63946}
+.tAyuda{margin-top:6px;font-size:12px;opacity:.6}
 .tPago{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}
 .tPago button{padding:12px 4px;border-radius:12px;background:#2a313b;color:#fff;font-weight:800;font-size:13px}
 .tPago button.on{background:#2ecc71;color:#08210f}
@@ -1098,11 +1100,11 @@ function pintarTomarYa(){
       : `<div class="tTit">¿Qué mesa?</div><div class="tMesas">${Array.from({ length: MESAS_N }, (_, i) => i + 1).map(m => `<button data-tmesa="${m}" class="${abierta(m) ? "ocupada" : ""}">Mesa ${m}${abierta(m) ? `<small>$${Number(abierta(m).total).toFixed(2)}</small>` : ""}</button>`).join("")}</div>`;
   } else {
     donde = `<div class="tTit">📞 Pedido por teléfono</div>
-      <input class="tInput" id="tCliente" placeholder="Nombre o número del cliente (opcional)" value="${esc(T.cliente)}" autocomplete="off">
-      <div class="tTit" style="margin-top:10px">¿Cómo va a pagar? <small style="opacity:.6;font-weight:600">(opcional, caja lo confirma al cobrar)</small></div>
-      <div class="tPago">${["Efectivo", "Transferencia"].map(m => `<button data-tpago="${m}" class="${T.pago === m ? "on" : ""}">${ICON_PAGO[m]} ${m}</button>`).join("")}</div>`;
+      <div class="tTit">👤 Nombre o número del cliente <span style="color:#ff8a8a">(obligatorio)</span></div>
+      <input class="tInput${T.cliente.trim() ? "" : " falta"}" id="tCliente" placeholder="Ej. Juan · 0991234567" value="${esc(T.cliente)}" autocomplete="off" maxlength="60">
+      <div class="tAyuda">Cómo pagan lo marca la caja al cobrar.</div>`;
   }
-  const listo = cant && (T.para === "mesa" ? T.mesa : true);
+  const listo = cant && (T.para === "mesa" ? T.mesa : T.cliente.trim().length >= 2);
   $("#tomar").innerHTML = `<div class="tomarB">
     <div class="tSeg"><button data-tpara="mesa" class="${T.para === "mesa" ? "on" : ""}">🍽️ En mesa</button><button data-tpara="telefono" class="${T.para === "telefono" ? "on" : ""}">📞 Por pedido</button></div>
     ${donde}
@@ -1124,6 +1126,8 @@ function pintarTomarYa(){
     <div class="tAgarre"></div>
     <div class="tHojaCab"><h3>🧾 ${T.para === "mesa" ? (T.mesa ? "Pedido de la mesa " + T.mesa : "Revisar pedido") : "Pedido por teléfono"}</h3><button class="tX" data-tcerrar aria-label="Cerrar">×</button></div>
     ${T.para === "mesa" && !T.mesa ? `<div class="tTit" style="color:#ffb3b8">⚠️ ¿Para qué mesa es?</div><div class="tMesas" style="margin-bottom:10px">${Array.from({ length: MESAS_N }, (_, i) => i + 1).map(m => `<button data-tmesa="${m}" class="${abierta(m) ? "ocupada" : ""}">Mesa ${m}</button>`).join("")}</div>` : ""}
+    ${T.para === "telefono" ? `<div class="tTit">👤 Nombre o número del cliente <span style="color:#ff8a8a">(obligatorio)</span></div>
+      <input class="tInput${T.cliente.trim() ? "" : " falta"}" id="tClienteH" placeholder="Ej. Juan · 0991234567" value="${esc(T.cliente)}" autocomplete="off" maxlength="60" style="margin-bottom:10px">` : ""}
     ${T.para === "telefono" ? `<div class="tAvisoLlevar" style="margin-top:0">🥡 Por pedido: todos los platos van en tarrina (+$${rec.toFixed(2)} c/u, ya sumado).</div>` : ""}
     ${lineas.slice().sort((a, b) => { const o = id => { const p = porId[id]; const k = cartaT.findIndex(x => x.id === (p.llevar_de || id)); return k + (p.llevar_de ? 0.5 : 0); }; return o(a[0]) - o(b[0]); }).map(([id, n]) => { const p = porId[id], puedeLlevar = T.para === "mesa" && !p.llevar_de && porId[id + LLEVAR];
       return `<div class="hItem"><div class="hIc">${p.llevar_de ? "🥡" : grupoDe(p) === "bebidas" ? "🥤" : grupoDe(p) === "adicionales" ? "🍟" : "🍽️"}</div>
@@ -1134,11 +1138,18 @@ function pintarTomarYa(){
       ${T.items[p.id] ? `<button class="hExMenos" data-tmenos="${esc(p.id)}" aria-label="Quitar uno">−</button>` : ""}<button class="hExMas${T.items[p.id] ? " con" : ""}" data-tadd2="${esc(p.id)}">${T.items[p.id] ? `Agregado ✓ (${T.items[p.id]})` : "Agregar +"}</button></div>`).join("")}</div>` : ""}
     <input class="tInput" id="tNotas" placeholder="📝 Indicaciones (ej. sin cebolla)" value="${esc(T.notas)}" autocomplete="off" style="margin-top:12px">
     <div class="hTotal"><span>Total</span><b>$${total.toFixed(2)}</b></div>
-    <button class="hEnviar" data-tenviar ${listo ? "" : "disabled"}>${T.para === "mesa" ? (T.mesa ? `✅ Agregar a la mesa ${T.mesa}` : "Elige la mesa arriba") : "📤 Enviar a caja"}</button>
+    <button class="hEnviar" data-tenviar ${listo ? "" : "disabled"}>${T.para === "mesa" ? (T.mesa ? `✅ Agregar a la mesa ${T.mesa}` : "Elige la mesa arriba") : (T.cliente.trim().length >= 2 ? "📤 Enviar a caja" : "✍️ Escribe el nombre o número")}</button>
     <button class="hSeguir" data-tcerrar>← Seguir agregando</button>
     <button class="tLimpiar" data-tlimpiar style="display:block;margin:6px auto 0">Vaciar pedido</button>
   </div>` : ""}`;
   filtrarTomar();
+}
+// Por pedido: el botón de enviar se activa apenas escriben el nombre o número (sin redibujar, así no se cierra el teclado)
+function revisarEnvioTel(){
+  if (tomar.para !== "telefono") return;
+  const ok = tomar.cliente.trim().length >= 2 && Object.values(tomar.items).some(n => n > 0);
+  document.querySelectorAll("#tomar [data-tenviar]").forEach(b => { b.disabled = !ok; b.textContent = ok ? "📤 Enviar a caja" : "✍️ Escribe el nombre o número"; });
+  ["tCliente", "tClienteH"].forEach(id => { const inp = document.getElementById(id); if (inp) inp.classList.toggle("falta", !tomar.cliente.trim()); });
 }
 // Buscar sin volver a dibujar (así no se cierra el teclado)
 function filtrarTomar(){
@@ -1153,7 +1164,10 @@ function filtrarTomar(){
 }
 $("#tomar").addEventListener("input", e=>{
   if (e.target.id === "tBuscar"){ tomar.buscar = e.target.value; filtrarTomar(); }
-  if (e.target.id === "tCliente") tomar.cliente = e.target.value;
+  if (e.target.id === "tCliente" || e.target.id === "tClienteH"){
+    tomar.cliente = e.target.value;
+    const otro = document.getElementById(e.target.id === "tCliente" ? "tClienteH" : "tCliente"); if (otro) otro.value = e.target.value;
+    revisarEnvioTel(); }
   if (e.target.id === "tNotas") tomar.notas = e.target.value;
 });
 $("#tomar").addEventListener("click", async e=>{
@@ -1191,7 +1205,8 @@ document.addEventListener("click", async e=>{
   if (!items.length) return;
   enviandoT = true; const b = e.target.closest("[data-tenviar]"); b.disabled = true; b.textContent = "Enviando…";
   let j = {};
-  try { j = await api("POST", { accion: "tomar", para: T.para, mesa: T.mesa, items, notas: T.notas, cliente: T.cliente, pago: T.pago }); } catch(err){}
+  if (T.para === "telefono" && T.cliente.trim().length < 2){ enviandoT = false; alert("Escribe el nombre o número del cliente"); pintarTomar(); return; }
+  try { j = await api("POST", { accion: "tomar", para: T.para, mesa: T.mesa, items, notas: T.notas, cliente: T.cliente.trim() }); } catch(err){}
   enviandoT = false;
   if (!j.ok){ alert(j.error || "No se pudo enviar. Revisa el internet."); pintarTomar(); return; }
   mostrarListo(T.para === "mesa" ? `✅ Agregado a la mesa ${T.mesa}` : "📤 Pedido enviado a caja");

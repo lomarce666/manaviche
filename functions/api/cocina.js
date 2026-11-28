@@ -174,7 +174,8 @@ export async function onRequestPost({ request, env }) {
     const total = Math.round(items.reduce((t, it) => t + it.cantidad * it.precio, 0) * 100) / 100;
     const notas = String(d.notas ?? "").replace(/[<>]/g, "").slice(0, 300).trim();
     const cliente = String(d.cliente ?? "").replace(/[<>]/g, "").slice(0, 60).trim();
-    const pago = METODOS.includes(d.pago) ? d.pago : null;
+    if (para === "telefono" && cliente.length < 2) return responder(400, { ok: false, error: "Escribe el nombre o número del cliente" });
+    const pago = null;                                            // cómo pagan lo marca la caja al cobrar
     if (para === "telefono" && !pago) return responder(400, { ok: false, error: "Elige cómo va a pagar" });
     const ahora = Date.now();
     const { numero, totalDia } = await contar(DB, j.id, total);

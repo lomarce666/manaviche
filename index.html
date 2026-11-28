@@ -85,7 +85,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 .mano.izq .manoFoto{transform:scaleX(-1)}
 .mano .manoFoto.viejo{width:88%}
 /* Fotos nuevas (mano10-…): el plato ocupa casi toda la foto, así que va más chica y centrada para que se vea completo */
-.mano .manoFoto.completo{width:80%;margin-bottom:4vh}
+.mano .manoFoto.completo{width:var(--fw,84%);transform:translate(var(--fx,24%),0) rotate(var(--fr,-26deg));transform-origin:50% 90%}
+.mano.izq .manoFoto.completo{transform:scaleX(-1) translate(var(--fx,24%),0) rotate(var(--fr,-26deg))}
 .mano.der .manoFoto.viejo{transform:translateX(10%)}
 .mano.izq .manoFoto.viejo{transform:scaleX(-1) translateX(10%)}
 .izq svg{transform:scaleX(-1)}
@@ -1104,17 +1105,20 @@ const pts = [...puntos.children];
 let alto = innerHeight, vw = innerWidth, vh = innerHeight, marcaAlto = 0, achicar = 0.55;
 // Baja el nombre, la descripción y el precio hasta quedar justo encima del plato
 // (en celulares altos quedaba mucho espacio vacío en la mitad). Nunca los sube más arriba de lo normal.
+// Fotos nuevas: el plato sube hasta quedar justo debajo del precio (la mano entra por el costado,
+// así no se ve dónde termina el brazo). Las letras se quedan en su lugar.
 function acomodarTextos(){
   nodos.forEach(n => {
-    const t = n.texto; t.style.top = "";                       // vuelve a la posición normal para medir
-    const arriba = t.offsetTop, altoTxt = t.offsetHeight;
-    const img = n.mano.querySelector(".manoFoto"), svg = !img && n.mano.querySelector("svg");
-    let platoArriba;
-    if (img){ if (!img.offsetHeight) return; platoArriba = n.mano.offsetTop + img.offsetTop; }
-    else if (svg){ platoArriba = n.mano.offsetTop + svg.offsetTop + svg.getBoundingClientRect().height * 0.28; }
-    else return;
-    const nuevo = Math.max(arriba, Math.round(platoArriba - altoTxt - 22));
-    if (nuevo > arriba) t.style.top = nuevo + "px";
+    const img = n.mano.querySelector(".manoFoto.completo"); if (!img || !img.offsetHeight) return;
+    const t = n.texto, finTexto = t.offsetTop + t.offsetHeight;
+    const m = n.mano; m.style.bottom = ""; img.style.width = "";
+    // En celulares altos sobra espacio abajo: el plato sale un poco más grande (hasta el ancho completo)
+    const libre = innerHeight - (t.offsetTop + t.offsetHeight) - 26, prop = img.naturalWidth / img.naturalHeight || 1.05;
+    const quiere = Math.min(m.offsetWidth * 0.9, Math.max(img.offsetWidth, libre * 0.78 * prop));
+    if (quiere > img.offsetWidth + 4) img.style.width = Math.round(quiere) + "px";
+    const platoArriba = m.offsetTop + img.offsetTop;            // borde de arriba del plato (sin contar la inclinación)
+    const sube = Math.round(platoArriba - (finTexto + 26));
+    if (sube > 0) m.style.bottom = `calc(${getComputedStyle(m).bottom} + ${sube}px)`;
   });
 }
 function medir(){

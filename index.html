@@ -1102,8 +1102,24 @@ const pts = [...puntos.children];
 
 // Medidas: se leen solo al cargar o al girar el celular (leerlas en cada cuadro hace lento al iPhone)
 let alto = innerHeight, vw = innerWidth, vh = innerHeight, marcaAlto = 0, achicar = 0.55;
+// Baja el nombre, la descripción y el precio hasta quedar justo encima del plato
+// (en celulares altos quedaba mucho espacio vacío en la mitad). Nunca los sube más arriba de lo normal.
+function acomodarTextos(){
+  nodos.forEach(n => {
+    const t = n.texto; t.style.top = "";                       // vuelve a la posición normal para medir
+    const arriba = t.offsetTop, altoTxt = t.offsetHeight;
+    const img = n.mano.querySelector(".manoFoto"), svg = !img && n.mano.querySelector("svg");
+    let platoArriba;
+    if (img){ if (!img.offsetHeight) return; platoArriba = n.mano.offsetTop + img.offsetTop; }
+    else if (svg){ platoArriba = n.mano.offsetTop + svg.offsetTop + svg.getBoundingClientRect().height * 0.28; }
+    else return;
+    const nuevo = Math.max(arriba, Math.round(platoArriba - altoTxt - 22));
+    if (nuevo > arriba) t.style.top = nuevo + "px";
+  });
+}
 function medir(){
   alto = pista.firstElementChild.offsetHeight || innerHeight; vw = innerWidth; vh = innerHeight; marcaAlto = marca.offsetHeight;
+  acomodarTextos();
   // Con logo: arriba queda chiquito (unos 64 px) para no tapar el nombre del plato
   const lg = marca.classList.contains("conLogo") && $("#logoMarca");
   achicar = lg && lg.offsetHeight ? 1 - Math.min(0.45, 64 / lg.offsetHeight) : 0.55;
@@ -1177,6 +1193,9 @@ let pendiente = false;
 addEventListener("scroll", ()=>{ if(!pendiente){ pendiente = true; requestAnimationFrame(()=>{ pintar(); pendiente = false; }); } }, { passive:true });
 addEventListener("resize", ()=>{ medir(); marcaK = -1; pintar(); });
 medir();
+// Las fotos y las letras cargan después: se vuelve a acomodar cuando llegan
+document.querySelectorAll("#platos .manoFoto").forEach(im => { if (!im.complete) im.addEventListener("load", acomodarTextos, { once: true }); });
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(acomodarTextos);
 pintar();
 })();
 </script>

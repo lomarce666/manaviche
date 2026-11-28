@@ -65,9 +65,11 @@ main{padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280
 .vacio{grid-column:1/-1;text-align:center;opacity:.55;padding:60px 0;font-size:15px}
 .vacio b{display:block;font-size:38px;margin-bottom:8px}
 
-.tarjeta{background:#1b2027;border-radius:16px;padding:12px;border:3px solid transparent}
-.tarjeta.nuevo{border-color:#e63946;background:#2a1517;animation:brillo 1.2s infinite}
-@keyframes brillo{50%{border-color:#ff9aa2}}
+.tarjeta{position:relative;background:#1b2027;border-radius:16px;padding:12px;border:3px solid transparent}
+.tarjeta.nuevo{border-color:#e63946;background:#2a1517}
+/* El brillo del pedido nuevo: una capa encima que solo cambia de transparencia (liviano para celulares de gama baja) */
+.tarjeta.nuevo::after{content:"";position:absolute;inset:-3px;border-radius:16px;border:3px solid #ff9aa2;pointer-events:none;animation:brillo 1.2s infinite;will-change:opacity}
+@keyframes brillo{0%,100%{opacity:0}50%{opacity:1}}
 .tarjeta.preparando{border-color:#f2b84b}
 .tarjeta.tarde{border-color:#ff6b6b}
 .tarjeta.aviso{background:#16263a;border-color:#4ea1ff}
@@ -122,10 +124,38 @@ main{padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280
 .tLinea{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid #2a313b;font-size:13px}
 .tMas{display:flex;gap:4px}.tMas button{width:36px;height:36px;border-radius:10px;background:#2a313b;color:#fff;font-weight:900;font-size:16px}
 .tLimpiar{margin-top:8px;background:none;color:#ff8a8a;font-weight:700;text-decoration:underline}
+.tSombra{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:40}
+.tHoja{position:fixed;left:0;right:0;bottom:0;max-width:560px;margin:0 auto;max-height:90vh;overflow-y:auto;z-index:41;background:#161b21;border-radius:22px 22px 0 0;padding:8px 16px calc(18px + env(safe-area-inset-bottom));box-shadow:0 -10px 30px rgba(0,0,0,.5);animation:subeHoja .28s cubic-bezier(.2,1,.3,1)}
+@keyframes subeHoja{from{transform:translateY(100%)}}
+.tAgarre{width:44px;height:5px;border-radius:9px;background:#3a424d;margin:0 auto 10px}
+.tHojaCab{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.tHojaCab h3{font-size:18px;font-weight:900}
+.tX{width:36px;height:36px;border-radius:50%;background:#2a313b;color:#fff;font-size:22px}
+.hItem{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:10px 0;border-bottom:1px dashed #2a313b}
+.hIc{width:40px;height:40px;border-radius:10px;background:#222831;display:grid;place-items:center;font-size:20px;flex:none}
+.hNm{flex:1;min-width:0}.hNm b{display:block;font-size:14px}.hNm small{color:#9aa4b1;font-size:12px}
+.hCant{display:flex;align-items:center;gap:8px}
+.hCant button{width:34px;height:34px;border-radius:50%;background:#2a313b;color:#fff;font-size:18px;font-weight:900}
+.hCant button:last-child{background:#ffd166;color:#2a1f00}
+.hCant span{min-width:16px;text-align:center;font-weight:900}
+.hLlevar{flex-basis:100%;margin-left:50px;text-align:left;padding:9px 12px;border-radius:12px;background:#2c2a1d;color:#ffe29a;border:1.5px dashed #6b5a22;font-size:13px;font-weight:700}
+.hLlevar small{font-weight:600;opacity:.8}
+.hExtras{margin-top:12px;background:#2c2a1d;border-radius:14px;padding:10px 12px}
+.hExtras h5{font-size:14px;font-weight:900;color:#ffe29a;margin-bottom:4px}
+.hEx{display:flex;align-items:center;gap:8px;padding:6px 0}
+.hEx b{flex:1;font-size:14px}.hEx span{font-weight:800;color:#ffd166;font-size:13px}
+.hExMas{padding:8px 12px;border-radius:99px;background:#ffd166;color:#2a1f00;font-weight:800;font-size:12px}
+.hExMas.con{background:#2ecc71;color:#08210f}
+.hExMenos{width:30px;height:30px;border-radius:50%;background:#e63946;color:#fff;font-size:18px;font-weight:900}
+.hTotal{display:flex;justify-content:space-between;align-items:center;margin:14px 2px 10px}
+.hTotal span{font-weight:800}.hTotal b{font-size:26px;color:#ffd166}
+.hEnviar{width:100%;padding:16px;border-radius:14px;background:#2ecc71;color:#08210f;font-weight:900;font-size:15px}
+.hEnviar:disabled{background:#2a313b;color:#8a949f}
+.hSeguir{width:100%;margin-top:8px;padding:13px;border-radius:14px;background:#2a313b;color:#fff;font-weight:800;font-size:14px}
 .tBarra{position:fixed;left:0;right:0;bottom:0;display:none;gap:10px;align-items:center;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:#0d1013;border-top:1px solid #2a313b;z-index:30}
 .tBarra.ver{display:flex}
 .tBarra div{display:grid;font-size:13px}.tBarra div span{font-size:16px;font-weight:900;color:#ffd166}
-.tBarra button{flex:1;padding:16px 10px;border-radius:14px;background:#2ecc71;color:#08210f;font-weight:900;font-size:14px}
+.tBarra button{flex:1;padding:16px 10px;border-radius:14px;background:#ffd166;color:#2a1f00;font-weight:900;font-size:15px}
 .tBarra button:disabled{background:#2a313b;color:#8a949f}
 .detR{border:1px solid #e2d8c6;border-radius:10px;padding:8px 10px;margin:6px 0}
 .detC{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:baseline}
@@ -776,11 +806,12 @@ const esc = t => String(t ?? "").replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt
 const hace = ms => { const m = Math.floor((datos.ahora - ms) / 60000); return m < 1 ? "recién" : `hace ${m} min`; };
 const hora = ms => new Date(ms).toLocaleTimeString("es-EC", { hour: "2-digit", minute: "2-digit" });
 
-let vista = "dia";
+let vista = "dia", vistaAntes = "";
 function verVista(v){
   if (!MODO_CAJA && !["pend", "mesas", "tomar", "carta"].includes(v)) v = "pend";     // el mesero no abre/cierra el día ni cobra
   if (MODO_CAJA && v === "pend") v = "mesas";
   vista = v;
+  if (v !== "tomar"){ tomar.revisar = false; document.documentElement.style.overflow = ""; }
   $("#tabDia").classList.toggle("on", v === "dia");
   $("#tabPend").classList.toggle("on", v === "pend"); $("#tabPrep").classList.toggle("on", v === "prep");
   $("#tabMesas").classList.toggle("on", v === "mesas");
@@ -800,7 +831,10 @@ function verVista(v){
   if (v === "stats") cargarStats();
   $("#barraAjuste").style.display = MODO_CAJA && (v === "carta" || v === "stats") ? "flex" : "none";
   $("#barraAjuste b").textContent = v === "carta" ? "✏️ Editar carta" : "📊 Estadísticas";
-  const act = document.querySelector(".pestanas button.on"); if (act) act.scrollIntoView({ inline: "center", block: "nearest" });
+  // Centrar la pestaña elegida moviendo solo la fila de pestañas (scrollIntoView también movía la página y se sentía trabado)
+  const act = document.querySelector(".pestanas button.on"), fila = act && act.parentElement;
+  if (act && fila) fila.scrollTo({ left: Math.max(0, act.offsetLeft - (fila.clientWidth - act.offsetWidth) / 2) });
+  if (v !== vistaAntes){ vistaAntes = v; if (scrollY > 0) scrollTo(0, 0); }      // cada pestaña empieza desde arriba
   pintar();
 }
 // Cocina: Pedidos y Preparados · Caja: Día, Mesas por cobrar y Preparados
@@ -999,6 +1033,12 @@ async function abrirTomar(){
   pintarTomar();
 }
 function pintarTomar(){
+  const hojaY = document.getElementById("tHoja")?.scrollTop || 0;
+  pintarTomarYa();
+  const h = document.getElementById("tHoja"); if (h) h.scrollTop = hojaY;
+  document.documentElement.style.overflow = tomar.revisar && h ? "hidden" : "";
+}
+function pintarTomarYa(){
   if (!datos.jornada){ $("#tomar").innerHTML = `<div class="vacio"><b>⏸️</b>El día de trabajo no está abierto<small style="display:block;font-size:12px;margin-top:6px;opacity:.8">Lo abre la persona de caja.</small></div>`; return; }
   const T = tomar, porId = Object.fromEntries(cartaT.map(p => [p.id, p]));
   const lineas = Object.entries(T.items).filter(([id, n]) => n > 0 && porId[id]);
@@ -1037,16 +1077,28 @@ function pintarTomar(){
       return `<div class="tGrupo" data-grupo="${grupoDe(ps[0])}"><div class="tCat">${esc(cat)}</div><div class="tPlatos">${ps.map(p => `<div class="tTile" data-nom="${esc(p.nombre.toLowerCase())}"><button data-tadd="${esc(p.id)}" class="${nDe(p.id) ? "con" : ""}" ${p.agotado ? "disabled" : ""}>
         ${nDe(p.id) ? `<i>${nDe(p.id)}</i>` : ""}<span>${esc(p.nombre)}</span><small>${p.agotado ? "Agotado" : "$" + Number(precioTile(p)).toFixed(2)}</small></button>
         ${nDe(p.id) ? `<button class="tQuitar" data-ttmenos="${esc(p.id)}" aria-label="Quitar uno">−</button>` : ""}</div>`).join("")}</div></div>`; }).join("")}
-    ${lineas.length ? `<div class="tTicket"><div class="tTit">🧾 ${T.para === "mesa" ? (T.mesa ? "Para la mesa " + T.mesa : "Elige la mesa arriba") : "Pedido por teléfono"}</div>
-      ${lineas.map(([id, n]) => { const p = porId[id], puedeLlevar = T.para === "mesa" && !p.llevar_de && porId[id + LLEVAR];
-        return `<div class="tLinea${p.llevar_de ? " llevar" : ""}"><span><b>${n} x</b> ${esc(p.llevar_de ? porId[p.llevar_de]?.nombre || p.nombre : p.nombre)}${p.llevar_de ? ` <em class="tEtqLlevar">🥡 para llevar</em>` : ""}</span><span class="tMas"><button data-tmenos="${esc(id)}">−</button><button data-tadd2="${esc(id)}">+</button></span><b>$${(n * p.precio).toFixed(2)}</b>
-        ${puedeLlevar ? `<button class="tBtnLlevar" data-tllevar="${esc(id)}">🥡 Pasar 1 a <b>para llevar</b> (+$${rec.toFixed(2)})</button>` : ""}</div>`; }).join("")}
-      <input class="tInput" id="tNotas" placeholder="📝 Indicaciones (ej. sin cebolla)" value="${esc(T.notas)}" autocomplete="off" style="margin-top:8px">
-      <button class="tLimpiar" data-tlimpiar>Vaciar</button></div>` : ""}
     <div style="height:90px"></div>
   </div>
   <div class="tBarra${cant ? " ver" : ""}"><div><b>${cant} ${cant === 1 ? "plato" : "platos"}</b><span>$${total.toFixed(2)}</span></div>
-    <button data-tenviar ${listo ? "" : "disabled"}>${T.para === "mesa" ? (T.mesa ? `✅ Agregar a mesa ${T.mesa}` : "Elige la mesa") : "📤 Enviar a caja"}</button></div>`;
+    <button data-trevisar>🧾 Revisar pedido</button></div>
+  ${T.revisar && lineas.length ? `<div class="tSombra" data-tcerrar></div><div class="tHoja" id="tHoja">
+    <div class="tAgarre"></div>
+    <div class="tHojaCab"><h3>🧾 ${T.para === "mesa" ? (T.mesa ? "Pedido de la mesa " + T.mesa : "Revisar pedido") : "Pedido por teléfono"}</h3><button class="tX" data-tcerrar aria-label="Cerrar">×</button></div>
+    ${T.para === "mesa" && !T.mesa ? `<div class="tTit" style="color:#ffb3b8">⚠️ ¿Para qué mesa es?</div><div class="tMesas" style="margin-bottom:10px">${Array.from({ length: MESAS_N }, (_, i) => i + 1).map(m => `<button data-tmesa="${m}" class="${abierta(m) ? "ocupada" : ""}">Mesa ${m}</button>`).join("")}</div>` : ""}
+    ${T.para === "telefono" ? `<div class="tAvisoLlevar" style="margin-top:0">🥡 Por pedido: todos los platos van en tarrina (+$${rec.toFixed(2)} c/u, ya sumado).</div>` : ""}
+    ${lineas.slice().sort((a, b) => { const o = id => { const p = porId[id]; const k = cartaT.findIndex(x => x.id === (p.llevar_de || id)); return k + (p.llevar_de ? 0.5 : 0); }; return o(a[0]) - o(b[0]); }).map(([id, n]) => { const p = porId[id], puedeLlevar = T.para === "mesa" && !p.llevar_de && porId[id + LLEVAR];
+      return `<div class="hItem"><div class="hIc">${p.llevar_de ? "🥡" : grupoDe(p) === "bebidas" ? "🥤" : grupoDe(p) === "adicionales" ? "🍟" : "🍽️"}</div>
+        <div class="hNm"><b>${esc(p.llevar_de ? porId[p.llevar_de]?.nombre || p.nombre : p.nombre)}${p.llevar_de ? ` <em class="tEtqLlevar">🥡 para llevar</em>` : ""}</b><small>$${Number(p.precio).toFixed(2)} c/u · $${(n * p.precio).toFixed(2)}</small></div>
+        <div class="hCant"><button data-tmenos="${esc(id)}" aria-label="Quitar uno">−</button><span>${n}</span><button data-tadd2="${esc(id)}" aria-label="Agregar uno">+</button></div>
+        ${puedeLlevar ? `<button class="hLlevar" data-tllevar="${esc(id)}">🥡 Quiero 1 <b>para llevar</b> <small>(+$${rec.toFixed(2)} tarrina)</small></button>` : ""}</div>`; }).join("")}
+    ${lineas.some(([id]) => grupoDe(porId[id]) === "platos") && base.some(p => grupoDe(p) === "adicionales" && !p.agotado) ? `<div class="hExtras"><h5>🍟 ¿Algún adicional?</h5>${base.filter(p => grupoDe(p) === "adicionales" && !p.agotado).map(p => `<div class="hEx"><b>${esc(p.nombre)}</b><span>$${Number(p.precio).toFixed(2)}</span>
+      ${T.items[p.id] ? `<button class="hExMenos" data-tmenos="${esc(p.id)}" aria-label="Quitar uno">−</button>` : ""}<button class="hExMas${T.items[p.id] ? " con" : ""}" data-tadd2="${esc(p.id)}">${T.items[p.id] ? `Agregado ✓ (${T.items[p.id]})` : "Agregar +"}</button></div>`).join("")}</div>` : ""}
+    <input class="tInput" id="tNotas" placeholder="📝 Indicaciones (ej. sin cebolla)" value="${esc(T.notas)}" autocomplete="off" style="margin-top:12px">
+    <div class="hTotal"><span>Total</span><b>$${total.toFixed(2)}</b></div>
+    <button class="hEnviar" data-tenviar ${listo ? "" : "disabled"}>${T.para === "mesa" ? (T.mesa ? `✅ Agregar a la mesa ${T.mesa}` : "Elige la mesa arriba") : "📤 Enviar a caja"}</button>
+    <button class="hSeguir" data-tcerrar>← Seguir agregando</button>
+    <button class="tLimpiar" data-tlimpiar style="display:block;margin:6px auto 0">Vaciar pedido</button>
+  </div>` : ""}`;
   filtrarTomar();
 }
 // Buscar sin volver a dibujar (así no se cierra el teclado)
@@ -1077,6 +1129,8 @@ $("#tomar").addEventListener("click", async e=>{
       const k = T.para === "telefono" && cartaT.some(p => p.id === b0 + LLEVAR) ? b0 + LLEVAR : b0;
       nuevo[k] = (nuevo[k] || 0) + n; }
     T.items = nuevo; T.llevar = false; return pintarTomar(); }
+  if (q("[data-trevisar]")){ T.revisar = true; return pintarTomar(); }
+  if (q("[data-tcerrar]")){ T.revisar = false; return pintarTomar(); }
   if (q("[data-tllevarsw]")){ T.llevar = !T.llevar; return pintarTomar(); }
   if ((x = q("[data-tgrupo]"))){ T.grupo = x.dataset.tgrupo; T.buscar = ""; return pintarTomar(); }
   if ((x = q("[data-tllevar]"))){ const id = x.dataset.tllevar; if (T.items[id] > 0){ T.items[id]--; T.items[id + LLEVAR] = (T.items[id + LLEVAR] || 0) + 1; } return pintarTomar(); }
@@ -1090,7 +1144,7 @@ $("#tomar").addEventListener("click", async e=>{
   if ((x = q("[data-tadd]"))){ let id = x.dataset.tadd; if ((T.para === "telefono" || T.llevar) && cartaT.some(p => p.id === id + LLEVAR)) id += LLEVAR;
     T.items[id] = (T.items[id] || 0) + 1; return pintarTomar(); }
   if ((x = q("[data-tmenos]"))){ T.items[x.dataset.tmenos] = Math.max(0, (T.items[x.dataset.tmenos] || 0) - 1); return pintarTomar(); }
-  if (q("[data-tlimpiar]")){ T.items = {}; T.notas = ""; return pintarTomar(); }
+  if (q("[data-tlimpiar]")){ T.items = {}; T.notas = ""; T.revisar = false; return pintarTomar(); }
 });
 document.addEventListener("click", async e=>{
   if (!e.target.closest("[data-tenviar]") || enviandoT) return;
@@ -1102,7 +1156,7 @@ document.addEventListener("click", async e=>{
   enviandoT = false;
   if (!j.ok){ alert(j.error || "No se pudo enviar. Revisa el internet."); pintarTomar(); return; }
   mostrarListo(T.para === "mesa" ? `✅ Agregado a la mesa ${T.mesa}` : "📤 Pedido enviado a caja");
-  tomar = nuevoTomar();
+  tomar = nuevoTomar(); document.documentElement.style.overflow = "";
   await cargar(); verVista("pend");
 });
 async function enviarCaja(id){

@@ -317,6 +317,14 @@ body.conCarta #cartaBtn,body.conCarta #promo,body.conCarta #ayudaBtn{visibility:
 /* Página de bebidas y adicionales (después del último plato) */
 #masMenu{position:relative;z-index:50;scroll-snap-align:start;min-height:100vh;min-height:100svh;background:var(--fondoMas,#0d3b4f);color:var(--crema);padding:calc(78px + env(safe-area-inset-top)) 18px calc(120px + env(safe-area-inset-bottom))}
 #masMenu:empty{display:none}
+#finMenu{position:relative;z-index:50;scroll-snap-align:start;min-height:100vh;min-height:100svh;background:var(--fondoMas,#0d3b4f);color:var(--crema);display:flex;align-items:center;justify-content:center;text-align:center;padding:90px 24px calc(120px + env(safe-area-inset-bottom));border-top:1px solid rgba(255,255,255,.12)}
+#finMenu:empty{display:none}
+#finMenu .emoji{font-size:56px;line-height:1}
+#finMenu b{display:block;margin-top:10px;font-size:clamp(38px,12vw,60px);font-weight:900;text-transform:uppercase;line-height:1;color:var(--amarillo)}
+#finMenu p{margin-top:12px;font-size:16px;opacity:.9}
+#finMenu .wa{margin-top:18px;display:inline-block}
+#finMenu .dir{margin-top:30px;opacity:1}
+#finMenu .dir .verUbi{background:var(--crema);color:#0d3b4f !important}
 #masMenu .mmGrupo + .mmGrupo{margin-top:22px}
 #masMenu h3{font-size:clamp(26px,8vw,36px);font-weight:900;text-transform:uppercase;line-height:1;color:var(--crema)}
 #masMenu .mmSub{font-size:14px;opacity:.75;margin:4px 0 10px}
@@ -331,11 +339,6 @@ body.conCarta #cartaBtn,body.conCarta #promo,body.conCarta #ayudaBtn{visibility:
 #masMenu .pedir.listo{background:var(--crema);color:#1d1d1f}
 #masMenu .quitar{width:36px;height:36px;font-size:22px;flex:none}
 #masMenu .ago{font-size:13px;font-weight:800;color:#ffb3b8}
-#masMenu .mmFin{margin-top:26px;text-align:center}
-#masMenu .mmFin b{display:block;font-size:22px;font-weight:900;text-transform:uppercase;color:var(--amarillo)}
-#masMenu .mmFin .wa{margin-top:12px;display:inline-block}
-#masMenu .mmFin .dir{margin-top:22px;opacity:1}
-#masMenu .mmFin .dir .verUbi{background:var(--crema);color:#0d3b4f !important}
 /* Gracias + reseña */
 .estrellas{font-size:34px;letter-spacing:4px;margin-top:6px}
 
@@ -450,6 +453,8 @@ body.conCarta #cartaBtn,body.conCarta #promo,body.conCarta #ayudaBtn{visibility:
 
 <!-- Después del último plato: bebidas y adicionales en una sola página -->
 <section id="masMenu" aria-label="Bebidas y adicionales"></section>
+<!-- Última página: ¿Ya se te antojó? + WhatsApp + ubicación -->
+<section id="finMenu" aria-label="Contacto"></section>
 
 <script>
 // Si el celular guardó una versión vieja de /cocina, lo mandamos a la pantalla de cocina
@@ -1078,7 +1083,9 @@ if (MAS.length){
     <div class="mmLista">${MAS.filter(p => (p.categoria || "Otros") === c).map(p => `<div class="mm"><div class="nm"><b>${p.nombre}</b>${p.desc ? `<small>${p.desc}</small>` : ""}</div>
       <span class="pr">${precioTxt(p.precio)}</span>
       <div class="bts">${p.agotado ? `<span class="ago">🚫 Agotado</span>` : `<button class="quitar" data-menos="${p.i}" aria-label="Quitar uno" hidden>−</button><button class="pedir" data-i="${p.i}">Agregar +</button>`}</div></div>`).join("")}</div></div>`).join("")
-    + `<div class="mmFin"><b>¿Ya se te antojó?</b><a class="wa" href="${$("#waFinal").href}" target="_blank" rel="noopener">💬 Pedir por WhatsApp</a><div class="dir">${$("#dir").innerHTML}</div></div>`;
+;
+  $("#finMenu").innerHTML = `<div class="mmFin"><div class="emoji">😋</div><b>¿Ya se te antojó?</b><p>Escríbenos y te lo tenemos listo.</p><a class="wa" href="${$("#waFinal").href}" target="_blank" rel="noopener">💬 Pedir por WhatsApp</a><div class="dir">${$("#dir").innerHTML}</div></div>`;
+  $("#finMenu").style.setProperty("--fondoMas", FONDO_INICIO);
 }
 
 /* ---------- Animación con el scroll ---------- */

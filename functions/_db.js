@@ -242,8 +242,20 @@ export async function cartaEfectiva(env, url) {
     R.platos = R.platos.map((p) => {
       const a = aj["plato:" + p.id];
       if (!a) return p;
-      return { ...p, agotado: typeof a.agotado === "boolean" ? a.agotado : p.agotado, precio: Number.isFinite(a.precio) && a.precio > 0 && a._cuando > desde ? a.precio : p.precio };
+      return { ...p, agotado: typeof a.agotado === "boolean" ? a.agotado : p.agotado, precio: Number.isFinite(a.precio) && a.precio > 0 && a._cuando > desde ? a.precio : p.precio, oculto: !!a.oculto };
+    }).filter((p) => !p.oculto);                                  // quitados del menú desde "Editar menú"
+    // Bebidas y adicionales agregados desde "Editar menú" (ajustes "extra:<id>"): van junto a los de su sección
+    const extras = results.filter((r) => r.clave.startsWith("extra:")).sort((a, b) => a.actualizado - b.actualizado).map((r) => {
+      const x = aj[r.clave], pl = aj["plato:" + x.id] || {};
+      return { id: x.id, nombre: x.nombre, precio: Number.isFinite(pl.precio) && pl.precio > 0 ? pl.precio : x.precio, desc: "", categoria: x.categoria, tipo: x.tipo || undefined,
+        solo_carta: true, agotado: !!pl.agotado, agregado: true };
     });
+    for (const x of extras) {
+      let k = -1; R.platos.forEach((p, i) => { if (p.categoria === x.categoria) k = i; });
+      if (k < 0 && x.categoria === "Bebidas") k = R.platos.findIndex((p) => p.categoria === "Adicionales") - 1;
+      if (k < 0 && x.categoria === "Bebidas" && !R.platos.some((p) => p.categoria === "Adicionales")) k = R.platos.length - 1;
+      if (k < 0) R.platos.push(x); else R.platos.splice(k + 1, 0, x);
+    }
     // (el plato del día ya no se usa)
   } catch (e) { console.log("Ajustes:", String(e)); }
   agregarParaLlevar(R);

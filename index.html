@@ -332,6 +332,8 @@ body.conCarta #cartaBtn,body.conCarta #promo,body.conCarta #ayudaBtn{visibility:
 #masMenu h3{font-size:clamp(26px,8vw,36px);font-weight:900;text-transform:uppercase;line-height:1;color:var(--crema)}
 #masMenu .mmSub{font-size:14px;opacity:.75;margin:4px 0 10px}
 /* Dos columnas: así entran las bebidas y debajo los adicionales */
+#masMenu .mmTipo{margin:14px 0 8px;font-size:15px;font-weight:900;text-transform:uppercase;letter-spacing:1px;color:var(--amarillo)}
+#carta .cpTipo{margin:10px 0 0;font-size:13px;font-weight:900;text-transform:uppercase;letter-spacing:.5px;color:#a8742a}
 #masMenu .mmLista{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 #masMenu .mm{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.14);border-radius:16px;padding:10px;display:flex;flex-direction:column;gap:6px}
 #masMenu .mm .nm b{display:block;font-size:16px;line-height:1.15}
@@ -1054,11 +1056,11 @@ function pintarCarta(){
     const lista = PLATOS.filter(p => !p.llevar_de && (p.categoria || "Otros") === c && (!q || sinTilde(p.nombre + " " + (p.desc || "")).includes(q)));
     if (!lista.length) continue;
     hay += lista.length;
-    html += `<h4>${c}</h4>` + lista.map(p => `<div class="cp${p.id === promoId ? " estrella" : ""}">
+    html += `<h4>${c}</h4>` + subgrupos(lista, c).map(([t, L]) => (t ? `<h5 class="cpTipo">${ICO_TIPO[t]} ${t}</h5>` : "") + L.map(p => `<div class="cp${p.id === promoId ? " estrella" : ""}">
       <div class="nm">${p.id === promoId ? `<span class="estrellaMini">⭐ PLATO ESTRELLA</span>` : ""}<b>${p.nombre}</b>${p.desc ? `<small>${p.desc}</small>` : ""}</div>
       <span class="pr">${precioTxt(p.precio)}</span>
       ${p.agotado ? `<span class="ago">Agotado</span>` : `<span class="acc"><button class="quitar" data-menos="${p.i}" aria-label="Quitar uno" hidden>−</button><button class="pedir" data-i="${p.i}">Agregar +</button></span>`}
-    </div>`).join("");
+    </div>`).join("")).join("");
   }
   cartaLista.innerHTML = html + `<p id="cartaVacia" style="display:${hay ? "none" : "block"}">No encontramos "${buscar.value.replace(/[<>]/g, "")}" 🤔</p>`;
   refrescar();
@@ -1077,15 +1079,19 @@ const pista = $("#pista");
 // Si hay bebidas o adicionales, después del último plato sube su página (en vez de la pantalla final)
 const MAS = PLATOS.filter(p => p.solo_carta && !p.llevar_de);
 const MAS_CATS = [...new Set(MAS.map(p => p.categoria || "Otros"))];
+// Bebidas separadas en Gaseosas, Jugos y Cervezas (lo que no tiene tipo va en "Otras bebidas")
+const TIPOS_BEB = ["Gaseosas", "Jugos", "Cervezas", "Otras bebidas"], ICO_TIPO = { Gaseosas: "🥤", Jugos: "🧃", Cervezas: "🍺", "Otras bebidas": "💧" };
+const tipoDe = p => TIPOS_BEB.includes(p.tipo) ? p.tipo : "Otras bebidas";
+const subgrupos = (lista, c) => c === "Bebidas" ? TIPOS_BEB.map(t => [t, lista.filter(p => tipoDe(p) === t)]).filter(([, L]) => L.length) : [[null, lista]];
 for (let i = 0; i < ESCENA.length + (MAS.length ? 1 : 2); i++){ const d = document.createElement("div"); d.className = "paso"; pista.appendChild(d); }
 if (MAS.length){
   $("#final").style.display = "none";
   $("#masMenu").style.setProperty("--fondoMas", FONDO_INICIO);
   const ICO_CAT = { Bebidas: "🥤", Adicionales: "🍟" }, SUB_CAT = { Bebidas: "Para acompañar tu plato", Adicionales: "Agrégale algo más" };
   $("#masMenu").innerHTML = MAS_CATS.map(c => `<div class="mmGrupo"><h3>${ICO_CAT[c] || "🍽️"} ${c}</h3>${SUB_CAT[c] ? `<div class="mmSub">${SUB_CAT[c]}</div>` : ""}
-    <div class="mmLista">${MAS.filter(p => (p.categoria || "Otros") === c).map(p => `<div class="mm"><div class="nm"><b>${p.nombre}</b>${p.desc ? `<small>${p.desc}</small>` : ""}</div>
+    ${subgrupos(MAS.filter(p => (p.categoria || "Otros") === c), c).map(([t, L]) => `${t ? `<h4 class="mmTipo">${ICO_TIPO[t]} ${t}</h4>` : ""}<div class="mmLista">${L.map(p => `<div class="mm"><div class="nm"><b>${p.nombre}</b>${p.desc ? `<small>${p.desc}</small>` : ""}</div>
       <span class="pr">${precioTxt(p.precio)}</span>
-      <div class="bts">${p.agotado ? `<span class="ago">🚫 Agotado</span>` : `<button class="quitar" data-menos="${p.i}" aria-label="Quitar uno" hidden>−</button><button class="pedir" data-i="${p.i}">Agregar +</button>`}</div></div>`).join("")}</div></div>`).join("")
+      <div class="bts">${p.agotado ? `<span class="ago">🚫 Agotado</span>` : `<button class="quitar" data-menos="${p.i}" aria-label="Quitar uno" hidden>−</button><button class="pedir" data-i="${p.i}">Agregar +</button>`}</div></div>`).join("")}</div>`).join("")}</div>`).join("")
 ;
   $("#finMenu").innerHTML = `<div class="mmFin"><div class="emoji">😋</div><b>¿Ya se te antojó?</b><p>Escríbenos y te lo tenemos listo.</p><a class="wa" href="${$("#waFinal").href}" target="_blank" rel="noopener">💬 Pedir por WhatsApp</a><div class="dir">${$("#dir").innerHTML}</div></div>`;
   $("#finMenu").style.setProperty("--fondoMas", FONDO_INICIO);

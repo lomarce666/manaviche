@@ -27,17 +27,17 @@
 
     {"id": "ceviche-mixto", "nombre": "Ceviche mixto", "precio": 8.5, "desc": "", "dibujo": "ceviche", "foto": "", "fondo": "#7a3b2e", "agotado": false, "categoria": "Ceviches"},
 
-    {"id": "coca-cola", "nombre": "Coca-Cola", "precio": 1, "desc": "", "categoria": "Bebidas", "solo_carta": true, "agotado": false},
+    {"id": "coca-cola", "tipo": "Gaseosas", "nombre": "Coca-Cola", "precio": 1, "desc": "", "categoria": "Bebidas", "solo_carta": true, "agotado": false},
 
-    {"id": "pepsi", "nombre": "Pepsi", "precio": 1, "desc": "", "categoria": "Bebidas", "solo_carta": true, "agotado": false},
+    {"id": "pepsi", "tipo": "Gaseosas", "nombre": "Pepsi", "precio": 1, "desc": "", "categoria": "Bebidas", "solo_carta": true, "agotado": false},
 
-    {"id": "inca-kola", "nombre": "Inca Kola", "precio": 1, "desc": "", "categoria": "Bebidas", "solo_carta": true, "agotado": false},
+    {"id": "inca-kola", "tipo": "Gaseosas", "nombre": "Inca Kola", "precio": 1, "desc": "", "categoria": "Bebidas", "solo_carta": true, "agotado": false},
 
-    {"id": "fiora", "nombre": "Fiora", "precio": 1, "desc": "", "categoria": "Bebidas", "solo_carta": true, "agotado": false},
+    {"id": "fiora", "tipo": "Gaseosas", "nombre": "Fiora", "precio": 1, "desc": "", "categoria": "Bebidas", "solo_carta": true, "agotado": false},
 
-    {"id": "fuze-tea", "nombre": "Fuze Tea", "precio": 1, "desc": "", "categoria": "Bebidas", "solo_carta": true, "agotado": false},
+    {"id": "fuze-tea", "tipo": "Otras bebidas", "nombre": "Fuze Tea", "precio": 1, "desc": "", "categoria": "Bebidas", "solo_carta": true, "agotado": false},
 
-    {"id": "agua", "nombre": "Agua", "precio": 1, "desc": "", "categoria": "Bebidas", "solo_carta": true, "agotado": false},
+    {"id": "agua", "tipo": "Otras bebidas", "nombre": "Agua", "precio": 1, "desc": "", "categoria": "Bebidas", "solo_carta": true, "agotado": false},
 
     {"id": "chifles", "nombre": "Chifles", "precio": 0.5, "desc": "", "categoria": "Adicionales", "solo_carta": true, "agotado": false},
 

@@ -60,7 +60,7 @@ export async function onRequestGet({ request, env }) {
     const R = await cartaEfectiva(env, request.url);
     const base = await (await env.ASSETS.fetch(new URL("/restaurante.json", request.url))).json();
     const original = Object.fromEntries((base.platos || []).map((p, i) => [p.id || "p" + i, p.precio]));
-    return responder(200, { ok: true, platos: R.platos.map((p) => ({ id: p.id, nombre: p.nombre, precio: p.precio, original: original[p.id], agotado: !!p.agotado, categoria: p.categoria || "", llevar_de: p.llevar_de || undefined })), recargo_llevar: R.recargo_llevar, promo: R.promo || null });
+    return responder(200, { ok: true, platos: R.platos.map((p) => ({ id: p.id, nombre: p.nombre, precio: p.precio, original: original[p.id], agotado: !!p.agotado, categoria: p.categoria || "", tipo: p.tipo || undefined, llevar_de: p.llevar_de || undefined })), recargo_llevar: R.recargo_llevar, promo: R.promo || null });
   }
   // Estadísticas
   if (url.searchParams.get("stats")) {
@@ -233,8 +233,10 @@ export async function onRequestPost({ request, env }) {
     const R = await cartaEfectiva(env, request.url);
     const p = R.platos.find((x) => x.id === String(d.id) && !x.llevar_de);
     if (!p) return responder(404, { ok: false, error: "Ese plato no existe" });
-    const actual = await DB.prepare("SELECT valor FROM ajustes WHERE clave = ?1").bind("plato:" + p.id).first();
+    const actual = await DB.prepare("SELECT valor, actualizado FROM ajustes WHERE clave = ?1").bind("plato:" + p.id).first();
     const v = actual ? JSON.parse(actual.valor) : {};
+    // Un precio guardado antes de "precios_desde" ya no vale: no hay que revivirlo al marcar agotado
+    if (actual && Number(actual.actualizado) <= (Number(R.precios_desde) || 0)) delete v.precio;
     if (typeof d.agotado === "boolean") v.agotado = d.agotado;
     if (d.precio !== undefined) {
       const pr = Math.round(Number(d.precio) * 100) / 100;
@@ -244,6 +246,37 @@ export async function onRequestPost({ request, env }) {
     }
     await DB.prepare("INSERT INTO ajustes (clave, valor, actualizado) VALUES (?1, ?2, ?3) ON CONFLICT(clave) DO UPDATE SET valor = ?2, actualizado = ?3")
       .bind("plato:" + p.id, JSON.stringify(v), Date.now()).run();
+    return responder(200, { ok: true });
+  }
+  // ---- Editar menú: agregar una bebida o un adicional ----
+  if (d.accion === "nuevo_item") {
+    const categoria = d.categoria === "Adicionales" ? "Adicionales" : d.categoria === "Bebidas" ? "Bebidas" : null;
+    const nombre = String(d.nombre ?? "").replace(/[<>"'`]/g, "").replace(/\s+/g, " ").trim().slice(0, 40);
+    const precio = Math.round(Number(String(d.precio ?? "").replace(",", ".")) * 100) / 100;
+    if (!categoria) return responder(400, { ok: false, error: "Elige si es bebida o adicional" });
+    // Las bebidas van en Gaseosas, Jugos o Cervezas
+    const tipo = categoria === "Bebidas" ? (["Gaseosas", "Jugos", "Cervezas"].includes(d.tipo) ? d.tipo : null) : undefined;
+    if (categoria === "Bebidas" && !tipo) return responder(400, { ok: false, error: "Elige si es gaseosa, jugo o cerveza" });
+    if (nombre.length < 2) return responder(400, { ok: false, error: "Escribe el nombre" });
+    if (!(precio > 0 && precio <= 1000)) return responder(400, { ok: false, error: "Precio no válido" });
+    const R = await cartaEfectiva(env, request.url);
+    if (R.platos.some((p) => p.nombre.toLowerCase() === nombre.toLowerCase())) return responder(409, { ok: false, error: "Ya hay algo con ese nombre en el menú" });
+    const id = "x-" + nombre.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 24) + "-" + Date.now().toString(36).slice(-4);
+    await DB.prepare("INSERT INTO ajustes (clave, valor, actualizado) VALUES (?1, ?2, ?3)").bind("extra:" + id, JSON.stringify({ id, nombre, precio, categoria, tipo }), Date.now()).run();
+    return responder(200, { ok: true, id });
+  }
+  // ---- Editar menú: quitar una bebida o un adicional ----
+  if (d.accion === "quitar_item") {
+    const R = await cartaEfectiva(env, request.url);
+    const p = R.platos.find((x) => x.id === String(d.id) && !x.llevar_de);
+    if (!p) return responder(404, { ok: false, error: "No existe" });
+    if (!["Bebidas", "Adicionales"].includes(p.categoria)) return responder(400, { ok: false, error: "Los platos no se quitan desde aquí" });
+    if (p.agregado) await DB.batch([DB.prepare("DELETE FROM ajustes WHERE clave = ?1").bind("extra:" + p.id), DB.prepare("DELETE FROM ajustes WHERE clave = ?1").bind("plato:" + p.id)]);
+    else {
+      const actual = await DB.prepare("SELECT valor FROM ajustes WHERE clave = ?1").bind("plato:" + p.id).first();
+      const v = actual ? JSON.parse(actual.valor) : {}; v.oculto = true;
+      await DB.prepare("INSERT INTO ajustes (clave, valor, actualizado) VALUES (?1, ?2, ?3) ON CONFLICT(clave) DO UPDATE SET valor = ?2, actualizado = ?3").bind("plato:" + p.id, JSON.stringify(v), Date.now()).run();
+    }
     return responder(200, { ok: true });
   }
   // ---- Plato del día ----

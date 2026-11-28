@@ -131,6 +131,19 @@ main{padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280
 .tLlevarSw.on{background:#ffd166;color:#2a1f00;border:2px solid #ffd166}
 .tLlevarSw.on small{opacity:.8}
 .cGrupos{margin:10px 0 6px;background:#1b2027}
+.plPrecio{display:flex;align-items:center;gap:8px;flex-basis:100%}
+.plPrecio span{font-size:13px;font-weight:800;opacity:.75}
+.plPrecio input{flex:none}
+.plPrecio button{background:#ffd166 !important;color:#2a1f00 !important}
+.plQuitar{flex-basis:100%;background:transparent !important;color:#ff8a8a !important;border:1.5px dashed #6b2a2a !important;font-size:12px !important}
+.plTipo{margin:14px 2px 2px;font-weight:900;font-size:14px;color:#ffd166;text-transform:uppercase;letter-spacing:.04em}
+.nvTipos{margin-top:6px;grid-template-columns:repeat(3,1fr)}
+.plNuevo{margin-top:14px;background:#16263a;border-radius:14px;padding:12px}
+.plNuevo .tInput{margin-top:6px}
+.plNuevoFila{display:flex;align-items:center;gap:8px;margin-top:2px}
+.plNuevoFila span{font-weight:900;color:#ffd166}
+.plNuevoFila button{flex:none;margin-top:6px;padding:12px 16px;border-radius:12px;background:#2ecc71;color:#08210f;font-weight:900;font-size:14px}
+.plNuevoMsg{margin-top:6px;font-size:13px;font-weight:700;color:#ffb3b8;min-height:16px}
 .tGrupos button i.rojo{background:#e63946;color:#fff;min-width:34px;padding:0 5px}
 .tAvisoLlevar{margin:8px 0 2px;background:#2c2a1d;color:#ffe29a;border-radius:12px;padding:10px 12px;font-size:13px}
 .tLinea .tBtnLlevar{grid-column:1/-1;justify-self:start;margin-top:2px;padding:7px 10px;border-radius:10px;background:#2c2a1d;color:#ffe29a;font-size:12px;font-weight:700;border:1px dashed #6b5a22}
@@ -859,7 +872,7 @@ function verVista(v){
 document.documentElement.classList.toggle("modoMesero", !MODO_CAJA);
 $("#tabDia").hidden = !MODO_CAJA; $("#tabPend").hidden = MODO_CAJA; $("#tabPrep").hidden = !MODO_CAJA;
 if (!MODO_CAJA){
-  $("#tabCarta").hidden = false; $("#tabCarta").textContent = "🚫 Agotados";
+  $("#tabCarta").hidden = false; $("#tabCarta").textContent = "✏️ Editar menú";
   $("#tabTomar").hidden = false;
   $("#tabPend").innerHTML = `🔔 Pedidos pendientes<span class="cuenta" id="cPend">0</span>`;
   $("#tabMesas").innerHTML = `🍽️ Mesas servidas<span class="cuenta" id="cMesas">0</span>`;
@@ -1045,6 +1058,12 @@ const nuevoTomar = () => ({ para: "mesa", mesa: 0, items: {}, notas: "", cliente
 // Platos / Bebidas / Adicionales (botones de arriba en "Tomar pedido")
 const grupoDe = p => p.categoria === "Bebidas" ? "bebidas" : p.categoria === "Adicionales" ? "adicionales" : "platos";
 const LLEVAR = "~llevar";
+// Bebidas separadas en Gaseosas, Jugos y Cervezas (lo que no tiene tipo va en "Otras bebidas")
+const TIPOS_BEB = ["Gaseosas", "Jugos", "Cervezas", "Otras bebidas"];
+const tipoDe = p => TIPOS_BEB.includes(p.tipo) ? p.tipo : "Otras bebidas";
+const catDe = p => p.categoria === "Bebidas" ? tipoDe(p) : (p.categoria || "Platos");
+const ordenCats = L => { const c = [...new Set(L.map(catDe))]; const b = c.filter(x => TIPOS_BEB.includes(x)).sort((x, y) => TIPOS_BEB.indexOf(x) - TIPOS_BEB.indexOf(y));
+  const i = c.findIndex(x => TIPOS_BEB.includes(x)); return i < 0 ? c : [...c.filter(x => !TIPOS_BEB.includes(x)).slice(0, i), ...b, ...c.filter(x => !TIPOS_BEB.includes(x)).slice(i)]; };
 let tomar = nuevoTomar(), cartaT = null, enviandoT = false, recLlevar = 0.25;
 async function abrirTomar(){
   if (!cartaT){ $("#tomar").innerHTML = `<div class="vacio">Cargando platos…</div>`; }
@@ -1066,7 +1085,7 @@ function pintarTomarYa(){
   const cant = lineas.reduce((t, [, n]) => t + n, 0);
   const abierta = m => (datos.mesas || []).find(c => !c.telefono && c.mesa === m);
   const base = cartaT.filter(p => !p.llevar_de);
-  const cats = [...new Set(base.map(p => p.categoria || "Platos"))];
+  const cats = ordenCats(base);
   const nDe = id => (T.items[id] || 0) + (T.items[id + LLEVAR] || 0);
   const rec = recLlevar;
   const comoLlevar = T.para === "telefono" || T.llevar;          // por pedido siempre; en mesa si el botón 🥡 está prendido
@@ -1093,8 +1112,8 @@ function pintarTomarYa(){
         ? `🥡 PARA LLEVAR: <b>SÍ</b> · los platos que toques van en tarrina (+$${rec.toFixed(2)})<small>Toca aquí para volver a platos en mesa</small>`
         : `🥡 ¿Es para llevar? Toca aquí <small>Los platos que toques después se suman con +$${rec.toFixed(2)} de tarrina</small>`}</button>` : ""}</div>
     ${T.para === "telefono" ? `<div class="tAvisoLlevar">🥡 Por pedido: cada plato va en tarrina y cuesta <b>$${rec.toFixed(2)} más</b> (ya está sumado).</div>` : ""}
-    ${cats.map(cat => { const ps = base.filter(p => (p.categoria || "Platos") === cat);
-      return `<div class="tGrupo" data-grupo="${grupoDe(ps[0])}"><div class="tCat">${esc(cat)}</div><div class="tPlatos">${ps.map(p => `<div class="tTile" data-nom="${esc(p.nombre.toLowerCase())}"><button data-tadd="${esc(p.id)}" class="${nDe(p.id) ? "con" : ""}" ${p.agotado ? "disabled" : ""}>
+    ${cats.map(cat => { const ps = base.filter(p => catDe(p) === cat);
+      return `<div class="tGrupo" data-grupo="${grupoDe(ps[0])}"><div class="tCat">${TIPOS_BEB.includes(cat) ? ({ Gaseosas: "🥤 ", Jugos: "🧃 ", Cervezas: "🍺 " }[cat] || "") : ""}${esc(cat)}</div><div class="tPlatos">${ps.map(p => `<div class="tTile" data-nom="${esc(p.nombre.toLowerCase())}"><button data-tadd="${esc(p.id)}" class="${nDe(p.id) ? "con" : ""}" ${p.agotado ? "disabled" : ""}>
         ${nDe(p.id) ? `<i>${nDe(p.id)}</i>` : ""}<span>${esc(p.nombre)}</span><small>${p.agotado ? "Agotado" : "$" + Number(precioTile(p)).toFixed(2)}</small></button>
         ${nDe(p.id) ? `<button class="tQuitar" data-ttmenos="${esc(p.id)}" aria-label="Quitar uno">−</button>` : ""}</div>`).join("")}</div></div>`; }).join("")}
     <div style="height:90px"></div>
@@ -1618,34 +1637,63 @@ async function cargarCarta(){
   j.platos = (j.platos || []).filter(p => !p.llevar_de);
   carta = j; pintarCarta();
 }
-let cartaGrupo = "platos";        // Agotados / Editar carta: Platos, Bebidas o Adicionales
+let cartaGrupo = "platos", nvTipo = "";        // Agotados / Editar carta: Platos, Bebidas o Adicionales
 function pintarCarta(){
   const nG = g => carta.platos.filter(p => grupoDe(p) === g && p.agotado).length;
   const P = carta.platos.filter(p => grupoDe(p) === cartaGrupo);
   $("#carta").innerHTML = `
     <div class="hoja">
-      <h2>${MODO_CAJA ? "✏️ Editar carta · los cambios se ven al instante en el menú" : "🚫 Agotados · marca lo que se acabó y el menú deja de ofrecerlo"}</h2>
+      <h2>✏️ Editar menú · los cambios se ven al instante en el menú</h2>
       <div class="tGrupos cGrupos">${[["platos", "🍽️ Platos"], ["bebidas", "🥤 Bebidas"], ["adicionales", "🍟 Adicionales"]].map(([g, t]) => `<button data-cgrupo="${g}" class="${cartaGrupo === g ? "on" : ""}">${t}${nG(g) ? `<i class="rojo">${nG(g)} 🚫</i>` : ""}</button>`).join("")}</div>
       ${P.length ? "" : `<div class="vacio" style="padding:20px 0">No hay nada en esta sección</div>`}
-      ${P.map(p => `<div class="pl${p.agotado ? " ago" : ""}" data-pl="${esc(p.id)}">
-        <div class="nm">${esc(p.nombre)}<small>${esc(p.categoria)}${MODO_CAJA && p.original != null && p.precio !== p.original ? ` · precio original ${plata(p.original)}` : ""}</small>
+      ${(cartaGrupo === "bebidas" ? TIPOS_BEB.filter(t => t !== "Otras bebidas" || P.some(p => tipoDe(p) === t)) : [null]).map(t => { const Q = t ? P.filter(p => tipoDe(p) === t) : P;
+        return `${t ? `<div class="plTipo">${{ Gaseosas: "🥤", Jugos: "🧃", Cervezas: "🍺" }[t] || "🥛"} ${t}</div>${Q.length ? "" : `<div class="sub2" style="padding:4px 2px 8px">Todavía no hay ${t.toLowerCase()}. Agrégalas abajo.</div>`}` : ""}
+      ${Q.map(p => `<div class="pl${p.agotado ? " ago" : ""}" data-pl="${esc(p.id)}">
+        <div class="nm">${esc(p.nombre)}${MODO_CAJA && p.original != null && p.precio !== p.original ? `<small>precio original ${plata(p.original)}</small>` : ""}
           ${p.agotado ? `<span class="estAgo">🚫 AGOTADO</span>` : `<span class="estAgo disp">✅ DISPONIBLE</span>`}</div>
-        ${MODO_CAJA ? `<input type="text" inputmode="decimal" autocomplete="off" value="${Number(p.precio).toFixed(2)}" aria-label="Precio">
-        <button data-precio>Guardar $</button>` : ""}
+        <div class="plPrecio"><span>Precio $</span><input type="text" inputmode="decimal" autocomplete="off" value="${Number(p.precio).toFixed(2)}" aria-label="Precio de ${esc(p.nombre)}">
+        <button data-precio>Guardar precio</button></div>
         <button class="agoB2${p.agotado ? " ago" : ""}" data-ago="${p.agotado ? 0 : 1}">${p.agotado ? "✅ Indicar que está disponible" : "🚫 Indicar que está agotado"}</button>
-      </div>`).join("")}
-      <div class="sub2" style="margin-top:10px">Los platos agotados se ven en el menú pero no se pueden pedir. Los precios nuevos se cobran desde el siguiente pedido.</div>
+        ${cartaGrupo !== "platos" ? `<button class="plQuitar" data-quitar>🗑️ Quitar del menú</button>` : ""}
+      </div>`).join("")}`; }).join("")}
+      ${cartaGrupo !== "platos" ? `<div class="plNuevo">
+        <div class="tTit">➕ Agregar ${cartaGrupo === "bebidas" ? "una bebida nueva" : "un adicional nuevo"}</div>
+        ${cartaGrupo === "bebidas" ? `<div class="tPago nvTipos">${[["Gaseosas", "🥤 Gaseosa"], ["Jugos", "🧃 Jugo"], ["Cervezas", "🍺 Cerveza"]].map(([t, l]) => `<button data-nvtipo="${t}" class="${nvTipo === t ? "on" : ""}">${l}</button>`).join("")}</div>` : ""}
+        <input class="tInput" id="nvNombre" maxlength="40" autocomplete="off" placeholder="${cartaGrupo === "bebidas" ? ({ Gaseosas: "Nombre (ej. Sprite)", Jugos: "Nombre (ej. Jugo de naranja)", Cervezas: "Nombre (ej. Pilsener)" }[nvTipo] || "Nombre") : "Nombre (ej. Arroz, Maduro)"}">
+        <div class="plNuevoFila"><span>$</span><input class="tInput" id="nvPrecio" type="text" inputmode="decimal" autocomplete="off" placeholder="Precio (ej. 1.50)"><button data-nuevo>Agregar</button></div>
+        <div class="plNuevoMsg" id="nvMsg"></div>
+      </div>` : ""}
+      <div class="sub2" style="margin-top:10px">Lo agotado se ve en el menú pero no se puede pedir. Los precios nuevos se cobran desde el siguiente pedido.${cartaGrupo === "platos" ? "" : " Lo que quites deja de salir en el menú."}</div>
     </div>`;
 }
 $("#carta").addEventListener("click", async e=>{
   const cg = e.target.closest("[data-cgrupo]"); if (cg){ cartaGrupo = cg.dataset.cgrupo; pintarCarta(); return; }
+  const nt = e.target.closest("[data-nvtipo]"); if (nt){ const n0 = $("#nvNombre").value, p0 = $("#nvPrecio").value; nvTipo = nt.dataset.nvtipo; pintarCarta(); $("#nvNombre").value = n0; $("#nvPrecio").value = p0; return; }
+  if (e.target.closest("[data-nuevo]")){
+    const b = e.target.closest("[data-nuevo]"), nombre = $("#nvNombre").value.trim(), precio = $("#nvPrecio").value.trim();
+    if (cartaGrupo === "bebidas" && !nvTipo){ $("#nvMsg").textContent = "⚠️ Elige si es gaseosa, jugo o cerveza"; return; }
+    if (!nombre){ $("#nvMsg").textContent = "⚠️ Escribe el nombre"; return $("#nvNombre").focus(); }
+    if (!(Number(precio.replace(",", ".")) > 0)){ $("#nvMsg").textContent = "⚠️ Escribe el precio"; return $("#nvPrecio").focus(); }
+    b.disabled = true; b.textContent = "Guardando…";
+    const j = await api("POST", { accion: "nuevo_item", categoria: cartaGrupo === "bebidas" ? "Bebidas" : "Adicionales", tipo: cartaGrupo === "bebidas" ? nvTipo : undefined, nombre, precio });
+    if (!j.ok){ b.disabled = false; b.textContent = "Agregar"; $("#nvMsg").textContent = "⚠️ " + (j.error || "No se pudo guardar"); return; }
+    mostrarListo(`✅ ${nombre} agregado al menú`); cartaT = null;
+    return cargarCarta();
+  }
   const fila = e.target.closest("[data-pl]"); if (!fila) return;
+  if (e.target.closest("[data-quitar]")){
+    const nom = fila.querySelector(".nm").firstChild.textContent.trim();
+    if (!confirm(`¿Quitar "${nom}" del menú?\n\nLos clientes ya no lo van a ver. Si después vuelve, lo puedes agregar otra vez.`)) return;
+    const j = await api("POST", { accion: "quitar_item", id: fila.dataset.pl });
+    if (!j.ok) alert(j.error || "No se pudo quitar"); else { mostrarListo(`🗑️ ${nom} quitado del menú`); cartaT = null; }
+    return cargarCarta();
+  }
   const id = fila.dataset.pl;
-  if (e.target.closest("[data-ago]")){ await api("POST", { accion: "plato", id, agotado: e.target.dataset.ago === "1" }); return cargarCarta(); }
+  if (e.target.closest("[data-ago]")){ await api("POST", { accion: "plato", id, agotado: e.target.dataset.ago === "1" }); cartaT = null; return cargarCarta(); }
   if (e.target.closest("[data-precio]")){
     const v = Number(String(fila.querySelector("input").value).trim().replace(",", "."));   // acepta 4,50 o 4.50
     const j = await api("POST", { accion: "plato", id, precio: v });
-    if (!j.ok) alert(j.error || "No se pudo guardar"); else e.target.textContent = "✓ Guardado";
+    if (!j.ok) alert(j.error || "No se pudo guardar"); else { e.target.textContent = "✓ Guardado"; cartaT = null; }
     return setTimeout(cargarCarta, 700);
   }
 });

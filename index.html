@@ -760,13 +760,11 @@ function seguirCuenta(c){
 }
 const ESTADO_TXT = { nuevo: ["📨 Enviado", "e-nuevo"], recibido: ["👨‍🍳 En preparación", "e-prep"], preparando: ["👨‍🍳 En preparación", "e-prep"], listo: ["✅ Completo", "e-listo"] };
 function pedirResena(c){
-  const link = NEGOCIO.resena_google || NEGOCIO.mapa || "";
+  // Cuando la caja cobra la mesa: solo un gracias (el local no tiene página de reseñas)
   const box = resultado.querySelector(".caja");
-  box.innerHTML = `<div class="emoji grande-emoji">🙏</div><h4>¡Gracias por venir!</h4>
-    <p>Tu cuenta de la mesa ${c.mesa} ($${c.total.toFixed(2)}) ya fue cobrada.</p>
-    ${link ? `<p>¿Te gustó? Una reseña nos ayuda muchísimo 💛</p><div class="estrellas">⭐⭐⭐⭐⭐</div>
-    <a class="btn-wa" style="background:#0d3b4f" href="${link}" target="_blank" rel="noopener" data-cerrar>Dejar reseña en Google</a>` : ""}
-    <button class="btn-secundario" data-cerrar>Ahora no</button>`;
+  box.innerHTML = `<div class="emoji grande-emoji">😊</div><h4>¡Gracias por tu compra!</h4>
+    <p>Gracias por venir a <b>${NEGOCIO.nombre || "nuestro restaurante"}</b>.<br>¡Te esperamos pronto! 💛</p>
+    <button class="btn-secundario" data-cerrar>Cerrar</button>`;
   resultado.classList.add("ver");
 }
 

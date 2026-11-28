@@ -130,6 +130,8 @@ main{padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280
 .tLlevarSw small{display:block;font-weight:600;font-size:12px;opacity:.75;margin-top:2px}
 .tLlevarSw.on{background:#ffd166;color:#2a1f00;border:2px solid #ffd166}
 .tLlevarSw.on small{opacity:.8}
+.cGrupos{margin:10px 0 6px;background:#1b2027}
+.tGrupos button i.rojo{background:#e63946;color:#fff;min-width:34px;padding:0 5px}
 .tAvisoLlevar{margin:8px 0 2px;background:#2c2a1d;color:#ffe29a;border-radius:12px;padding:10px 12px;font-size:13px}
 .tLinea .tBtnLlevar{grid-column:1/-1;justify-self:start;margin-top:2px;padding:7px 10px;border-radius:10px;background:#2c2a1d;color:#ffe29a;font-size:12px;font-weight:700;border:1px dashed #6b5a22}
 .tEtqLlevar{font-style:normal;font-size:12px;font-weight:800;color:#2a1f00;background:#ffd166;border-radius:6px;padding:1px 6px;white-space:nowrap}
@@ -1616,13 +1618,17 @@ async function cargarCarta(){
   j.platos = (j.platos || []).filter(p => !p.llevar_de);
   carta = j; pintarCarta();
 }
+let cartaGrupo = "platos";        // Agotados / Editar carta: Platos, Bebidas o Adicionales
 function pintarCarta(){
-  const P = carta.platos;
+  const nG = g => carta.platos.filter(p => grupoDe(p) === g && p.agotado).length;
+  const P = carta.platos.filter(p => grupoDe(p) === cartaGrupo);
   $("#carta").innerHTML = `
     <div class="hoja">
-      <h2>${MODO_CAJA ? "✏️ Editar carta · los cambios se ven al instante en el menú" : "🚫 Platos agotados · marca lo que se acabó y el menú deja de ofrecerlo"}</h2>
+      <h2>${MODO_CAJA ? "✏️ Editar carta · los cambios se ven al instante en el menú" : "🚫 Agotados · marca lo que se acabó y el menú deja de ofrecerlo"}</h2>
+      <div class="tGrupos cGrupos">${[["platos", "🍽️ Platos"], ["bebidas", "🥤 Bebidas"], ["adicionales", "🍟 Adicionales"]].map(([g, t]) => `<button data-cgrupo="${g}" class="${cartaGrupo === g ? "on" : ""}">${t}${nG(g) ? `<i class="rojo">${nG(g)} 🚫</i>` : ""}</button>`).join("")}</div>
+      ${P.length ? "" : `<div class="vacio" style="padding:20px 0">No hay nada en esta sección</div>`}
       ${P.map(p => `<div class="pl${p.agotado ? " ago" : ""}" data-pl="${esc(p.id)}">
-        <div class="nm">${esc(p.nombre)}<small>${esc(p.categoria)}${p.precio !== p.original ? ` · precio original ${plata(p.original)}` : ""}</small>
+        <div class="nm">${esc(p.nombre)}<small>${esc(p.categoria)}${MODO_CAJA && p.original != null && p.precio !== p.original ? ` · precio original ${plata(p.original)}` : ""}</small>
           ${p.agotado ? `<span class="estAgo">🚫 AGOTADO</span>` : `<span class="estAgo disp">✅ DISPONIBLE</span>`}</div>
         ${MODO_CAJA ? `<input type="text" inputmode="decimal" autocomplete="off" value="${Number(p.precio).toFixed(2)}" aria-label="Precio">
         <button data-precio>Guardar $</button>` : ""}
@@ -1632,6 +1638,7 @@ function pintarCarta(){
     </div>`;
 }
 $("#carta").addEventListener("click", async e=>{
+  const cg = e.target.closest("[data-cgrupo]"); if (cg){ cartaGrupo = cg.dataset.cgrupo; pintarCarta(); return; }
   const fila = e.target.closest("[data-pl]"); if (!fila) return;
   const id = fila.dataset.pl;
   if (e.target.closest("[data-ago]")){ await api("POST", { accion: "plato", id, agotado: e.target.dataset.ago === "1" }); return cargarCarta(); }

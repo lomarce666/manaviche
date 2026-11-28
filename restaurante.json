@@ -15,9 +15,9 @@
   "colores": {"inicio": "#0d3b4f", "acento": "#ffd166"},
 
   "platos": [
-    {"id": "ceviche-jipijapa", "nombre": "Ceviche Jipijapa", "precio": 6.5, "desc": "Pescado picudo encurtido, maní, aguacate, cebolla, pimiento, tomate y hierbita.", "dibujo": "ceviche", "foto": "", "fondo": "#c8553d", "agotado": false, "estrella": true, "categoria": "Ceviches"},
+    {"id": "ceviche-jipijapa", "mano_foto": "/fotos/mano10-ceviche.webp", "nombre": "Ceviche Jipijapa", "precio": 6.5, "desc": "Pescado picudo encurtido, maní, aguacate, cebolla, pimiento, tomate y hierbita.", "dibujo": "ceviche", "foto": "", "fondo": "#c8553d", "agotado": false, "estrella": true, "categoria": "Ceviches"},
 
-    {"id": "encebollado", "nombre": "Encebollado", "precio": 3.5, "desc": "Albacora, yuca y cebolla curtida. El que levanta a cualquiera.", "dibujo": "encebollado", "foto": "", "fondo": "#1f6f78", "agotado": false, "categoria": "Encebollados"},
+    {"id": "encebollado", "mano_foto": "/fotos/mano10-encebollado.webp", "nombre": "Encebollado", "precio": 3.5, "desc": "Albacora, yuca y cebolla curtida. El que levanta a cualquiera.", "dibujo": "encebollado", "foto": "", "fondo": "#1f6f78", "agotado": false, "categoria": "Encebollados"},
 
     {"id": "encebollado-mixto-camaron", "nombre": "Encebollado mixto con camarón", "precio": 5, "desc": "", "dibujo": "encebollado", "foto": "", "fondo": "#2b4162", "agotado": false, "categoria": "Encebollados"},
 

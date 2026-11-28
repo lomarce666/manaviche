@@ -57,6 +57,19 @@ header h1{font-size:16px;font-weight:900;text-transform:uppercase;flex:1;min-wid
 #btnAjustes{width:40px;height:40px;border-radius:50%;background:#1b2027;font-size:16px;flex:none}
 #estado{font-size:13px;font-weight:700;padding:6px 10px;border-radius:99px;background:#16351f;color:#6ee7a0}
 #estado.mal{background:#4a1515;color:#ff8a8a}
+/* MESERO: la barra de arriba SIEMPRE del mismo tamaño (una sola fila chica) y sin rebote al bajar.
+   En celulares antiguos, achicarla al bajar hacía que la pantalla subiera y bajara sin parar. */
+html.modoMesero{overscroll-behavior-y:none}
+html.modoMesero body{overscroll-behavior-y:none}
+.modoMesero .fijo header{flex-wrap:nowrap;gap:8px;padding:calc(6px + env(safe-area-inset-top)) 12px 6px}
+.modoMesero .fijo header h1{font-size:13px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.modoMesero .fijo header .logoMini{width:30px;height:30px}
+.modoMesero .fijo .dato{display:none}
+.modoMesero .fijo #estado{font-size:0;padding:0;width:12px;height:12px;flex:none;background:#2ecc71;box-shadow:0 0 0 3px #16351f}
+.modoMesero .fijo #estado.mal{background:#ff6b6b;box-shadow:0 0 0 3px #4a1515}
+.modoMesero .fijo #btnAjustes{width:34px;height:34px;font-size:14px}
+.modoMesero .fijo .pestanas{padding-top:8px}
+.modoMesero .fijo .pestanas button{padding:9px 12px;font-size:12px}
 #avisoSonido{display:none;margin:12px 16px 0;padding:14px;border-radius:14px;background:#e63946;color:#fff;font-weight:900;text-align:center;font-size:14px}
 #avisoSonido.ver{display:block;animation:latir 1s infinite}
 @keyframes latir{50%{opacity:.6}}
@@ -838,6 +851,7 @@ function verVista(v){
   pintar();
 }
 // Cocina: Pedidos y Preparados · Caja: Día, Mesas por cobrar y Preparados
+document.documentElement.classList.toggle("modoMesero", !MODO_CAJA);
 $("#tabDia").hidden = !MODO_CAJA; $("#tabPend").hidden = MODO_CAJA; $("#tabPrep").hidden = !MODO_CAJA;
 if (!MODO_CAJA){
   $("#tabCarta").hidden = false; $("#tabCarta").textContent = "🚫 Agotados";
@@ -852,6 +866,7 @@ $("#tabTomar").onclick = ()=>verVista("tomar");
 let fijoChico = false, fijoPend = false;
 function revisarFijo(){
   fijoPend = false;
+  if (!MODO_CAJA) return;                       // mesero: la barra nunca cambia de tamaño
   const y = scrollY, sobra = document.documentElement.scrollHeight - innerHeight;
   if (!fijoChico && y > 140 && sobra > 260){ fijoChico = true; document.querySelector(".fijo").classList.add("chico"); }
   else if (fijoChico && y < 12){ fijoChico = false; document.querySelector(".fijo").classList.remove("chico"); }

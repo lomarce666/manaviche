@@ -497,7 +497,7 @@ function crearSonido(dur, notas, cuadrada){
   new Int16Array(buf, 44).set(datos);
   return URL.createObjectURL(new Blob([buf], { type: "audio/wav" }));
 }
-// Pedido nuevo: 3 pitidos fuertes (se repite hasta tocar "Recibido")
+// Pedido nuevo: 3 pitidos cortos, UNA sola vez por pedido
 const alarma = new Audio(crearSonido(0.75, [[0,0.17,990],[0.25,0.42,990],[0.5,0.7,1320]], true));
 // Mesero / cuenta: "ding-dong" suave que dura 3 segundos y no se repite
 const timbre = new Audio(crearSonido(3, [[0,1,988],[0.5,1.5,784],[1,2,988],[1.5,2.5,784],[2,3,988]], false));
@@ -535,16 +535,19 @@ function revisarSonido(){
 $("#avisoSonido").onclick = ()=>activarSonido();
 document.addEventListener("visibilitychange", ()=>{ if (!document.hidden){ cargar(); pedirPantallaEncendida(); } });
 
-// La alarma suena cada 2.5 s mientras haya algo sin recibir
+// Cada pedido nuevo suena UNA sola vez (antes se repetía cada 2.5 s hasta que alguien lo tocaba)
+const yaSonaron = new Set();
 setInterval(()=>{
-  const pendientes = MODO_CAJA ? 0 : datos.pedidos.filter(p => p.estado === "nuevo" && p.tipo === "pedido").length;
-  if (pendientes){
+  const nuevos = MODO_CAJA ? [] : datos.pedidos.filter(p => p.estado === "nuevo" && p.tipo === "pedido");
+  const sinSonar = nuevos.filter(p => !yaSonaron.has(p.id));
+  if (sinSonar.length){
+    sinSonar.forEach(p => yaSonaron.add(p.id));
     pitido();
     if (navigator.vibrate) navigator.vibrate([200,100,200]);
-    document.title = (document.title.startsWith("🔴") ? "" : "🔴 ") + document.title.replace(/^🔴 /,"");
-  } else document.title = document.title.replace(/^🔴 /,"");
+  }
+  document.title = nuevos.length ? "🔴 " + document.title.replace(/^🔴 /,"") : document.title.replace(/^🔴 /,"");
   revisarSonido();
-}, 2500);
+}, 1000);
 
 /* ---------- Mantener la pantalla encendida ---------- */
 let bloqueo = null;
